@@ -1,0 +1,17 @@
+{
+  "name": "@vibe/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch index.ts",
+    "start": "bun index.ts",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "elysia": "^1.0.27"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
