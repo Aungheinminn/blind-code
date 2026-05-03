@@ -8,11 +8,11 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter ./apps/web dev & bun run --filter ./apps/server dev",
-    "dev:web": "bun run --filter ./apps/web dev",
+    "dev": "bun run --filter ./apps/client dev & bun run --filter ./apps/server dev",
+    "dev:client": "bun run --filter ./apps/client dev",
     "dev:server": "bun run --filter ./apps/server dev",
-    "build": "bun run --filter ./apps/web build",
-    "lint": "bun run --filter ./apps/web lint",
+    "build": "bun run --filter ./apps/client build",
+    "lint": "bun run --filter ./apps/client lint",
     "typecheck": "bun run --filter ./apps/server typecheck"
   }
 }
