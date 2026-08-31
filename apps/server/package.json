@@ -9,9 +9,24 @@
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {
-    "elysia": "^1.0.27"
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/cerebras": "^1.0.0",
+    "@ai-sdk/cohere": "^2.0.0",
+    "@ai-sdk/deepseek": "^1.0.0",
+    "@ai-sdk/fireworks": "^1.0.0",
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/groq": "^2.0.0",
+    "@ai-sdk/mistral": "^2.0.0",
+    "@ai-sdk/openai": "^2.0.0",
+    "@ai-sdk/perplexity": "^2.0.0",
+    "@ai-sdk/togetherai": "^1.0.0",
+    "@ai-sdk/xai": "^2.0.0",
+    "ai": "^5.0.0",
+    "elysia": "^1.0.27",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.0",
     "typescript": "^5.5.4"
   }
 }
