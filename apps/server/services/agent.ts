@@ -1,6 +1,6 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { resolveModel } from "./providers";
-import { buildAgentTools } from "./tools";
+import { buildAgentTools, type ToolContext } from "./tools";
 
 export type AgentEvent =
   | { type: "text-delta"; text: string }
@@ -18,7 +18,7 @@ export type AgentChatMessage = {
 export type RunAgentOptions = {
   provider: string;
   model?: string;
-  projectId: string;
+  toolContext: ToolContext;
   prompt: string;
   history?: AgentChatMessage[];
   maxSteps?: number;
@@ -41,7 +41,7 @@ Tools available: list_files, read_file, write_file, delete_file, run_command. Al
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const model = resolveModel(opts.provider, opts.model);
-  const tools = buildAgentTools(opts.projectId);
+  const tools = buildAgentTools(opts.toolContext);
 
   const messages: ModelMessage[] = [
     ...(opts.history ?? []).map(

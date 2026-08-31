@@ -2,13 +2,14 @@ import { tool } from "ai";
 import { z } from "zod";
 import { join, resolve, relative, dirname } from "path";
 import { mkdir, readFile, writeFile, readdir, stat, rm } from "fs/promises";
+import { upsertProjectFile, deleteProjectFile } from "../db/repo";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
-const projectRoot = (projectId: string) => join(SANDBOX_ROOT, projectId);
+const sandboxDir = (projectId: string) => join(SANDBOX_ROOT, projectId);
 
 const safeJoin = (projectId: string, rel: string): string => {
-  const root = projectRoot(projectId);
+  const root = sandboxDir(projectId);
   const abs = resolve(root, rel);
   const relFromRoot = relative(root, abs);
   if (relFromRoot.startsWith("..") || resolve(root, relFromRoot) !== abs) {
@@ -17,7 +18,13 @@ const safeJoin = (projectId: string, rel: string): string => {
   return abs;
 };
 
-export const buildAgentTools = (projectId: string) => {
+export type ToolContext = {
+  sandboxProjectId: string;
+  dbProjectId: string | null;
+};
+
+export const buildAgentTools = (ctx: ToolContext) => {
+  const { sandboxProjectId, dbProjectId } = ctx;
   return {
     read_file: tool({
       description:
@@ -26,7 +33,7 @@ export const buildAgentTools = (projectId: string) => {
         path: z.string().describe("Path relative to the project root, e.g. 'src/App.tsx'"),
       }),
       execute: async ({ path }) => {
-        const abs = safeJoin(projectId, path);
+        const abs = safeJoin(sandboxProjectId, path);
         const content = await readFile(abs, "utf-8");
         return { path, content };
       },
@@ -40,9 +47,10 @@ export const buildAgentTools = (projectId: string) => {
         content: z.string().describe("Full file content to write (UTF-8)"),
       }),
       execute: async ({ path, content }) => {
-        const abs = safeJoin(projectId, path);
+        const abs = safeJoin(sandboxProjectId, path);
         await mkdir(dirname(abs), { recursive: true });
         await writeFile(abs, content, "utf-8");
+        if (dbProjectId) await upsertProjectFile(dbProjectId, path, content);
         return { path, bytes: Buffer.byteLength(content, "utf-8") };
       },
     }),
@@ -57,9 +65,9 @@ export const buildAgentTools = (projectId: string) => {
           .describe("Directory relative to project root. Defaults to the root."),
       }),
       execute: async ({ path }) => {
-        const rootAbs = projectRoot(projectId);
+        const rootAbs = sandboxDir(sandboxProjectId);
         await mkdir(rootAbs, { recursive: true });
-        const startAbs = safeJoin(projectId, path ?? ".");
+        const startAbs = safeJoin(sandboxProjectId, path ?? ".");
         const entries: Array<{ path: string; type: "file" | "dir"; size?: number }> = [];
 
         const walk = async (dir: string) => {
@@ -94,8 +102,9 @@ export const buildAgentTools = (projectId: string) => {
         path: z.string().describe("Path relative to the project root"),
       }),
       execute: async ({ path }) => {
-        const abs = safeJoin(projectId, path);
+        const abs = safeJoin(sandboxProjectId, path);
         await rm(abs, { recursive: true, force: true });
+        if (dbProjectId) await deleteProjectFile(dbProjectId, path);
         return { path, deleted: true };
       },
     }),
@@ -117,7 +126,7 @@ export const buildAgentTools = (projectId: string) => {
           .describe("Kill the process after this many ms. Default 60000."),
       }),
       execute: async ({ command, timeoutMs }) => {
-        const cwd = projectRoot(projectId);
+        const cwd = sandboxDir(sandboxProjectId);
         await mkdir(cwd, { recursive: true });
 
         const child = Bun.spawn(command, {

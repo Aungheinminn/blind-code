@@ -41,8 +41,18 @@ export class Orchestrator {
     const id = crypto.randomUUID();
     this.processes.set(id, { process: child, cwd: sandboxDir });
 
-    child.stdout?.on("data", (chunk) => options.onStdout?.(chunk.toString()));
-    child.stderr?.on("data", (chunk) => options.onStderr?.(chunk.toString()));
+    const decoder = new TextDecoder();
+    const pump = async (
+      stream: ReadableStream<Uint8Array> | null | undefined,
+      cb?: (data: string) => void,
+    ) => {
+      if (!stream || !cb) return;
+      for await (const chunk of stream as unknown as AsyncIterable<Uint8Array>) {
+        cb(decoder.decode(chunk));
+      }
+    };
+    pump(child.stdout, options.onStdout);
+    pump(child.stderr, options.onStderr);
     child.exited.then((code) => {
       options.onExit?.(code ?? null);
       this.processes.delete(id);

@@ -15,8 +15,11 @@ export type ProviderInfo = {
   configured: boolean;
 };
 
-const SERVER_HTTP = "http://localhost:3001";
-const SERVER_WS = "ws://localhost:3001";
+const SERVER_HTTP = import.meta.env.VITE_SERVER_HTTP ?? "http://localhost:3001";
+const SERVER_WS = import.meta.env.VITE_SERVER_WS ?? "ws://localhost:3001";
+const AGENT_TOKEN = import.meta.env.VITE_AGENT_TOKEN ?? "";
+const agentWsUrl = () =>
+  AGENT_TOKEN ? `${SERVER_WS}/ws/agent?token=${encodeURIComponent(AGENT_TOKEN)}` : `${SERVER_WS}/ws/agent`;
 
 export const messages = writable<AgentMessage[]>([
   {
@@ -32,6 +35,16 @@ export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
 export const selectedProvider = writable<string>("anthropic");
 export const selectedModel = writable<string>("");
+
+export type PreviewState =
+  | { state: "idle" }
+  | { state: "installing" }
+  | { state: "starting"; port: number }
+  | { state: "ready"; url: string }
+  | { state: "none"; reason: string }
+  | { state: "error"; error: string };
+
+export const previewState = writable<PreviewState>({ state: "idle" });
 
 export const loadProviders = async () => {
   try {
@@ -53,7 +66,7 @@ const ensureSocket = (): Promise<WebSocket> =>
     if (socket && socket.readyState === WebSocket.OPEN) return resolve(socket);
     if (socket) socket.close();
 
-    const ws = new WebSocket(`${SERVER_WS}/ws/agent`);
+    const ws = new WebSocket(agentWsUrl());
     socket = ws;
 
     ws.addEventListener("open", () => resolve(ws));
@@ -133,11 +146,23 @@ const handleEvent = (raw: unknown) => {
     case "error":
       appendText(`\n\n_Error: ${event.error}_`);
       break;
+    case "preview":
+      if (event.status) previewState.set(event.status);
+      break;
     case "done":
       isRunning.set(false);
       currentAgentMessageId = null;
       break;
   }
+};
+
+export const restartPreview = (projectId: string) => {
+  previewState.set({ state: "starting", port: 0 });
+  const send = () => {
+    socket?.send(JSON.stringify({ type: "restart-preview", projectId }));
+  };
+  if (socket && socket.readyState === WebSocket.OPEN) send();
+  else ensureSocket().then(send).catch(() => {});
 };
 
 export const sendPrompt = async (

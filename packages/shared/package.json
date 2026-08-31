@@ -1,0 +1,14 @@
+{
+  "name": "@vibe/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./schema/index.ts",
+  "exports": {
+    ".": "./schema/index.ts",
+    "./schema": "./schema/index.ts"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "*"
+  }
+}

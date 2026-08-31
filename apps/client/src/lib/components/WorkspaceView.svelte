@@ -10,12 +10,26 @@
     loadProviders,
     sendPrompt,
     cancelAgent,
+    previewState,
+    restartPreview,
   } from "$lib/stores/agent";
 
   export let projectId: string = "default";
 
   let prompt = "";
-  let previewUrl = "";
+  $: previewUrl = $previewState.state === "ready" ? $previewState.url : "";
+  $: previewLabel =
+    $previewState.state === "installing"
+      ? "installing…"
+      : $previewState.state === "starting"
+      ? "starting…"
+      : $previewState.state === "ready"
+      ? "live"
+      : $previewState.state === "error"
+      ? "error"
+      : $previewState.state === "none"
+      ? "no preview"
+      : "";
 
   onMount(() => {
     loadProviders();
@@ -240,20 +254,27 @@
         <span class="text-xs font-medium" style="color: var(--text-secondary);">Preview</span>
       </div>
       <div class="flex items-center gap-1.5">
-        {#if previewUrl}
+        {#if previewLabel}
           <div
             class="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
             style="background-color: var(--bg-tertiary); color: var(--text-tertiary);"
           >
-            <span class="w-1.5 h-1.5 rounded-full" style="background-color: var(--success);"
+            <span
+              class="w-1.5 h-1.5 rounded-full"
+              style="background-color: {$previewState.state === 'ready'
+                ? 'var(--success)'
+                : $previewState.state === 'error'
+                ? '#ef4444'
+                : 'var(--text-tertiary)'};"
             ></span>
-            Live
+            {previewLabel}
           </div>
         {/if}
         <button
           class="w-7 h-7 rounded-md border cursor-pointer transition-colors flex items-center justify-center"
           style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
-          on:click={() => {}}
+          on:click={() => restartPreview(projectId)}
+          title="Restart preview"
         >
           <svg
             width="14"
