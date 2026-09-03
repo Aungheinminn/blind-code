@@ -151,4 +151,40 @@ export const deleteProjectFile = async (projectId: string, path: string) => {
     .where(and(eq(schema.files.projectId, projectId), eq(schema.files.path, path)));
 };
 
+export const getCachedToolResult = async (
+  sessionId: string,
+  toolCallId: string,
+): Promise<{ result: unknown; inputHash: string } | null> => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.toolCallCache)
+    .where(
+      and(
+        eq(schema.toolCallCache.sessionId, sessionId),
+        eq(schema.toolCallCache.toolCallId, toolCallId),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return { result: row.result, inputHash: row.inputHash };
+};
+
+export const putCachedToolResult = async (
+  sessionId: string,
+  toolCallId: string,
+  toolName: string,
+  inputHash: string,
+  result: unknown,
+) => {
+  if (!db) return;
+  await db
+    .insert(schema.toolCallCache)
+    .values({ sessionId, toolCallId, toolName, inputHash, result })
+    .onConflictDoNothing({
+      target: [schema.toolCallCache.sessionId, schema.toolCallCache.toolCallId],
+    });
+};
+
 export { hasDb };

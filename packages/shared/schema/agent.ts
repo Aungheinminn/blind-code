@@ -1,4 +1,4 @@
-import { jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, primaryKey, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const agentSessions = pgTable("agent_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -18,3 +18,18 @@ export const agentActions = pgTable("agent_actions", {
   stderr: text("stderr"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const toolCallCache = pgTable(
+  "tool_call_cache",
+  {
+    sessionId: uuid("session_id").notNull(),
+    toolCallId: varchar("tool_call_id", { length: 200 }).notNull(),
+    toolName: varchar("tool_name", { length: 80 }).notNull(),
+    inputHash: varchar("input_hash", { length: 64 }).notNull(),
+    result: jsonb("result").$type<unknown>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.sessionId, t.toolCallId] }),
+  }),
+);

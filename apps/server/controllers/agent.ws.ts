@@ -162,7 +162,7 @@ export const agentController = (app: Elysia) =>
         await runAgent({
           provider: msg.provider,
           model: msg.model,
-          toolContext: { sandboxProjectId: msg.projectId, dbProjectId },
+          toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },
           prompt: msg.prompt,
           history: msg.history,
           maxSteps: msg.maxSteps,

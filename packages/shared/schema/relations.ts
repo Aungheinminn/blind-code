@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { agentActions, agentSessions } from "./agent";
+import { agentActions, agentSessions, toolCallCache } from "./agent";
 import { files } from "./fs";
 import { projects } from "./projects";
 import { users } from "./users";
@@ -30,11 +30,19 @@ export const agentSessionsRelations = relations(agentSessions, ({ one, many }) =
     references: [projects.id],
   }),
   actions: many(agentActions),
+  toolCallCache: many(toolCallCache),
 }));
 
 export const agentActionsRelations = relations(agentActions, ({ one }) => ({
   session: one(agentSessions, {
     fields: [agentActions.sessionId],
+    references: [agentSessions.id],
+  }),
+}));
+
+export const toolCallCacheRelations = relations(toolCallCache, ({ one }) => ({
+  session: one(agentSessions, {
+    fields: [toolCallCache.sessionId],
     references: [agentSessions.id],
   }),
 }));
