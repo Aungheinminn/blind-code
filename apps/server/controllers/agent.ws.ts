@@ -5,6 +5,7 @@ import { runAgent, type AgentChatMessage, type AgentEvent } from "../services/ag
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { isAuthorized } from "../services/auth";
 import { previewManager } from "../services/preview";
+import { turnBus } from "../services/turnBus";
 import {
   ensureProject,
   createAgentSession,
@@ -29,7 +30,8 @@ type AgentIncoming =
       autoPreview?: boolean;
     }
   | { type: "cancel" }
-  | { type: "restart-preview"; projectId: string };
+  | { type: "restart-preview"; projectId: string }
+  | { type: "attach"; turnId: string; lastOrdinal?: number };
 
 const hydrateSandbox = async (sandboxProjectId: string, dbProjectId: string | null) => {
   const cwd = join(SANDBOX_ROOT, sandboxProjectId);
@@ -57,9 +59,17 @@ export const agentController = (app: Elysia) =>
           return;
         }
         (ws.data as any).abort = new AbortController();
+        (ws.data as any).unsubscribes = [];
       },
       close: (ws) => {
         (ws.data as any).abort?.abort();
+        const unsubs: Array<() => void> = (ws.data as any).unsubscribes ?? [];
+        for (const u of unsubs) {
+          try {
+            u();
+          } catch {}
+        }
+        (ws.data as any).unsubscribes = [];
       },
       message: async (ws, raw) => {
         const msg = raw as AgentIncoming;
@@ -80,6 +90,34 @@ export const agentController = (app: Elysia) =>
           return;
         }
 
+        if (msg.type === "attach") {
+          const turn = await turnBus.getTurn(msg.turnId);
+          if (!turn) {
+            ws.send({ type: "error", error: "unknown turnId" });
+            return;
+          }
+          const missed = await turnBus.getEventsSince(msg.turnId, msg.lastOrdinal ?? -1);
+          for (const rec of missed) {
+            ws.send({ ...rec.payload, ordinal: rec.ordinal, turnId: msg.turnId });
+          }
+          if (turn.status === "running") {
+            const unsub = turnBus.subscribe(msg.turnId, (rec) => {
+              try {
+                ws.send({ ...rec.payload, ordinal: rec.ordinal, turnId: msg.turnId });
+              } catch {}
+            });
+            (ws.data as any).unsubscribes.push(unsub);
+          } else {
+            ws.send({
+              type: "turn-terminal",
+              turnId: msg.turnId,
+              status: turn.status,
+              lastError: turn.lastError,
+            });
+          }
+          return;
+        }
+
         if (msg.type !== "run") return;
 
         const dbProject = await ensureProject(msg.projectId);
@@ -93,12 +131,16 @@ export const agentController = (app: Elysia) =>
           ? await createAgentSession(dbProjectId, `${msg.provider}/${resolvedModelId}`)
           : null;
 
+        const turnId =
+          sessionId && dbProjectId ? await turnBus.createTurn(sessionId, dbProjectId) : null;
+
         ws.send({
           type: "started",
           provider: msg.provider,
           model: msg.model ?? null,
           sessionId,
           dbProjectId,
+          turnId,
         });
 
         if (sessionId) {
@@ -118,10 +160,15 @@ export const agentController = (app: Elysia) =>
           currentText = "";
         };
 
-        const handleEvent = async (event: AgentEvent) => {
+        const publish = async (event: AgentEvent | Record<string, unknown>) => {
+          const ordinal = turnId ? await turnBus.emit(turnId, event as any) : null;
           try {
-            ws.send(event);
+            ws.send(turnId ? { ...event, ordinal, turnId } : event);
           } catch {}
+        };
+
+        const handleEvent = async (event: AgentEvent) => {
+          await publish(event);
           if (!sessionId) return;
           switch (event.type) {
             case "text-delta":
@@ -159,24 +206,40 @@ export const agentController = (app: Elysia) =>
           }
         };
 
-        await runAgent({
-          provider: msg.provider,
-          model: msg.model,
-          toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },
-          prompt: msg.prompt,
-          history: msg.history,
-          maxSteps: msg.maxSteps,
-          systemPrompt: msg.systemPrompt,
-          signal: (ws.data as any).abort?.signal,
-          onEvent: (event) => {
-            handleEvent(event).catch(() => {});
-          },
-        });
+        let terminalStatus: "done" | "failed" | "cancelled" = "done";
+        let terminalError: string | null = null;
+
+        try {
+          await runAgent({
+            provider: msg.provider,
+            model: msg.model,
+            toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },
+            prompt: msg.prompt,
+            history: msg.history,
+            maxSteps: msg.maxSteps,
+            systemPrompt: msg.systemPrompt,
+            signal: (ws.data as any).abort?.signal,
+            onEvent: (event) => {
+              handleEvent(event).catch(() => {});
+              if (event.type === "error") {
+                terminalStatus = "failed";
+                terminalError = event.error;
+              }
+            },
+          });
+          if ((ws.data as any).abort?.signal?.aborted) {
+            terminalStatus = "cancelled";
+          }
+        } catch (err) {
+          terminalStatus = "failed";
+          terminalError = err instanceof Error ? err.message : String(err);
+        }
 
         await flushText();
         if (sessionId) await endAgentSession(sessionId);
+        if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 
-        ws.send({ type: "done" });
+        await publish({ type: "done" });
 
         if (msg.autoPreview !== false) {
           previewManager.stop(msg.projectId);
