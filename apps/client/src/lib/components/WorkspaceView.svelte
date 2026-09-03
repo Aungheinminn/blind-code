@@ -12,6 +12,7 @@
     cancelAgent,
     previewState,
     restartPreview,
+    resumeTurn,
   } from "$lib/stores/agent";
 
   export let projectId: string = "default";
@@ -33,6 +34,7 @@
 
   onMount(() => {
     loadProviders();
+    resumeTurn(projectId).catch(() => {});
   });
 
   const submit = () => {

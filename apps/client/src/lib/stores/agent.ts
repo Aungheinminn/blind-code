@@ -60,6 +60,38 @@ export const loadProviders = async () => {
 
 let socket: WebSocket | null = null;
 let currentAgentMessageId: string | null = null;
+let activeTurnId: string | null = null;
+let activeProjectId: string | null = null;
+let lastOrdinal = -1;
+
+const turnStorageKey = (projectId: string) => `vibe-agent-turn:${projectId}`;
+
+const saveTurn = (projectId: string, turnId: string, ordinal: number) => {
+  try {
+    localStorage.setItem(turnStorageKey(projectId), JSON.stringify({ turnId, ordinal }));
+  } catch {}
+};
+
+const readSavedTurn = (
+  projectId: string,
+): { turnId: string; ordinal: number } | null => {
+  try {
+    const raw = localStorage.getItem(turnStorageKey(projectId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.turnId === "string" && typeof parsed?.ordinal === "number") {
+      return { turnId: parsed.turnId, ordinal: parsed.ordinal };
+    }
+  } catch {}
+  return null;
+};
+
+const clearSavedTurn = (projectId: string | null) => {
+  if (!projectId) return;
+  try {
+    localStorage.removeItem(turnStorageKey(projectId));
+  } catch {}
+};
 
 const ensureSocket = (): Promise<WebSocket> =>
   new Promise((resolve, reject) => {
@@ -130,8 +162,20 @@ const handleEvent = (raw: unknown) => {
     return;
   }
 
+  if (typeof event.ordinal === "number" && event.ordinal > lastOrdinal) {
+    lastOrdinal = event.ordinal;
+    if (activeProjectId && activeTurnId) {
+      saveTurn(activeProjectId, activeTurnId, lastOrdinal);
+    }
+  }
+
   switch (event.type) {
     case "started":
+      if (typeof event.turnId === "string") {
+        activeTurnId = event.turnId;
+        lastOrdinal = -1;
+        if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
+      }
       startAgentMessage();
       break;
     case "text-delta":
@@ -149,9 +193,20 @@ const handleEvent = (raw: unknown) => {
     case "preview":
       if (event.status) previewState.set(event.status);
       break;
+    case "turn-terminal":
+      appendText(`\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
+      isRunning.set(false);
+      currentAgentMessageId = null;
+      clearSavedTurn(activeProjectId);
+      activeTurnId = null;
+      lastOrdinal = -1;
+      break;
     case "done":
       isRunning.set(false);
       currentAgentMessageId = null;
+      clearSavedTurn(activeProjectId);
+      activeTurnId = null;
+      lastOrdinal = -1;
       break;
   }
 };
@@ -170,6 +225,8 @@ export const sendPrompt = async (
   prompt: string,
 ): Promise<void> => {
   if (!prompt.trim() || get(isRunning)) return;
+
+  activeProjectId = projectId;
 
   messages.update((list) => [
     ...list,
@@ -214,4 +271,33 @@ export const cancelAgent = () => {
     socket.send(JSON.stringify({ type: "cancel" }));
   }
   isRunning.set(false);
+  clearSavedTurn(activeProjectId);
+  activeTurnId = null;
+  lastOrdinal = -1;
+};
+
+export const resumeTurn = async (projectId: string): Promise<void> => {
+  activeProjectId = projectId;
+  const saved = readSavedTurn(projectId);
+  if (!saved) return;
+
+  activeTurnId = saved.turnId;
+  lastOrdinal = saved.ordinal;
+  isRunning.set(true);
+
+  try {
+    const ws = await ensureSocket();
+    ws.send(
+      JSON.stringify({
+        type: "attach",
+        turnId: saved.turnId,
+        lastOrdinal: saved.ordinal,
+      }),
+    );
+  } catch {
+    isRunning.set(false);
+    clearSavedTurn(projectId);
+    activeTurnId = null;
+    lastOrdinal = -1;
+  }
 };
