@@ -2,10 +2,19 @@ import { relations } from "drizzle-orm";
 import { agentActions, agentSessions, toolCallCache, turnEvents, turns } from "./agent";
 import { files } from "./fs";
 import { projects } from "./projects";
+import { sessions } from "./sessions";
 import { users } from "./users";
 
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
+  sessions: many(sessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({

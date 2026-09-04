@@ -1,6 +1,6 @@
 import type { Elysia } from "elysia";
 import { Orchestrator } from "../services/orchestrator";
-import { isAuthorized } from "../services/auth";
+import { getUserFromRequest } from "../services/authGuard";
 
 type RuntimeMessage =
   | { type: "spawn"; projectId: string; command: string[]; files: Array<{ path: string; content: string }> }
@@ -8,12 +8,15 @@ type RuntimeMessage =
 
 export const runtimeWsController = (app: Elysia, orchestrator: Orchestrator) =>
   app.ws("/ws/runtime", {
-    open: (ws) => {
-      const url = (ws.data as any).request?.url;
-      if (!isAuthorized(url)) {
+    open: async (ws) => {
+      const request: Request | undefined = (ws.data as any).request;
+      const user = request ? await getUserFromRequest(request) : null;
+      if (!user) {
         ws.send({ type: "error", error: "unauthorized" });
         ws.close();
+        return;
       }
+      (ws.data as any).userId = user.id;
     },
     message: async (ws, message) => {
       const payload = message as RuntimeMessage;

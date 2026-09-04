@@ -17,9 +17,7 @@ export type ProviderInfo = {
 
 const SERVER_HTTP = import.meta.env.VITE_SERVER_HTTP ?? "http://localhost:3001";
 const SERVER_WS = import.meta.env.VITE_SERVER_WS ?? "ws://localhost:3001";
-const AGENT_TOKEN = import.meta.env.VITE_AGENT_TOKEN ?? "";
-const agentWsUrl = () =>
-  AGENT_TOKEN ? `${SERVER_WS}/ws/agent?token=${encodeURIComponent(AGENT_TOKEN)}` : `${SERVER_WS}/ws/agent`;
+const agentWsUrl = () => `${SERVER_WS}/ws/agent`;
 
 export const messages = writable<AgentMessage[]>([
   {

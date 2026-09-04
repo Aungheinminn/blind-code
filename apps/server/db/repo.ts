@@ -2,42 +2,40 @@ import { and, eq } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
 import { stringToUuid } from "../services/uuid";
 
-const LOCAL_USER_EMAIL = "local@vibe-code.dev";
-let cachedLocalUserId: string | null = null;
-
-export const ensureLocalUser = async (): Promise<string | null> => {
+export const findUserByEmail = async (email: string) => {
   if (!db) return null;
-  if (cachedLocalUserId) return cachedLocalUserId;
-
-  const existing = await db
+  const rows = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.email, LOCAL_USER_EMAIL))
+    .where(eq(schema.users.email, email))
     .limit(1);
+  return rows[0] ?? null;
+};
 
-  if (existing[0]) {
-    cachedLocalUserId = existing[0].id;
-    return cachedLocalUserId;
-  }
-
-  const [created] = await db
+export const createUser = async (
+  email: string,
+  displayName: string,
+  passwordHash: string,
+) => {
+  if (!db) return null;
+  const [row] = await db
     .insert(schema.users)
-    .values({ email: LOCAL_USER_EMAIL, displayName: "Local" })
+    .values({ email, displayName, passwordHash })
     .returning();
-  cachedLocalUserId = created.id;
-  return cachedLocalUserId;
+  return row;
 };
 
 export const ensureProject = async (
   projectIdOrName: string,
-): Promise<{ id: string; created: boolean } | null> => {
+  ownerId: string,
+): Promise<{ id: string; created: boolean; forbidden?: boolean } | null> => {
   if (!db) return null;
   const id = stringToUuid(projectIdOrName);
   const found = await db.select().from(schema.projects).where(eq(schema.projects.id, id)).limit(1);
-  if (found[0]) return { id: found[0].id, created: false };
-
-  const ownerId = await ensureLocalUser();
-  if (!ownerId) return null;
+  if (found[0]) {
+    if (found[0].ownerId !== ownerId) return { id, created: false, forbidden: true };
+    return { id: found[0].id, created: false };
+  }
 
   const [created] = await db
     .insert(schema.projects)
@@ -46,20 +44,25 @@ export const ensureProject = async (
   return { id: created.id, created: true };
 };
 
-export const listProjects = async () => {
+export const listProjectsForOwner = async (ownerId: string) => {
   if (!db) return [];
-  return db.select().from(schema.projects);
+  return db.select().from(schema.projects).where(eq(schema.projects.ownerId, ownerId));
 };
 
-export const getProject = async (idOrName: string) => {
+export const getProjectForOwner = async (idOrName: string, ownerId: string) => {
   if (!db) return null;
   const id = stringToUuid(idOrName);
-  const rows = await db.select().from(schema.projects).where(eq(schema.projects.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
   return rows[0] ?? null;
 };
 
-export const updateProject = async (
+export const updateProjectForOwner = async (
   idOrName: string,
+  ownerId: string,
   patch: Partial<{ name: string; description: string | null; isArchived: boolean }>,
 ) => {
   if (!db) return null;
@@ -67,15 +70,18 @@ export const updateProject = async (
   const [updated] = await db
     .update(schema.projects)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(schema.projects.id, id))
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
   return updated ?? null;
 };
 
-export const deleteProject = async (idOrName: string) => {
+export const deleteProjectForOwner = async (idOrName: string, ownerId: string) => {
   if (!db) return false;
   const id = stringToUuid(idOrName);
-  const res = await db.delete(schema.projects).where(eq(schema.projects.id, id)).returning();
+  const res = await db
+    .delete(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
   return res.length > 0;
 };
 

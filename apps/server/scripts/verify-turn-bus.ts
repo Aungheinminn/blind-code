@@ -1,7 +1,9 @@
 import { turnBus } from "../services/turnBus";
 import { createAgentSession, ensureProject } from "../db/repo";
+import { ensureVerifyUser } from "./_verify-user";
 
-const project = await ensureProject("turn-bus-verify");
+const ownerId = await ensureVerifyUser();
+const project = await ensureProject("turn-bus-verify", ownerId);
 if (!project) throw new Error("no db");
 const sessionId = await createAgentSession(project.id, "test/verify");
 if (!sessionId) throw new Error("no session");

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import {
@@ -8,8 +7,10 @@
     deleteProject,
     type Project,
   } from "$lib/api/projects";
+  import { auth } from "$lib/stores/auth";
 
   $: projectId = $page.params.projectId;
+  let loadedFor = "";
 
   let project: Project | null = null;
   let loading = true;
@@ -46,7 +47,10 @@
     }
   };
 
-  onMount(() => load(projectId));
+  $: if ($auth.status === "authed" && projectId && loadedFor !== projectId) {
+    loadedFor = projectId;
+    load(projectId);
+  }
 
   $: dirty =
     project !== null &&

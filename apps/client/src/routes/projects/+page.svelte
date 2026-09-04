@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { listProjects, createProject, type Project } from "$lib/api/projects";
+  import { auth } from "$lib/stores/auth";
 
   let projects: Project[] = [];
   let loading = true;
   let error = "";
+  let loaded = false;
 
   let creating = false;
   let newName = "";
@@ -15,6 +16,7 @@
     error = "";
     try {
       projects = await listProjects();
+      loaded = true;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -22,7 +24,7 @@
     }
   };
 
-  onMount(load);
+  $: if ($auth.status === "authed" && !loaded) load();
 
   const submitCreate = async () => {
     const name = newName.trim();

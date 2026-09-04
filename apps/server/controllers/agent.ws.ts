@@ -3,7 +3,7 @@ import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import { runAgent, type AgentChatMessage, type AgentEvent } from "../services/agent";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
-import { isAuthorized } from "../services/auth";
+import { getUserFromRequest } from "../services/authGuard";
 import { previewManager } from "../services/preview";
 import { turnBus } from "../services/turnBus";
 import {
@@ -51,13 +51,15 @@ export const agentController = (app: Elysia) =>
   app
     .get("/agent/providers", () => ({ data: listAvailableProviders() }))
     .ws("/ws/agent", {
-      open: (ws) => {
-        const url = (ws.data as any).request?.url;
-        if (!isAuthorized(url)) {
+      open: async (ws) => {
+        const request: Request | undefined = (ws.data as any).request;
+        const user = request ? await getUserFromRequest(request) : null;
+        if (!user) {
           ws.send({ type: "error", error: "unauthorized" });
           ws.close();
           return;
         }
+        (ws.data as any).userId = user.id;
         (ws.data as any).abort = new AbortController();
         (ws.data as any).unsubscribes = [];
       },
@@ -73,6 +75,12 @@ export const agentController = (app: Elysia) =>
       },
       message: async (ws, raw) => {
         const msg = raw as AgentIncoming;
+        const userId: string | undefined = (ws.data as any).userId;
+        if (!userId) {
+          ws.send({ type: "error", error: "unauthorized" });
+          ws.close();
+          return;
+        }
 
         if (msg.type === "cancel") {
           (ws.data as any).abort?.abort();
@@ -82,6 +90,11 @@ export const agentController = (app: Elysia) =>
         }
 
         if (msg.type === "restart-preview") {
+          const owned = await ensureProject(msg.projectId, userId);
+          if (owned?.forbidden) {
+            ws.send({ type: "error", error: "forbidden" });
+            return;
+          }
           previewManager.stop(msg.projectId);
           const status = await previewManager.ensureRunning(msg.projectId, (s) =>
             ws.send({ type: "preview", status: s }),
@@ -120,7 +133,11 @@ export const agentController = (app: Elysia) =>
 
         if (msg.type !== "run") return;
 
-        const dbProject = await ensureProject(msg.projectId);
+        const dbProject = await ensureProject(msg.projectId, userId);
+        if (dbProject?.forbidden) {
+          ws.send({ type: "error", error: "forbidden" });
+          return;
+        }
         const dbProjectId = dbProject?.id ?? null;
 
         await hydrateSandbox(msg.projectId, dbProjectId);

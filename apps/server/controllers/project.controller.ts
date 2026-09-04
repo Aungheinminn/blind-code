@@ -1,39 +1,80 @@
 import type { Elysia } from "elysia";
 import {
-  listProjects,
-  getProject,
+  listProjectsForOwner,
+  getProjectForOwner,
   ensureProject,
-  updateProject,
-  deleteProject,
-  hasDb,
+  updateProjectForOwner,
+  deleteProjectForOwner,
 } from "../db/repo";
+import { hasDb } from "../db/client";
+import { getUserFromRequest } from "../services/authGuard";
+
+const unauthorized = (set: { status?: number | string }) => {
+  set.status = 401;
+  return { error: "unauthorized" };
+};
+
+const dbUnavailable = (set: { status?: number | string }) => {
+  set.status = 503;
+  return { error: "database not configured" };
+};
 
 export const projectController = (app: Elysia) =>
   app
-    .get("/projects", async () => {
-      if (!hasDb) return { data: [], warning: "DATABASE_URL not set" };
-      return { data: await listProjects() };
+    .get("/projects", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      return { data: await listProjectsForOwner(user.id) };
     })
-    .get("/projects/:id", async ({ params }) => {
-      if (!hasDb) return { data: { id: params.id }, warning: "DATABASE_URL not set" };
-      const project = await getProject(params.id);
+    .get("/projects/:id", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
       return { data: project };
     })
-    .post("/projects", async ({ body }) => {
+    .post("/projects", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
       const b = (body as Record<string, unknown>) ?? {};
-      const name = (b.name as string) ?? (b.id as string) ?? crypto.randomUUID();
-      if (!hasDb) return { data: { id: name, name }, warning: "DATABASE_URL not set" };
-      const project = await ensureProject(name);
+      const name = ((b.name as string) ?? (b.id as string) ?? crypto.randomUUID()).trim();
+      if (!name) {
+        set.status = 400;
+        return { error: "name required" };
+      }
+      const project = await ensureProject(name, user.id);
+      if (project?.forbidden) {
+        set.status = 409;
+        return { error: "project name already taken" };
+      }
       return { data: project };
     })
-    .put("/projects/:id", async ({ params, body }) => {
-      if (!hasDb) return { data: { id: params.id, ...(body as Record<string, unknown>) }, warning: "DATABASE_URL not set" };
+    .put("/projects/:id", async ({ params, body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
       const patch = body as Partial<{ name: string; description: string | null; isArchived: boolean }>;
-      const updated = await updateProject(params.id, patch);
+      const updated = await updateProjectForOwner(params.id, user.id, patch);
+      if (!updated) {
+        set.status = 404;
+        return { error: "not found" };
+      }
       return { data: updated };
     })
-    .delete("/projects/:id", async ({ params }) => {
-      if (!hasDb) return { data: { id: params.id, deleted: true }, warning: "DATABASE_URL not set" };
-      const deleted = await deleteProject(params.id);
-      return { data: { id: params.id, deleted } };
+    .delete("/projects/:id", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const deleted = await deleteProjectForOwner(params.id, user.id);
+      if (!deleted) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: { id: params.id, deleted: true } };
     });

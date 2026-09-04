@@ -3,12 +3,12 @@ import { Orchestrator } from "./services/orchestrator";
 import { runtimeWsController } from "./controllers/runtime.ws";
 import { projectController } from "./controllers/project.controller";
 import { agentController } from "./controllers/agent.ws";
-import { ensureLocalUser } from "./db/repo";
+import { authController } from "./controllers/auth.controller";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
+import { withCors } from "./services/cors";
 
 if (hasDb) {
-  await ensureLocalUser().catch((e) => console.warn("[db] ensureLocalUser failed:", e));
   const swept = await turnBus.sweepOrphanedRunning(0).catch((e) => {
     console.warn("[db] sweepOrphanedRunning failed:", e);
     return 0;
@@ -19,6 +19,8 @@ if (hasDb) {
 const app = new Elysia();
 const orchestrator = new Orchestrator();
 
+withCors(app);
+authController(app);
 projectController(app);
 runtimeWsController(app, orchestrator);
 agentController(app);
