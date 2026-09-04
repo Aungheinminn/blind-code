@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
-import { stringToUuid } from "../services/uuid";
+import { isUuid, stringToUuid } from "../services/uuid";
+
+const projectIdFor = (idOrName: string, ownerId: string): string =>
+  isUuid(idOrName) ? idOrName.toLowerCase() : stringToUuid(`${ownerId}:${idOrName}`);
 
 export const findUserByEmail = async (email: string) => {
   if (!db) return null;
@@ -30,7 +33,7 @@ export const ensureProject = async (
   ownerId: string,
 ): Promise<{ id: string; created: boolean; forbidden?: boolean } | null> => {
   if (!db) return null;
-  const id = stringToUuid(projectIdOrName);
+  const id = projectIdFor(projectIdOrName, ownerId);
   const found = await db.select().from(schema.projects).where(eq(schema.projects.id, id)).limit(1);
   if (found[0]) {
     if (found[0].ownerId !== ownerId) return { id, created: false, forbidden: true };
@@ -51,7 +54,7 @@ export const listProjectsForOwner = async (ownerId: string) => {
 
 export const getProjectForOwner = async (idOrName: string, ownerId: string) => {
   if (!db) return null;
-  const id = stringToUuid(idOrName);
+  const id = projectIdFor(idOrName, ownerId);
   const rows = await db
     .select()
     .from(schema.projects)
@@ -66,7 +69,7 @@ export const updateProjectForOwner = async (
   patch: Partial<{ name: string; description: string | null; isArchived: boolean }>,
 ) => {
   if (!db) return null;
-  const id = stringToUuid(idOrName);
+  const id = projectIdFor(idOrName, ownerId);
   const [updated] = await db
     .update(schema.projects)
     .set({ ...patch, updatedAt: new Date() })
@@ -77,7 +80,7 @@ export const updateProjectForOwner = async (
 
 export const deleteProjectForOwner = async (idOrName: string, ownerId: string) => {
   if (!db) return false;
-  const id = stringToUuid(idOrName);
+  const id = projectIdFor(idOrName, ownerId);
   const res = await db
     .delete(schema.projects)
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
