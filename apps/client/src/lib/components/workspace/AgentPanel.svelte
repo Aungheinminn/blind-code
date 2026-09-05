@@ -1,0 +1,59 @@
+<script lang="ts">
+  import { createEventDispatcher } from "svelte";
+  import type { AgentMessage, ProviderInfo } from "$lib/stores/agent";
+  import AgentPanelHeader from "./AgentPanelHeader.svelte";
+  import ProviderSelector from "./ProviderSelector.svelte";
+  import MessageList from "./MessageList.svelte";
+  import PromptComposer from "./PromptComposer.svelte";
+
+  export let open = false;
+  export let messages: AgentMessage[] = [];
+  export let isRunning = false;
+  export let providers: ProviderInfo[] = [];
+  export let selectedProvider = "";
+  export let selectedModel = "";
+  export let modelPlaceholder = "";
+  export let statusText = "idle";
+
+  const dispatch = createEventDispatcher<{
+    close: void;
+    submit: string;
+    cancel: void;
+    "provider-change": string;
+    "model-change": string;
+  }>();
+
+  const onSubmit = (event: CustomEvent<string>) => {
+    dispatch("submit", event.detail);
+  };
+</script>
+
+<div
+  class="absolute top-3 bottom-3 left-3 w-[min(420px,calc(100%-24px))] rounded-[18px] border flex flex-col overflow-hidden"
+  style="z-index: 25; border-color: var(--border); background-color: var(--bg-panel); box-shadow: var(--panel-shadow); transform: {open
+    ? 'translateX(0)'
+    : 'translateX(calc(-100% - 16px))'}; opacity: {open
+    ? 1
+    : 0}; transition: transform 300ms cubic-bezier(.22,.8,.28,1), opacity 200ms ease; pointer-events: {open
+    ? 'auto'
+    : 'none'};"
+  aria-hidden={!open}
+>
+  <AgentPanelHeader
+    {statusText}
+    {isRunning}
+    on:close={() => dispatch("close")}
+    on:cancel={() => dispatch("cancel")}
+  />
+
+  <ProviderSelector
+    {providers}
+    {modelPlaceholder}
+    bind:selectedProvider
+    bind:selectedModel
+  />
+
+  <MessageList {messages} {isRunning} />
+
+  <PromptComposer disabled={isRunning} on:submit={onSubmit} />
+</div>

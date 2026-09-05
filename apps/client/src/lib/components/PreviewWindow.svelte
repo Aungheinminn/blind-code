@@ -3,29 +3,37 @@
   export let title = "Preview";
 </script>
 
-<div class="flex h-full flex-col overflow-hidden" style="background-color: var(--bg-primary);">
-  <div
-    class="flex items-center justify-between border-b px-4 py-2"
-    style="border-color: var(--border);"
-  >
-    <span class="text-xs font-medium" style="color: var(--text-secondary);">{title}</span>
-    {#if url}
-      <span
-        class="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-medium"
-        style="background-color: var(--accent-subtle); color: var(--success);"
-      >
-        <span class="w-1.5 h-1.5 rounded-full" style="background-color: var(--success);"></span>
-        Live
-      </span>
-    {/if}
-  </div>
-  <div class="flex-1">
-    {#if url}
-      <iframe class="h-full w-full border-0" src={url} title={title}></iframe>
-    {:else}
-      <div class="flex h-full items-center justify-center">
-        <p class="text-xs" style="color: var(--text-tertiary);">No preview available</p>
+<div class="h-full w-full" style="background-color: var(--bg-primary);">
+  {#if url}
+    <iframe class="h-full w-full border-0" src={url} {title}></iframe>
+  {:else}
+    <div class="flex h-full w-full items-center justify-center px-8">
+      <div class="text-center">
+        <div
+          class="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+          style="background-color: var(--bg-tertiary);"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: var(--text-tertiary);"
+          >
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </div>
+        <p class="text-sm font-medium" style="color: var(--text-secondary);">No preview yet</p>
+        <p class="text-xs mt-1" style="color: var(--text-tertiary);">
+          Start a conversation with the agent to see your project come to life.
+        </p>
       </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </div>

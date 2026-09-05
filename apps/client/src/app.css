@@ -18,6 +18,10 @@
   --danger: #ef4444;
   --danger-hover: #dc2626;
   --success: #22c55e;
+  --chrome: rgba(255, 255, 255, 0.88);
+  --chrome-border: #e0e1e5;
+  --chrome-hover: rgba(240, 241, 244, 0.96);
+  --panel-shadow: 0 24px 60px rgba(16, 24, 40, 0.14);
 }
 
 .dark {
@@ -36,6 +40,10 @@
   --danger: #ef4444;
   --danger-hover: #f87171;
   --success: #22c55e;
+  --chrome: rgba(16, 16, 16, 0.84);
+  --chrome-border: #262626;
+  --chrome-hover: rgba(34, 34, 34, 0.94);
+  --panel-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
