@@ -39,13 +39,20 @@
   }
 
   $: finished = step >= steps.length;
+  $: showTodos = hasRun || isRunning;
   $: todos = steps.map((label, i) => {
     const done = i < step;
     const active = i === step && !finished;
     return { label, done, active };
   });
-  $: statusText = finished ? "Complete" : isRunning ? gerunds[step] ?? "Working…" : "Idle";
-  $: statusCount = `${Math.min(step, steps.length)}/${steps.length}`;
+  $: statusText = !showTodos
+    ? "Idle"
+    : finished
+    ? "Complete"
+    : isRunning
+    ? gerunds[step] ?? "Working…"
+    : "Idle";
+  $: statusCount = showTodos ? `${Math.min(step, steps.length)}/${steps.length}` : "";
 
   onDestroy(stopTimer);
 </script>
@@ -61,38 +68,41 @@
   on:click={() => dispatch("open")}
   aria-label="Open agent panel"
 >
-  <div class="flex flex-col gap-[9px] px-[14px] pt-[14px] pb-3">
-    {#each todos as todo (todo.label)}
-      <div class="flex items-center gap-[9px]">
-        <div
-          class="w-[15px] h-[15px] shrink-0 rounded-full flex items-center justify-center"
-          class:pulse={todo.active}
-          style="border: 1.5px solid {todo.done
-            ? 'var(--success)'
-            : todo.active
-            ? 'var(--accent)'
-            : 'var(--border-strong)'}; background: {todo.done ? 'var(--success)' : 'transparent'};"
-        >
-          {#if todo.done}
-            <span class="text-[9px] font-extrabold text-white leading-none">✓</span>
-          {/if}
+  {#if showTodos}
+    <div class="flex flex-col gap-[9px] px-[14px] pt-[14px] pb-3">
+      {#each todos as todo (todo.label)}
+        <div class="flex items-center gap-[9px]">
+          <div
+            class="w-[15px] h-[15px] shrink-0 rounded-full flex items-center justify-center"
+            class:pulse={todo.active}
+            style="border: 1.5px solid {todo.done
+              ? 'var(--success)'
+              : todo.active
+              ? 'var(--accent)'
+              : 'var(--border-strong)'}; background: {todo.done ? 'var(--success)' : 'transparent'};"
+          >
+            {#if todo.done}
+              <span class="text-[9px] font-extrabold text-white leading-none">✓</span>
+            {/if}
+          </div>
+          <span
+            class="text-[12.5px] font-medium truncate"
+            style="color: {todo.done
+              ? 'var(--text-tertiary)'
+              : todo.active
+              ? 'var(--text-primary)'
+              : 'var(--text-tertiary)'}; text-decoration: {todo.done ? 'line-through' : 'none'};"
+          >
+            {todo.label}
+          </span>
         </div>
-        <span
-          class="text-[12.5px] font-medium truncate"
-          style="color: {todo.done
-            ? 'var(--text-tertiary)'
-            : todo.active
-            ? 'var(--text-primary)'
-            : 'var(--text-tertiary)'}; text-decoration: {todo.done ? 'line-through' : 'none'};"
-        >
-          {todo.label}
-        </span>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {/if}
 
   <div
-    class="flex items-center gap-[9px] px-[14px] py-[11px] border-t"
+    class="flex items-center gap-[9px] px-[14px] py-[11px]"
+    class:border-t={showTodos}
     style="border-color: var(--border);"
   >
     {#if isRunning && !finished}
