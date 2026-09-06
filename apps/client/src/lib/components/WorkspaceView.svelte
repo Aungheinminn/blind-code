@@ -70,6 +70,9 @@
     bind:selectedModel={$selectedModel}
     {modelPlaceholder}
     {statusText}
+    plan={$activePlan}
+    todoStatuses={$todoStatuses}
+    planError={$planError}
     on:close={() => (panelOpen = false)}
     on:submit={handleSubmit}
     on:cancel={cancelAgent}

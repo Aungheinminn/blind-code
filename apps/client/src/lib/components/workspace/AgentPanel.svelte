@@ -1,10 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import type { AgentMessage, ProviderInfo } from "$lib/stores/agent";
+  import type { AgentMessage, Plan, ProviderInfo, TodoStatus } from "$lib/stores/agent";
   import AgentPanelHeader from "./AgentPanelHeader.svelte";
   import ProviderSelector from "./ProviderSelector.svelte";
   import MessageList from "./MessageList.svelte";
   import PromptComposer from "./PromptComposer.svelte";
+  import TodoList from "./TodoList.svelte";
 
   export let open = false;
   export let messages: AgentMessage[] = [];
@@ -14,6 +15,11 @@
   export let selectedModel = "";
   export let modelPlaceholder = "";
   export let statusText = "idle";
+  export let plan: Plan | null = null;
+  export let todoStatuses: Record<string, TodoStatus> = {};
+  export let planError: string | null = null;
+
+  $: showTodos = plan !== null || (isRunning && !planError) || planError !== null;
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -52,6 +58,29 @@
     bind:selectedProvider
     bind:selectedModel
   />
+
+  {#if showTodos}
+    <div
+      class="border-b px-4 py-3 overflow-y-auto"
+      style="border-color: var(--border); max-height: 40%;"
+    >
+      {#if plan?.summary}
+        <div
+          class="text-[11px] uppercase tracking-wider font-semibold mb-2"
+          style="color: var(--text-tertiary);"
+        >
+          Plan
+        </div>
+        <div
+          class="text-[12.5px] mb-3"
+          style="color: var(--text-secondary);"
+        >
+          {plan.summary}
+        </div>
+      {/if}
+      <TodoList {plan} statuses={todoStatuses} {isRunning} {planError} />
+    </div>
+  {/if}
 
   <MessageList {messages} {isRunning} />
 
