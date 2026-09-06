@@ -233,11 +233,11 @@ export const buildWriteTools = (ctx: ToolContext) => {
   };
 };
 
-export const buildAgentTools = (ctx: ToolContext) => ({
+export const buildCoderTools = (ctx: ToolContext) => ({
   ...buildReadOnlyTools(ctx),
   ...buildWriteTools(ctx),
 });
 
 export type ReadOnlyTools = ReturnType<typeof buildReadOnlyTools>;
 export type WriteTools = ReturnType<typeof buildWriteTools>;
-export type AgentTools = ReturnType<typeof buildAgentTools>;
+export type CoderTools = ReturnType<typeof buildCoderTools>;

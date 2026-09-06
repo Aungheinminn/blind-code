@@ -1,9 +1,9 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { resolveModel } from "./providers";
-import { buildAgentTools, type ToolContext } from "./tools";
+import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
 
-export type AgentEvent =
+export type CoderEvent =
   | { type: "text-delta"; text: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
   | { type: "tool-result"; toolCallId: string; toolName: string; output: unknown }
@@ -11,21 +11,21 @@ export type AgentEvent =
   | { type: "finish"; finishReason: string; usage?: unknown }
   | { type: "error"; error: string };
 
-export type AgentChatMessage = {
+export type CoderChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
 
-export type RunAgentOptions = {
+export type RunCoderOptions = {
   provider: string;
   model?: string;
   toolContext: ToolContext;
   prompt: string;
-  history?: AgentChatMessage[];
+  history?: CoderChatMessage[];
   maxSteps?: number;
   systemPrompt?: string;
   plan?: Plan | null;
-  onEvent: (event: AgentEvent) => void;
+  onEvent: (event: CoderEvent) => void;
   signal?: AbortSignal;
 };
 
@@ -53,9 +53,9 @@ Your workflow:
 
 Tools available: list_files, read_file, write_file, delete_file, run_command, update_todo. Always prefer editing existing files over creating parallel new ones.`;
 
-export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
+export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const model = resolveModel(opts.provider, opts.model);
-  const tools = buildAgentTools(opts.toolContext);
+  const tools = buildCoderTools(opts.toolContext);
 
   const messages: ModelMessage[] = [
     ...(opts.history ?? []).map(

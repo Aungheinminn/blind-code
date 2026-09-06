@@ -2,7 +2,7 @@ import { generateText, Output, stepCountIs, type ModelMessage } from "ai";
 import { z } from "zod";
 import { resolveModel } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
-import type { AgentChatMessage } from "./agent";
+import type { CoderChatMessage } from "./coder";
 
 export const planTodoSchema = z.object({
   id: z.string().describe("Short stable id, e.g. 't1', 't2'."),
@@ -27,7 +27,7 @@ export type RunPlannerOptions = {
   model?: string;
   toolContext: ToolContext;
   prompt: string;
-  history?: AgentChatMessage[];
+  history?: CoderChatMessage[];
   maxSteps?: number;
   systemPrompt?: string;
   signal?: AbortSignal;

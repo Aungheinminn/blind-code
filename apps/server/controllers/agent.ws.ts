@@ -1,7 +1,7 @@
 import type { Elysia } from "elysia";
 import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
-import { runAgent, type AgentChatMessage, type AgentEvent } from "../services/agent";
+import { runCoder, type CoderChatMessage, type CoderEvent } from "../services/coder";
 import { runPlanner, type Plan } from "../services/planner";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
@@ -25,7 +25,7 @@ type AgentIncoming =
       model?: string;
       projectId: string;
       prompt: string;
-      history?: AgentChatMessage[];
+      history?: CoderChatMessage[];
       maxSteps?: number;
       systemPrompt?: string;
       autoPreview?: boolean;
@@ -180,7 +180,7 @@ export const agentController = (app: Elysia) =>
           currentText = "";
         };
 
-        const publish = async (event: AgentEvent | Record<string, unknown>) => {
+        const publish = async (event: CoderEvent | Record<string, unknown>) => {
           const ordinal = turnId ? await turnBus.emit(turnId, event as any) : null;
           try {
             ws.send(turnId ? { ...event, ordinal, turnId } : event);
@@ -216,7 +216,7 @@ export const agentController = (app: Elysia) =>
           }
         }
 
-        const handleEvent = async (event: AgentEvent) => {
+        const handleEvent = async (event: CoderEvent) => {
           await publish(event);
           if (!sessionId) return;
           switch (event.type) {
@@ -259,7 +259,7 @@ export const agentController = (app: Elysia) =>
         let terminalError: string | null = null;
 
         try {
-          await runAgent({
+          await runCoder({
             provider: msg.provider,
             model: msg.model,
             toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },

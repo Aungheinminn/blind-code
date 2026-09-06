@@ -1,4 +1,4 @@
-import { buildAgentTools } from "../services/tools";
+import { buildCoderTools } from "../services/tools";
 import { createAgentSession, ensureProject } from "../db/repo";
 import { db, schema } from "../db/client";
 import { eq } from "drizzle-orm";
@@ -10,7 +10,7 @@ if (!project) throw new Error("no db");
 const sessionId = await createAgentSession(project.id, "test/verify");
 if (!sessionId) throw new Error("no session");
 
-const tools = buildAgentTools({
+const tools = buildCoderTools({
   sandboxProjectId: "cache-verify",
   dbProjectId: project.id,
   sessionId,

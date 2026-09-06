@@ -47,7 +47,7 @@ for (const e of received) {
 
 ws.close();
 
-// live in-process fanout is exercised by the real WS controller during runAgent;
+// live in-process fanout is exercised by the real WS controller during runCoder;
 // can't be tested cross-process from this script (pub/sub is process-local).
 
 process.exit(0);
