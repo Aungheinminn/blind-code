@@ -267,6 +267,7 @@ export const agentController = (app: Elysia) =>
             history: msg.history,
             maxSteps: msg.maxSteps,
             systemPrompt: msg.systemPrompt,
+            plan,
             signal: (ws.data as any).abort?.signal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});

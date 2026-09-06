@@ -1,6 +1,7 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { resolveModel } from "./providers";
 import { buildAgentTools, type ToolContext } from "./tools";
+import type { Plan } from "./planner";
 
 export type AgentEvent =
   | { type: "text-delta"; text: string }
@@ -23,8 +24,16 @@ export type RunAgentOptions = {
   history?: AgentChatMessage[];
   maxSteps?: number;
   systemPrompt?: string;
+  plan?: Plan | null;
   onEvent: (event: AgentEvent) => void;
   signal?: AbortSignal;
+};
+
+const buildPlanAppendix = (plan: Plan): string => {
+  const list = plan.todos
+    .map((t) => `- ${t.id}: ${t.title}${t.rationale ? ` — ${t.rationale}` : ""}`)
+    .join("\n");
+  return `\n\nA plan has been produced for this turn.\n\nSummary: ${plan.summary}\n\nTodos:\n${list}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
 };
 
 const DEFAULT_SYSTEM_PROMPT = `You are a coding agent working inside a sandboxed project directory. You build small web apps (React, Svelte, static sites, Node scripts) end-to-end from a user's natural-language request.
@@ -50,10 +59,13 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     { role: "user", content: opts.prompt },
   ];
 
+  const baseSystem = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+  const system = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
+
   try {
     const result = streamText({
       model,
-      system: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+      system,
       messages,
       tools,
       stopWhen: stepCountIs(opts.maxSteps ?? 20),

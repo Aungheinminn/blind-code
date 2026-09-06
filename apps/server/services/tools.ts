@@ -154,6 +154,30 @@ export const buildWriteTools = (ctx: ToolContext) => {
       }),
     }),
 
+    update_todo: tool({
+      description:
+        "Report progress on a todo from the plan. Call this immediately before starting a todo (status:'active'), after finishing it (status:'done'), or if it becomes unnecessary (status:'skipped'). The user's UI reflects this in real time. Only call this when a plan was provided.",
+      inputSchema: z.object({
+        id: z.string().describe("The todo id from the plan, e.g. 't1'."),
+        status: z
+          .enum(["active", "done", "skipped"])
+          .describe("'active' when starting, 'done' when finished, 'skipped' if no longer needed."),
+        note: z
+          .string()
+          .optional()
+          .describe("Optional one-line note, e.g. 'skipped: tailwind already installed'."),
+      }),
+      execute: async ({
+        id,
+        status,
+        note,
+      }: {
+        id: string;
+        status: "active" | "done" | "skipped";
+        note?: string;
+      }) => ({ id, status, note: note ?? null }),
+    }),
+
     run_command: tool({
       description:
         "Run a shell command inside the project sandbox. Returns stdout, stderr, and the exit code. Use for installs, builds, and quick checks. Long-running dev servers should NOT be started with this — the platform manages those separately.",
