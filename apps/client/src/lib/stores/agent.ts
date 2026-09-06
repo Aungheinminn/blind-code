@@ -15,6 +15,19 @@ export type ProviderInfo = {
   configured: boolean;
 };
 
+export type PlanTodo = {
+  id: string;
+  title: string;
+  rationale: string;
+};
+
+export type Plan = {
+  summary: string;
+  todos: PlanTodo[];
+};
+
+export type TodoStatus = "pending" | "active" | "done" | "skipped";
+
 const SERVER_HTTP = import.meta.env.VITE_SERVER_HTTP ?? "http://localhost:3001";
 const SERVER_WS = import.meta.env.VITE_SERVER_WS ?? "ws://localhost:3001";
 const agentWsUrl = () => `${SERVER_WS}/ws/agent`;
@@ -43,6 +56,16 @@ export type PreviewState =
   | { state: "error"; error: string };
 
 export const previewState = writable<PreviewState>({ state: "idle" });
+
+export const activePlan = writable<Plan | null>(null);
+export const todoStatuses = writable<Record<string, TodoStatus>>({});
+export const planError = writable<string | null>(null);
+
+const resetPlan = () => {
+  activePlan.set(null);
+  todoStatuses.set({});
+  planError.set(null);
+};
 
 export const loadProviders = async () => {
   try {
@@ -174,12 +197,30 @@ const handleEvent = (raw: unknown) => {
         lastOrdinal = -1;
         if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
       }
+      resetPlan();
       startAgentMessage();
+      break;
+    case "plan":
+      if (event.plan) {
+        activePlan.set(event.plan as Plan);
+        const initial: Record<string, TodoStatus> = {};
+        for (const t of (event.plan as Plan).todos) initial[t.id] = "pending";
+        todoStatuses.set(initial);
+      }
+      break;
+    case "plan-error":
+      planError.set(typeof event.error === "string" ? event.error : "planner failed");
       break;
     case "text-delta":
       appendText(event.text ?? "");
       break;
     case "tool-call":
+      if (event.toolName === "update_todo" && event.input) {
+        const { id, status } = event.input as { id?: string; status?: TodoStatus };
+        if (id && status) {
+          todoStatuses.update((m) => ({ ...m, [id]: status }));
+        }
+      }
       recordToolCall({ id: event.toolCallId, name: event.toolName, input: event.input });
       break;
     case "tool-result":
@@ -256,6 +297,7 @@ export const sendPrompt = async (
         projectId,
         prompt: prompt.trim(),
         history,
+        usePlan: true,
       }),
     );
   } catch (e) {
@@ -272,6 +314,7 @@ export const cancelAgent = () => {
   clearSavedTurn(activeProjectId);
   activeTurnId = null;
   lastOrdinal = -1;
+  resetPlan();
 };
 
 export const resumeTurn = async (projectId: string): Promise<void> => {
