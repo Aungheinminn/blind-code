@@ -1,60 +1,38 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher } from "svelte";
+  import type { Plan, TodoStatus } from "$lib/stores/agent";
+  import TodoList from "./TodoList.svelte";
 
   export let hidden = false;
   export let isRunning = false;
+  export let plan: Plan | null = null;
+  export let statuses: Record<string, TodoStatus> = {};
+  export let planError: string | null = null;
 
   const dispatch = createEventDispatcher<{ open: void }>();
 
-  const steps = [
-    "Reading your files",
-    "Architecting the layout",
-    "Writing components",
-    "Wiring up the preview",
-  ];
-  const gerunds = ["Reading…", "Architecting…", "Writing…", "Wiring up…"];
-
-  let step = 0;
-  let hasRun = false;
-  let timer: ReturnType<typeof setInterval> | null = null;
-
-  const stopTimer = () => {
-    if (timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
-  };
-
-  $: if (isRunning) {
-    hasRun = true;
-    if (timer === null) {
-      step = 0;
-      timer = setInterval(() => {
-        step = step >= steps.length - 1 ? 0 : step + 1;
-      }, 2000);
-    }
-  } else {
-    stopTimer();
-    step = hasRun ? steps.length : 0;
-  }
-
-  $: finished = step >= steps.length;
-  $: showTodos = hasRun || isRunning;
-  $: todos = steps.map((label, i) => {
-    const done = i < step;
-    const active = i === step && !finished;
-    return { label, done, active };
-  });
-  $: statusText = !showTodos
+  $: totalTodos = plan?.todos.length ?? 0;
+  $: doneOrSkipped = plan
+    ? plan.todos.filter((t) => {
+        const s = statuses[t.id] ?? "pending";
+        return s === "done" || s === "skipped";
+      }).length
+    : 0;
+  $: activeTodo = plan?.todos.find((t) => (statuses[t.id] ?? "pending") === "active") ?? null;
+  $: finished = plan !== null && !isRunning && doneOrSkipped === totalTodos && totalTodos > 0;
+  $: hasContent = plan !== null || (isRunning && !planError) || planError !== null;
+  $: statusText = !hasContent
     ? "Idle"
     : finished
     ? "Complete"
+    : activeTodo
+    ? activeTodo.title
     : isRunning
-    ? gerunds[step] ?? "Working…"
+    ? plan
+      ? "Working…"
+      : "Planning…"
     : "Idle";
-  $: statusCount = showTodos ? `${Math.min(step, steps.length)}/${steps.length}` : "";
-
-  onDestroy(stopTimer);
+  $: statusCount = plan ? `${doneOrSkipped}/${totalTodos}` : "";
 </script>
 
 <button
@@ -68,41 +46,15 @@
   on:click={() => dispatch("open")}
   aria-label="Open agent panel"
 >
-  {#if showTodos}
-    <div class="flex flex-col gap-[9px] px-[14px] pt-[14px] pb-3">
-      {#each todos as todo (todo.label)}
-        <div class="flex items-center gap-[9px]">
-          <div
-            class="w-[15px] h-[15px] shrink-0 rounded-full flex items-center justify-center"
-            class:pulse={todo.active}
-            style="border: 1.5px solid {todo.done
-              ? 'var(--success)'
-              : todo.active
-              ? 'var(--accent)'
-              : 'var(--border-strong)'}; background: {todo.done ? 'var(--success)' : 'transparent'};"
-          >
-            {#if todo.done}
-              <span class="text-[9px] font-extrabold text-white leading-none">✓</span>
-            {/if}
-          </div>
-          <span
-            class="text-[12.5px] font-medium truncate"
-            style="color: {todo.done
-              ? 'var(--text-tertiary)'
-              : todo.active
-              ? 'var(--text-primary)'
-              : 'var(--text-tertiary)'}; text-decoration: {todo.done ? 'line-through' : 'none'};"
-          >
-            {todo.label}
-          </span>
-        </div>
-      {/each}
+  {#if hasContent}
+    <div class="px-[14px] pt-[14px] pb-3">
+      <TodoList {plan} {statuses} {isRunning} {planError} compact />
     </div>
   {/if}
 
   <div
     class="flex items-center gap-[9px] px-[14px] py-[11px]"
-    class:border-t={showTodos}
+    class:border-t={hasContent}
     style="border-color: var(--border);"
   >
     {#if isRunning && !finished}
@@ -132,13 +84,13 @@
       ></div>
     {/if}
     <span
-      class="text-[12.5px] font-semibold tracking-tight"
+      class="text-[12.5px] font-semibold tracking-tight truncate"
       style="color: {finished ? 'var(--success)' : 'var(--text-primary)'};"
     >
       {statusText}
     </span>
     <div class="flex-1"></div>
-    <span class="text-[11px] font-medium" style="color: var(--text-tertiary);">
+    <span class="text-[11px] font-medium shrink-0" style="color: var(--text-tertiary);">
       {statusCount}
     </span>
   </div>
@@ -160,23 +112,9 @@
     border-top-color: var(--accent);
     animation: launcher-spin 700ms linear infinite;
   }
-  .pulse {
-    animation: launcher-pulse 1.2s ease-in-out infinite;
-  }
   @keyframes launcher-spin {
     to {
       transform: rotate(360deg);
-    }
-  }
-  @keyframes launcher-pulse {
-    0%,
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    50% {
-      transform: scale(1.15);
-      opacity: 0.75;
     }
   }
 </style>

@@ -12,6 +12,9 @@
     previewState,
     restartPreview,
     resumeTurn,
+    activePlan,
+    todoStatuses,
+    planError,
   } from "$lib/stores/agent";
   import PreviewWindow from "$lib/components/PreviewWindow.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
@@ -75,6 +78,9 @@
   <AgentLauncher
     hidden={panelOpen}
     isRunning={$isRunning}
+    plan={$activePlan}
+    statuses={$todoStatuses}
+    planError={$planError}
     on:open={() => (panelOpen = true)}
   />
 </div>
