@@ -1,0 +1,70 @@
+import { generateText, Output, stepCountIs, type ModelMessage } from "ai";
+import { z } from "zod";
+import { resolveModel } from "./providers";
+import { buildReadOnlyTools, type ToolContext } from "./tools";
+import type { AgentChatMessage } from "./agent";
+
+export const planTodoSchema = z.object({
+  id: z.string().describe("Short stable id, e.g. 't1', 't2'."),
+  title: z
+    .string()
+    .describe("Single concrete action the coder will perform, e.g. 'Create src/theme.tsx with ThemeContext'."),
+  rationale: z
+    .string()
+    .describe("One-line reason this step is needed, referencing existing files where relevant."),
+});
+
+export const planSchema = z.object({
+  summary: z.string().describe("One-sentence description of what will be built or changed."),
+  todos: z.array(planTodoSchema).min(1).max(10),
+});
+
+export type PlanTodo = z.infer<typeof planTodoSchema>;
+export type Plan = z.infer<typeof planSchema>;
+
+export type RunPlannerOptions = {
+  provider: string;
+  model?: string;
+  toolContext: ToolContext;
+  prompt: string;
+  history?: AgentChatMessage[];
+  maxSteps?: number;
+  systemPrompt?: string;
+  signal?: AbortSignal;
+};
+
+const DEFAULT_PLANNER_PROMPT = `You are a planning agent for a coding platform that builds small web apps. Given a user's request and the current state of their project, produce a concise todo list the coding agent will execute.
+
+Your workflow:
+1. Call list_files first to see what already exists in the project.
+2. Read only the files directly relevant to the request — do not read the whole project.
+3. Return a plan with 1-10 todos. Each todo must be a single, concrete change (create/edit a specific file, install a specific dep, run a specific command).
+4. Keep todos small and independent so they can be checked off one at a time.
+5. Reference existing files by path in your rationale so the coder knows what to touch.
+6. You have read-only access — do not attempt to write, delete, or run anything.
+
+Return the plan via structured output.`;
+
+export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
+  const model = resolveModel(opts.provider, opts.model);
+  const tools = buildReadOnlyTools(opts.toolContext);
+
+  const messages: ModelMessage[] = [
+    ...(opts.history ?? []).map(
+      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    ),
+    { role: "user", content: opts.prompt },
+  ];
+
+  const result = await generateText({
+    model,
+    system: opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT,
+    messages,
+    tools,
+    stopWhen: stepCountIs(opts.maxSteps ?? 5),
+    experimental_output: Output.object({ schema: planSchema }),
+    abortSignal: opts.signal,
+  });
+
+  return result.experimental_output;
+};

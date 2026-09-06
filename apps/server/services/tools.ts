@@ -54,8 +54,8 @@ const withIdempotency = <I, O>(
   };
 };
 
-export const buildAgentTools = (ctx: ToolContext) => {
-  const { sandboxProjectId, dbProjectId, sessionId } = ctx;
+export const buildReadOnlyTools = (ctx: ToolContext) => {
+  const { sandboxProjectId, sessionId } = ctx;
   const idem = <I, O>(name: string, fn: (input: I) => Promise<O>) =>
     withIdempotency(sessionId, name, fn);
 
@@ -71,25 +71,6 @@ export const buildAgentTools = (ctx: ToolContext) => {
         const content = await readFile(abs, "utf-8");
         return { path, content };
       }),
-    }),
-
-    write_file: tool({
-      description:
-        "Create or overwrite a text file inside the current project. Parent directories are created automatically.",
-      inputSchema: z.object({
-        path: z.string().describe("Path relative to the project root, e.g. 'src/App.tsx'"),
-        content: z.string().describe("Full file content to write (UTF-8)"),
-      }),
-      execute: idem(
-        "write_file",
-        async ({ path, content }: { path: string; content: string }) => {
-          const abs = safeJoin(sandboxProjectId, path);
-          await mkdir(dirname(abs), { recursive: true });
-          await writeFile(abs, content, "utf-8");
-          if (dbProjectId) await upsertProjectFile(dbProjectId, path, content);
-          return { path, bytes: Buffer.byteLength(content, "utf-8") };
-        },
-      ),
     }),
 
     list_files: tool({
@@ -131,6 +112,33 @@ export const buildAgentTools = (ctx: ToolContext) => {
         await walk(startAbs);
         return { entries };
       }),
+    }),
+  };
+};
+
+export const buildWriteTools = (ctx: ToolContext) => {
+  const { sandboxProjectId, dbProjectId, sessionId } = ctx;
+  const idem = <I, O>(name: string, fn: (input: I) => Promise<O>) =>
+    withIdempotency(sessionId, name, fn);
+
+  return {
+    write_file: tool({
+      description:
+        "Create or overwrite a text file inside the current project. Parent directories are created automatically.",
+      inputSchema: z.object({
+        path: z.string().describe("Path relative to the project root, e.g. 'src/App.tsx'"),
+        content: z.string().describe("Full file content to write (UTF-8)"),
+      }),
+      execute: idem(
+        "write_file",
+        async ({ path, content }: { path: string; content: string }) => {
+          const abs = safeJoin(sandboxProjectId, path);
+          await mkdir(dirname(abs), { recursive: true });
+          await writeFile(abs, content, "utf-8");
+          if (dbProjectId) await upsertProjectFile(dbProjectId, path, content);
+          return { path, bytes: Buffer.byteLength(content, "utf-8") };
+        },
+      ),
     }),
 
     delete_file: tool({
@@ -201,4 +209,11 @@ export const buildAgentTools = (ctx: ToolContext) => {
   };
 };
 
+export const buildAgentTools = (ctx: ToolContext) => ({
+  ...buildReadOnlyTools(ctx),
+  ...buildWriteTools(ctx),
+});
+
+export type ReadOnlyTools = ReturnType<typeof buildReadOnlyTools>;
+export type WriteTools = ReturnType<typeof buildWriteTools>;
 export type AgentTools = ReturnType<typeof buildAgentTools>;

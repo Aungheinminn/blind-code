@@ -2,6 +2,7 @@ import type { Elysia } from "elysia";
 import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import { runAgent, type AgentChatMessage, type AgentEvent } from "../services/agent";
+import { runPlanner, type Plan } from "../services/planner";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
 import { previewManager } from "../services/preview";
@@ -28,6 +29,8 @@ type AgentIncoming =
       maxSteps?: number;
       systemPrompt?: string;
       autoPreview?: boolean;
+      usePlan?: boolean;
+      plannerMaxSteps?: number;
     }
   | { type: "cancel" }
   | { type: "restart-preview"; projectId: string }
@@ -183,6 +186,35 @@ export const agentController = (app: Elysia) =>
             ws.send(turnId ? { ...event, ordinal, turnId } : event);
           } catch {}
         };
+
+        let plan: Plan | null = null;
+        if (msg.usePlan) {
+          try {
+            plan = await runPlanner({
+              provider: msg.provider,
+              model: msg.model,
+              toolContext: {
+                sandboxProjectId: msg.projectId,
+                dbProjectId,
+                sessionId: null,
+              },
+              prompt: msg.prompt,
+              history: msg.history,
+              maxSteps: msg.plannerMaxSteps,
+              signal: (ws.data as any).abort?.signal,
+            });
+            await publish({ type: "plan", plan });
+            if (sessionId) {
+              await recordAgentAction(sessionId, "plan", {
+                summary: plan.summary.slice(0, 200),
+                payload: { plan },
+              });
+            }
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await publish({ type: "plan-error", error: errMsg });
+          }
+        }
 
         const handleEvent = async (event: AgentEvent) => {
           await publish(event);
