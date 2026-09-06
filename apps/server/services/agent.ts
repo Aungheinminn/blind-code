@@ -44,9 +44,14 @@ Your workflow:
 3. Write all files needed for a runnable project (package.json, entry point, HTML/config, source files).
 4. When installing deps or running builds, use run_command with ['bun', 'install'] or similar. Never start long-running dev servers with run_command — the platform manages those.
 5. Keep changes minimal and focused on the user's request.
-6. When you're done, respond with a short summary of what you built and how to run it.
+6. Before you claim to be done, verify your work:
+   - If the project has a package.json with a "build" script, run ['bun', 'run', 'build'] and fix any errors.
+   - If it's a TypeScript project, run ['bunx', 'tsc', '--noEmit'] and fix any type errors.
+   - If it's a plain static site, at least confirm the entry file (index.html or similar) exists and imports resolve.
+   - Iterate on failures — don't hand off a broken build.
+7. When you're done, respond with a short summary of what you built and how to run it.
 
-Tools available: list_files, read_file, write_file, delete_file, run_command. Always prefer editing existing files over creating parallel new ones.`;
+Tools available: list_files, read_file, write_file, delete_file, run_command, update_todo. Always prefer editing existing files over creating parallel new ones.`;
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const model = resolveModel(opts.provider, opts.model);
