@@ -11,6 +11,7 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { createTogetherAI } from "@ai-sdk/togetherai";
 import { createFireworks } from "@ai-sdk/fireworks";
 import { createCerebras } from "@ai-sdk/cerebras";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 export type ProviderName =
   | "anthropic"
@@ -99,10 +100,7 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
     envVar: "OPENROUTER_API_KEY",
     defaultModel: "minimax/minimax-m3:free",
     build: (id) =>
-      createOpenAI({
-        apiKey: process.env.OPENROUTER_API_KEY,
-        baseURL: "https://openrouter.ai/api/v1",
-      })(id),
+      createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY })(id),
   },
 };
 

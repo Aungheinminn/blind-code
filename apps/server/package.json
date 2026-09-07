@@ -23,6 +23,7 @@
     "@ai-sdk/perplexity": "^2.0.0",
     "@ai-sdk/togetherai": "^1.0.0",
     "@ai-sdk/xai": "^2.0.0",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
     "@vibe/shared": "workspace:*",
     "ai": "^5.0.0",
     "drizzle-orm": "^0.36.4",
