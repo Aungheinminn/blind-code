@@ -97,7 +97,7 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
   },
   openrouter: {
     envVar: "OPENROUTER_API_KEY",
-    defaultModel: "deepseek/deepseek-chat-v3.1:free",
+    defaultModel: "minimax/minimax-m3:free",
     build: (id) =>
       createOpenAI({
         apiKey: process.env.OPENROUTER_API_KEY,
