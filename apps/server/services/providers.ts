@@ -24,7 +24,8 @@ export type ProviderName =
   | "perplexity"
   | "togetherai"
   | "fireworks"
-  | "cerebras";
+  | "cerebras"
+  | "openrouter";
 
 type ProviderEntry = {
   envVar: string;
@@ -93,6 +94,15 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
     envVar: "CEREBRAS_API_KEY",
     defaultModel: "llama3.3-70b",
     build: (id) => createCerebras({ apiKey: process.env.CEREBRAS_API_KEY })(id),
+  },
+  openrouter: {
+    envVar: "OPENROUTER_API_KEY",
+    defaultModel: "deepseek/deepseek-chat-v3.1:free",
+    build: (id) =>
+      createOpenAI({
+        apiKey: process.env.OPENROUTER_API_KEY,
+        baseURL: "https://openrouter.ai/api/v1",
+      })(id),
   },
 };
 
