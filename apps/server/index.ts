@@ -4,6 +4,7 @@ import { runtimeWsController } from "./controllers/runtime.ws";
 import { projectController } from "./controllers/project.controller";
 import { agentController } from "./controllers/agent.ws";
 import { authController } from "./controllers/auth.controller";
+import { connectController } from "./controllers/connect.controller";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
 import { withCors } from "./services/cors";
@@ -24,6 +25,7 @@ authController(app);
 projectController(app);
 runtimeWsController(app, orchestrator);
 agentController(app);
+connectController(app);
 
 app.get("/health", () => ({ status: "ok" }));
 
