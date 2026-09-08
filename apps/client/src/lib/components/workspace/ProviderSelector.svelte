@@ -46,7 +46,7 @@
     </select>
   {:else}
     <a
-      href="/connect?tab=models"
+      href="/settings/connect?tab=models"
       class="flex-1 min-w-0 h-[34px] rounded-[9px] border text-[12.5px] px-2.5 no-underline flex items-center justify-center"
       style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
       title={modelPlaceholder ? `default: ${modelPlaceholder}` : ""}
