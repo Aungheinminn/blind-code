@@ -52,7 +52,7 @@ const hydrateSandbox = async (sandboxProjectId: string, dbProjectId: string | nu
 
 export const agentController = (app: Elysia) =>
   app
-    .get("/agent/providers", () => ({ data: listAvailableProviders() }))
+    .get("/agent/providers", async () => ({ data: await listAvailableProviders() }))
     .ws("/ws/agent", {
       open: async (ws) => {
         const request: Request | undefined = (ws.data as any).request;

@@ -46,7 +46,7 @@ Your workflow:
 Return the plan via structured output.`;
 
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
-  const model = resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(opts.provider, opts.model);
   const tools = buildReadOnlyTools(opts.toolContext);
 
   const messages: ModelMessage[] = [

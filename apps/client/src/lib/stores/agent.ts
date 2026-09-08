@@ -10,9 +10,10 @@ export type AgentMessage = {
 
 export type ProviderInfo = {
   name: string;
-  envVar: string;
   defaultModel: string;
   configured: boolean;
+  source?: "file" | "env" | null;
+  last4?: string | null;
 };
 
 export type PlanTodo = {

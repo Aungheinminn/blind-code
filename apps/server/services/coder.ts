@@ -54,7 +54,7 @@ Your workflow:
 Tools available: list_files, read_file, write_file, delete_file, run_command, update_todo. Always prefer editing existing files over creating parallel new ones.`;
 
 export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
-  const model = resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(opts.provider, opts.model);
   const tools = buildCoderTools(opts.toolContext);
 
   const messages: ModelMessage[] = [
