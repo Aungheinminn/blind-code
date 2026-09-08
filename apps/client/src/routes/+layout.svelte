@@ -45,6 +45,15 @@
       </a>
       <div class="flex items-center gap-3 text-xs">
         {#if $auth.status === "authed"}
+          <a
+            href="/connect"
+            class="px-2 py-1 rounded-md no-underline"
+            style={$page.url.pathname.startsWith("/connect")
+              ? "color: var(--text-primary);"
+              : "color: var(--text-secondary);"}
+          >
+            Connect
+          </a>
           <span style="color: var(--text-secondary);">{$auth.user.email}</span>
           <button
             type="button"
