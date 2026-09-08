@@ -23,7 +23,7 @@
 
   export let projectId: string = "default";
 
-  let panelOpen = false;
+  let panelOpen = true;
 
   $: previewUrl = $previewState.state === "ready" ? $previewState.url : "";
   $: statusText =
