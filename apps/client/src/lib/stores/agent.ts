@@ -1,4 +1,5 @@
 import { writable, get } from "svelte/store";
+import { enabledModels, loadConnect, providersState } from "./connect";
 
 export type AgentMessage = {
   id: string;
@@ -29,7 +30,6 @@ export type Plan = {
 
 export type TodoStatus = "pending" | "active" | "done" | "skipped";
 
-const SERVER_HTTP = import.meta.env.VITE_SERVER_HTTP ?? "http://localhost:3001";
 const SERVER_WS = import.meta.env.VITE_SERVER_WS ?? "ws://localhost:3001";
 const agentWsUrl = () => `${SERVER_WS}/ws/agent`;
 
@@ -69,14 +69,16 @@ const resetPlan = () => {
 };
 
 export const loadProviders = async () => {
-  try {
-    const res = await fetch(`${SERVER_HTTP}/agent/providers`);
-    const json = await res.json();
-    providers.set(json.data ?? []);
-    const configured = (json.data ?? []).find((p: ProviderInfo) => p.configured);
-    if (configured) selectedProvider.set(configured.name);
-  } catch (e) {
-    console.warn("Failed to load providers", e);
+  await loadConnect();
+  const list = get(providersState);
+  providers.set(list);
+  const configured = list.find((p) => p.configured);
+  if (configured) {
+    selectedProvider.set(configured.name);
+    const enabled = get(enabledModels)[configured.name] ?? [];
+    if (enabled.length > 0 && !get(selectedModel)) {
+      selectedModel.set(enabled[0]);
+    }
   }
 };
 
