@@ -13,6 +13,7 @@ import {
   setStoredEnabledModels,
   setStoredKey,
 } from "../services/authStore";
+import { getOpenRouterModels } from "../services/openrouterModels";
 
 const providerParam = z.enum(
   Object.keys(PROVIDERS) as [ProviderName, ...ProviderName[]],
@@ -86,6 +87,18 @@ export const connectController = (app: Elysia) =>
       if (!p.success) return notFound(set);
       const removed = await removeStoredKey(p.data);
       return { data: { provider: p.data, removed } };
+    })
+    .get("/connect/openrouter/models", async ({ query, request, set }) => {
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const forceRefresh = query?.refresh === "1" || query?.refresh === "true";
+      try {
+        const { models, fetchedAt } = await getOpenRouterModels({ forceRefresh });
+        return { data: { models, fetchedAt } };
+      } catch (e) {
+        set.status = 502;
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
     })
     .put("/connect/:provider/models", async ({ params, body, request, set }) => {
       const user = await getUserFromRequest(request);
