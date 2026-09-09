@@ -54,35 +54,31 @@
       </div>
     {/if}
     {#if hasReasoning}
-      <div
-        class="mb-2 rounded-md border overflow-hidden"
-        style="border-color: var(--border); background-color: var(--bg-tertiary);"
-      >
+      <div class="mb-2">
         <button
           type="button"
-          class="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] cursor-pointer text-left"
-          style="color: var(--text-tertiary); background-color: transparent;"
+          class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer"
+          style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
           on:click={toggleReasoning}
         >
           <span
-            class="inline-block transition-transform"
+            class="w-1.5 h-1.5 rounded-full {message.content ? '' : 'animate-pulse'}"
+            style="background-color: var(--accent);"
+            aria-hidden="true"
+          ></span>
+          <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
+          <span
+            class="inline-block text-[10px] transition-transform"
             style="transform: rotate({reasoningExpanded ? 90 : 0}deg);"
+            aria-hidden="true"
           >▸</span>
-          <span class="uppercase tracking-wider font-semibold">Thinking</span>
-          {#if !message.content}
-            <span
-              class="ml-1 w-1.5 h-1.5 rounded-full animate-pulse"
-              style="background-color: var(--accent);"
-              aria-hidden="true"
-            ></span>
-          {/if}
         </button>
         {#if reasoningExpanded}
           <div
-            class="px-3 pb-2 pt-0 text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
-            style="color: var(--text-secondary);"
+            class="mt-2 pl-2 text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
+            style="color: var(--text-secondary); border-left: 2px solid var(--border);"
           >
-            {message.reasoning}
+            <div class="pl-2">{message.reasoning}</div>
           </div>
         {/if}
       </div>
