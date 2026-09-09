@@ -358,7 +358,7 @@
         {/each}
       </div>
     {:else}
-      <div class="mt-6 grid gap-4 md:grid-cols-[220px_1fr]">
+      <div class="mt-6 grid gap-4 md:grid-cols-[220px_1fr] items-start">
         <aside
           class="rounded-lg border p-2"
           style="border-color: var(--border); background-color: var(--bg-secondary);"
