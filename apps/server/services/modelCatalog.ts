@@ -14,31 +14,55 @@ export const MODEL_CATALOG: Record<ProviderName, ModelInfo[]> = {
     { id: "claude-opus-4-1", label: "Claude Opus 4.1", tags: ["reasoning"] },
     { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", tags: ["fast"] },
     { id: "claude-3-7-sonnet-latest", label: "Claude Sonnet 3.7" },
+    { id: "claude-3-5-sonnet-latest", label: "Claude Sonnet 3.5" },
+    { id: "claude-3-5-haiku-latest", label: "Claude Haiku 3.5", tags: ["fast"] },
+    { id: "claude-3-opus-latest", label: "Claude Opus 3", tags: ["reasoning"] },
   ],
   openai: [
     { id: "gpt-5", label: "GPT-5", tags: ["reasoning"] },
     { id: "gpt-5-mini", label: "GPT-5 Mini", tags: ["fast"] },
+    { id: "gpt-5-nano", label: "GPT-5 Nano", tags: ["fast"] },
+    { id: "gpt-4.1", label: "GPT-4.1" },
+    { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", tags: ["fast"] },
     { id: "gpt-4o", label: "GPT-4o", tags: ["vision"] },
     { id: "gpt-4o-mini", label: "GPT-4o Mini", tags: ["fast", "vision"] },
     { id: "o3", label: "o3", tags: ["reasoning"] },
+    { id: "o3-mini", label: "o3-mini", tags: ["reasoning", "fast"] },
     { id: "o4-mini", label: "o4-mini", tags: ["reasoning", "fast"] },
   ],
   google: [
     { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", tags: ["reasoning", "vision"] },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", tags: ["fast", "vision"] },
+    { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", tags: ["fast", "vision"] },
     { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", tags: ["fast", "vision"] },
+    { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite", tags: ["fast", "vision"] },
+    { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", tags: ["vision"] },
+    { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", tags: ["fast", "vision"] },
   ],
   mistral: [
     { id: "mistral-large-latest", label: "Mistral Large" },
+    { id: "mistral-medium-latest", label: "Mistral Medium" },
     { id: "mistral-small-latest", label: "Mistral Small", tags: ["fast"] },
+    { id: "ministral-8b-latest", label: "Ministral 8B", tags: ["fast"] },
+    { id: "ministral-3b-latest", label: "Ministral 3B", tags: ["fast"] },
     { id: "codestral-latest", label: "Codestral" },
+    { id: "pixtral-large-latest", label: "Pixtral Large", tags: ["vision"] },
+    { id: "mistral-nemo", label: "Mistral Nemo", tags: ["fast"] },
   ],
   groq: [
     { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", tags: ["fast"] },
     { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", tags: ["fast"] },
+    { id: "llama-3.1-70b-versatile", label: "Llama 3.1 70B", tags: ["fast"] },
+    { id: "llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout 17B", tags: ["fast"] },
+    { id: "llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick 17B", tags: ["fast"] },
     { id: "deepseek-r1-distill-llama-70b", label: "DeepSeek R1 Distill 70B", tags: ["reasoning"] },
+    { id: "gemma2-9b-it", label: "Gemma 2 9B", tags: ["fast"] },
+    { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
   ],
   xai: [
+    { id: "grok-4", label: "Grok 4", tags: ["reasoning"] },
+    { id: "grok-3", label: "Grok 3" },
+    { id: "grok-3-mini", label: "Grok 3 Mini", tags: ["fast"] },
     { id: "grok-2-latest", label: "Grok 2" },
     { id: "grok-2-vision-latest", label: "Grok 2 Vision", tags: ["vision"] },
   ],
@@ -47,13 +71,18 @@ export const MODEL_CATALOG: Record<ProviderName, ModelInfo[]> = {
     { id: "deepseek-reasoner", label: "DeepSeek Reasoner", tags: ["reasoning"] },
   ],
   cohere: [
+    { id: "command-a-03-2025", label: "Command A" },
     { id: "command-r-plus", label: "Command R+" },
     { id: "command-r", label: "Command R", tags: ["fast"] },
+    { id: "command-r7b", label: "Command R7B", tags: ["fast"] },
+    { id: "command-nightly", label: "Command Nightly" },
   ],
   perplexity: [
     { id: "sonar-pro", label: "Sonar Pro" },
     { id: "sonar", label: "Sonar", tags: ["fast"] },
     { id: "sonar-reasoning-pro", label: "Sonar Reasoning Pro", tags: ["reasoning"] },
+    { id: "sonar-reasoning", label: "Sonar Reasoning", tags: ["reasoning"] },
+    { id: "sonar-deep-research", label: "Sonar Deep Research", tags: ["reasoning"] },
   ],
   togetherai: [
     {
@@ -61,8 +90,20 @@ export const MODEL_CATALOG: Record<ProviderName, ModelInfo[]> = {
       label: "Llama 3.3 70B Turbo",
       tags: ["fast"],
     },
+    {
+      id: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+      label: "Llama 3.1 405B Turbo",
+    },
+    {
+      id: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+      label: "Llama 3.1 70B Turbo",
+      tags: ["fast"],
+    },
     { id: "deepseek-ai/DeepSeek-V3", label: "DeepSeek V3" },
+    { id: "deepseek-ai/DeepSeek-R1", label: "DeepSeek R1", tags: ["reasoning"] },
     { id: "Qwen/Qwen2.5-Coder-32B-Instruct", label: "Qwen 2.5 Coder 32B" },
+    { id: "Qwen/Qwen2.5-72B-Instruct-Turbo", label: "Qwen 2.5 72B Turbo" },
+    { id: "mistralai/Mixtral-8x22B-Instruct-v0.1", label: "Mixtral 8x22B" },
   ],
   fireworks: [
     {
@@ -71,13 +112,29 @@ export const MODEL_CATALOG: Record<ProviderName, ModelInfo[]> = {
       tags: ["fast"],
     },
     {
+      id: "accounts/fireworks/models/llama-v3p1-405b-instruct",
+      label: "Llama 3.1 405B",
+    },
+    {
       id: "accounts/fireworks/models/deepseek-v3",
       label: "DeepSeek V3",
+    },
+    {
+      id: "accounts/fireworks/models/deepseek-r1",
+      label: "DeepSeek R1",
+      tags: ["reasoning"],
+    },
+    {
+      id: "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
+      label: "Qwen 2.5 Coder 32B",
     },
   ],
   cerebras: [
     { id: "llama3.3-70b", label: "Llama 3.3 70B", tags: ["fast"] },
     { id: "llama3.1-8b", label: "Llama 3.1 8B", tags: ["fast"] },
+    { id: "llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout 17B", tags: ["fast"] },
+    { id: "qwen-3-235b-a22b", label: "Qwen 3 235B" },
+    { id: "qwen-3-32b", label: "Qwen 3 32B" },
   ],
   openrouter: [
     { id: "minimax/minimax-m3:free", label: "MiniMax M3", tags: ["free"] },
@@ -95,9 +152,9 @@ export const DEFAULT_ENABLED: Record<ProviderName, string[]> = {
   google: ["gemini-2.5-flash"],
   mistral: ["mistral-large-latest"],
   groq: ["llama-3.3-70b-versatile"],
-  xai: ["grok-2-latest"],
+  xai: ["grok-4"],
   deepseek: ["deepseek-chat"],
-  cohere: ["command-r-plus"],
+  cohere: ["command-a-03-2025"],
   perplexity: ["sonar-pro"],
   togetherai: ["meta-llama/Llama-3.3-70B-Instruct-Turbo"],
   fireworks: ["accounts/fireworks/models/llama-v3p3-70b-instruct"],
@@ -107,6 +164,3 @@ export const DEFAULT_ENABLED: Record<ProviderName, string[]> = {
 
 export const getCatalogFor = (provider: ProviderName): ModelInfo[] =>
   MODEL_CATALOG[provider] ?? [];
-
-export const isKnownModel = (provider: ProviderName, modelId: string): boolean =>
-  getCatalogFor(provider).some((m) => m.id === modelId);

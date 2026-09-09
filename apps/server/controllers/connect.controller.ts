@@ -6,11 +6,7 @@ import {
   PROVIDERS,
   type ProviderName,
 } from "../services/providers";
-import {
-  DEFAULT_ENABLED,
-  MODEL_CATALOG,
-  isKnownModel,
-} from "../services/modelCatalog";
+import { DEFAULT_ENABLED, MODEL_CATALOG } from "../services/modelCatalog";
 import {
   getStoredEnabledModels,
   removeStoredKey,
@@ -100,10 +96,7 @@ export const connectController = (app: Elysia) =>
       if (!parsed.success) {
         return badRequest(set, parsed.error.issues[0]?.message ?? "invalid input");
       }
-      const invalid = parsed.data.modelIds.filter((id) => !isKnownModel(p.data, id));
-      if (invalid.length > 0) {
-        return badRequest(set, `unknown model ids: ${invalid.join(", ")}`);
-      }
-      await setStoredEnabledModels(p.data, parsed.data.modelIds);
-      return { data: { provider: p.data, count: parsed.data.modelIds.length } };
+      const cleaned = [...new Set(parsed.data.modelIds.map((id) => id.trim()).filter(Boolean))];
+      await setStoredEnabledModels(p.data, cleaned);
+      return { data: { provider: p.data, count: cleaned.length } };
     });
