@@ -2,10 +2,12 @@ import { writable } from "svelte/store";
 import {
   deleteProviderKey,
   getConnect,
+  getOpenRouterModels,
   setEnabledModels as apiSetEnabledModels,
   setProviderKey,
   type ConnectData,
   type ModelInfo,
+  type OpenRouterModel,
   type ProviderStatus,
 } from "$lib/api/connect";
 
@@ -50,4 +52,23 @@ export const saveEnabledModels = async (
 ): Promise<void> => {
   await apiSetEnabledModels(provider, modelIds);
   enabledModels.update((m) => ({ ...m, [provider]: modelIds }));
+};
+
+export const openRouterModels = writable<OpenRouterModel[]>([]);
+export const openRouterFetchedAt = writable<number | null>(null);
+export const openRouterLoading = writable(false);
+export const openRouterError = writable<string | null>(null);
+
+export const loadOpenRouterModels = async (forceRefresh = false): Promise<void> => {
+  openRouterLoading.set(true);
+  openRouterError.set(null);
+  try {
+    const { models, fetchedAt } = await getOpenRouterModels(forceRefresh);
+    openRouterModels.set(models);
+    openRouterFetchedAt.set(fetchedAt);
+  } catch (e) {
+    openRouterError.set(e instanceof Error ? e.message : String(e));
+  } finally {
+    openRouterLoading.set(false);
+  }
 };

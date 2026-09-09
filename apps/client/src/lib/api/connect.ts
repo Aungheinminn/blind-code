@@ -42,3 +42,13 @@ export const setEnabledModels = (provider: string, modelIds: string[]) =>
     method: "PUT",
     body: JSON.stringify({ modelIds }),
   });
+
+export type OpenRouterModel = ModelInfo & {
+  contextLength: number | null;
+  promptPrice: number | null;
+};
+
+export const getOpenRouterModels = (forceRefresh = false) =>
+  fetchJson<{ models: OpenRouterModel[]; fetchedAt: number }>(
+    `/connect/openrouter/models${forceRefresh ? "?refresh=1" : ""}`,
+  );

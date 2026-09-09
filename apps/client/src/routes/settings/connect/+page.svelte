@@ -8,12 +8,17 @@
     connectLoading,
     enabledModels,
     loadConnect,
+    loadOpenRouterModels,
+    openRouterError,
+    openRouterFetchedAt,
+    openRouterLoading,
+    openRouterModels,
     providersState,
     removeKey,
     saveEnabledModels,
     saveKey,
   } from "$lib/stores/connect";
-  import type { ModelInfo, ProviderStatus } from "$lib/api/connect";
+  import type { ModelInfo, OpenRouterModel, ProviderStatus } from "$lib/api/connect";
 
   type Tab = "keys" | "models";
 
@@ -35,6 +40,11 @@
   let modelFilter = "";
   let savingModels = false;
 
+  const AVAILABLE_TAGS = ["free", "vision", "reasoning"] as const;
+  let activeTags: Set<string> = new Set();
+  const PAGE_SIZE = 25;
+  let visibleCount = PAGE_SIZE;
+
   onMount(() => {
     const initial = ($page.url.searchParams.get("tab") as Tab | null);
     if (initial === "keys" || initial === "models") tab = initial;
@@ -49,6 +59,56 @@
     const firstConfigured = $providersState.find((p) => p.configured);
     if (firstConfigured) selectedProvider = firstConfigured.name;
   }
+
+  $: if (selectedProvider) {
+    modelFilter = "";
+    activeTags = new Set();
+    visibleCount = PAGE_SIZE;
+  }
+
+  $: if (
+    selectedProvider === "openrouter" &&
+    $openRouterModels.length === 0 &&
+    !$openRouterLoading &&
+    !$openRouterError
+  ) {
+    loadOpenRouterModels();
+  }
+
+  const toggleTag = (tag: string) => {
+    const next = new Set(activeTags);
+    if (next.has(tag)) next.delete(tag);
+    else next.add(tag);
+    activeTags = next;
+    visibleCount = PAGE_SIZE;
+  };
+
+  const filterList = <T extends ModelInfo>(list: T[], query: string, tags: Set<string>): T[] => {
+    const q = query.trim().toLowerCase();
+    return list.filter((m) => {
+      if (tags.size > 0) {
+        const modelTags = m.tags ?? [];
+        for (const tag of tags) {
+          if (!modelTags.includes(tag as "fast" | "reasoning" | "vision" | "free")) return false;
+        }
+      }
+      if (!q) return true;
+      return (
+        m.id.toLowerCase().includes(q) ||
+        m.label.toLowerCase().includes(q) ||
+        (m.tags ?? []).some((t) => t.toLowerCase().includes(q))
+      );
+    });
+  };
+
+  const formatFetchedAt = (ts: number | null): string => {
+    if (!ts) return "";
+    const diff = Date.now() - ts;
+    if (diff < 60_000) return "just now";
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 60) return `${mins}m ago`;
+    return `${Math.floor(mins / 60)}h ago`;
+  };
 
   const startEdit = (name: string) => {
     editing[name] = true;
@@ -104,18 +164,6 @@
     } finally {
       savingModels = false;
     }
-  };
-
-  const filteredCatalog = (provider: string, filter: string): ModelInfo[] => {
-    const list = $catalog[provider] ?? [];
-    const q = filter.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (m) =>
-        m.id.toLowerCase().includes(q) ||
-        m.label.toLowerCase().includes(q) ||
-        (m.tags ?? []).some((t) => t.toLowerCase().includes(q)),
-    );
   };
 
   const sourceLabel = (p: ProviderStatus): string => {
@@ -306,51 +354,120 @@
               Add an API key on the Keys tab, then pick a provider here.
             </div>
           {:else}
-            <input
-              type="text"
-              bind:value={modelFilter}
-              placeholder="filter…"
-              class="w-full h-8 text-xs px-2.5 rounded-md border bg-transparent outline-none"
-              style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
-            />
-            <div class="mt-3 space-y-1">
-              {#each filteredCatalog(selectedProvider, modelFilter) as m (m.id)}
-                {@const checked = ($enabledModels[selectedProvider] ?? []).includes(m.id)}
-                <label
-                  class="flex items-center gap-3 px-3 py-2 rounded-md border cursor-pointer"
-                  style={checked
-                    ? "border-color: var(--accent); background-color: var(--bg-secondary);"
-                    : "border-color: var(--border); background-color: transparent;"}
+            {@const isOpenRouter = selectedProvider === "openrouter"}
+            {@const sourceList = isOpenRouter
+              ? $openRouterModels
+              : ($catalog[selectedProvider] ?? [])}
+            {@const filtered = filterList(sourceList, modelFilter, activeTags)}
+            {@const visible = filtered.slice(0, visibleCount)}
+
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                bind:value={modelFilter}
+                placeholder="filter…"
+                class="flex-1 min-w-0 h-8 text-xs px-2.5 rounded-md border bg-transparent outline-none"
+                style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+              />
+              {#if isOpenRouter}
+                <button
+                  type="button"
+                  class="h-8 px-2.5 text-xs rounded-md border cursor-pointer disabled:opacity-50"
+                  style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
+                  on:click={() => loadOpenRouterModels(true)}
+                  disabled={$openRouterLoading}
+                  title={$openRouterFetchedAt ? `updated ${formatFetchedAt($openRouterFetchedAt)}` : ""}
                 >
-                  <input
-                    type="checkbox"
-                    {checked}
-                    disabled={savingModels}
-                    on:change={() => toggleModel(selectedProvider, m.id)}
-                  />
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm">{m.label}</div>
-                    <div class="text-[11px] font-mono truncate" style="color: var(--text-tertiary);">
-                      {m.id}
-                    </div>
-                  </div>
-                  {#if m.tags}
-                    <div class="flex gap-1 shrink-0">
-                      {#each m.tags as tag}
-                        <span
-                          class="text-[10px] px-1.5 py-0.5 rounded"
-                          style="background-color: var(--bg-tertiary); color: var(--text-secondary);"
-                        >
-                          {tag}
-                        </span>
-                      {/each}
-                    </div>
-                  {/if}
-                </label>
-              {:else}
-                <div class="text-sm" style="color: var(--text-tertiary);">No matches.</div>
-              {/each}
+                  {$openRouterLoading ? "…" : "Refresh"}
+                </button>
+              {/if}
             </div>
+
+            <div class="mt-2 flex items-center gap-2 flex-wrap">
+              {#each AVAILABLE_TAGS as tag (tag)}
+                {@const active = activeTags.has(tag)}
+                <button
+                  type="button"
+                  class="text-[11px] px-2 py-1 rounded cursor-pointer border"
+                  style={active
+                    ? "border-color: var(--accent); color: var(--accent); background-color: transparent;"
+                    : "border-color: var(--border); color: var(--text-tertiary); background-color: var(--bg-tertiary);"}
+                  on:click={() => toggleTag(tag)}
+                >
+                  {tag}
+                </button>
+              {/each}
+              <div class="ml-auto text-[11px]" style="color: var(--text-tertiary);">
+                {filtered.length} {filtered.length === 1 ? "model" : "models"}
+                {#if isOpenRouter && $openRouterFetchedAt}
+                  · updated {formatFetchedAt($openRouterFetchedAt)}
+                {/if}
+              </div>
+            </div>
+
+            {#if $openRouterError && isOpenRouter}
+              <div
+                class="mt-3 rounded-md border px-3 py-2 text-xs"
+                style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
+              >
+                {$openRouterError}
+              </div>
+            {/if}
+
+            {#if isOpenRouter && $openRouterLoading && sourceList.length === 0}
+              <div class="mt-6 text-sm" style="color: var(--text-tertiary);">
+                Fetching models…
+              </div>
+            {:else}
+              <div class="mt-3 space-y-1">
+                {#each visible as m (m.id)}
+                  {@const checked = ($enabledModels[selectedProvider] ?? []).includes(m.id)}
+                  <label
+                    class="flex items-center gap-3 px-3 py-2 rounded-md border cursor-pointer"
+                    style={checked
+                      ? "border-color: var(--accent); background-color: var(--bg-secondary);"
+                      : "border-color: var(--border); background-color: transparent;"}
+                  >
+                    <input
+                      type="checkbox"
+                      {checked}
+                      disabled={savingModels}
+                      on:change={() => toggleModel(selectedProvider, m.id)}
+                    />
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm">{m.label}</div>
+                      <div class="text-[11px] font-mono truncate" style="color: var(--text-tertiary);">
+                        {m.id}
+                      </div>
+                    </div>
+                    {#if m.tags}
+                      <div class="flex gap-1 shrink-0">
+                        {#each m.tags as tag}
+                          <span
+                            class="text-[10px] px-1.5 py-0.5 rounded"
+                            style="background-color: var(--bg-tertiary); color: var(--text-secondary);"
+                          >
+                            {tag}
+                          </span>
+                        {/each}
+                      </div>
+                    {/if}
+                  </label>
+                {:else}
+                  <div class="text-sm" style="color: var(--text-tertiary);">No matches.</div>
+                {/each}
+              </div>
+              {#if filtered.length > visibleCount}
+                <button
+                  type="button"
+                  class="mt-3 w-full text-xs py-2 rounded-md border cursor-pointer"
+                  style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
+                  on:click={() => (visibleCount += PAGE_SIZE)}
+                >
+                  Load {Math.min(PAGE_SIZE, filtered.length - visibleCount)} more
+                </button>
+              {/if}
+            {/if}
           {/if}
         </section>
       </div>
