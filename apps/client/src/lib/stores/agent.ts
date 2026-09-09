@@ -68,6 +68,30 @@ const resetPlan = () => {
   planError.set(null);
 };
 
+const WELCOME_MESSAGE: AgentMessage = {
+  id: "welcome",
+  role: "agent",
+  content:
+    "Hi. Pick a provider on the right, describe what you want to build, and I'll write the files into your sandbox.",
+  timestamp: new Date(),
+};
+
+export const resetWorkspace = () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    try {
+      socket.send(JSON.stringify({ type: "cancel" }));
+    } catch {}
+  }
+  messages.set([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+  isRunning.set(false);
+  resetPlan();
+  previewState.set({ state: "idle" });
+  currentAgentMessageId = null;
+  activeTurnId = null;
+  activeProjectId = null;
+  lastOrdinal = -1;
+};
+
 export const loadProviders = async () => {
   await loadConnect();
   const list = get(providersState);

@@ -11,6 +11,7 @@
     cancelAgent,
     previewState,
     restartPreview,
+    resetWorkspace,
     resumeTurn,
     activePlan,
     todoStatuses,
@@ -24,6 +25,7 @@
   export let projectId: string = "default";
 
   let panelOpen = true;
+  let activeProjectId: string | null = null;
 
   $: previewUrl = $previewState.state === "ready" ? $previewState.url : "";
   $: statusText =
@@ -39,8 +41,13 @@
 
   onMount(() => {
     loadProviders();
-    resumeTurn(projectId).catch(() => {});
   });
+
+  $: if (projectId && projectId !== activeProjectId) {
+    activeProjectId = projectId;
+    resetWorkspace();
+    resumeTurn(projectId).catch(() => {});
+  }
 
   const handleSubmit = (event: CustomEvent<string>) => {
     if ($isRunning) return;
