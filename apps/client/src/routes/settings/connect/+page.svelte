@@ -45,6 +45,10 @@
   const PAGE_SIZE = 25;
   let visibleCount = PAGE_SIZE;
 
+  let customDraft = "";
+  let addingCustom = false;
+  let customError = "";
+
   onMount(() => {
     const initial = ($page.url.searchParams.get("tab") as Tab | null);
     if (initial === "keys" || initial === "models") tab = initial;
@@ -64,6 +68,8 @@
     modelFilter = "";
     activeTags = new Set();
     visibleCount = PAGE_SIZE;
+    customDraft = "";
+    customError = "";
   }
 
   $: if (
@@ -99,6 +105,35 @@
         (m.tags ?? []).some((t) => t.toLowerCase().includes(q))
       );
     });
+  };
+
+  const augmentWithCustom = (list: ModelInfo[], provider: string): ModelInfo[] => {
+    const enabled = $enabledModels[provider] ?? [];
+    const known = new Set(list.map((m) => m.id));
+    const extras: ModelInfo[] = enabled
+      .filter((id) => !known.has(id))
+      .map((id) => ({ id, label: id }));
+    return [...extras, ...list];
+  };
+
+  const submitCustom = async () => {
+    const id = customDraft.trim();
+    if (!id || !selectedProvider) return;
+    const current = $enabledModels[selectedProvider] ?? [];
+    if (current.includes(id)) {
+      customError = "already enabled";
+      return;
+    }
+    addingCustom = true;
+    customError = "";
+    try {
+      await saveEnabledModels(selectedProvider, [...current, id]);
+      customDraft = "";
+    } catch (e) {
+      customError = e instanceof Error ? e.message : String(e);
+    } finally {
+      addingCustom = false;
+    }
   };
 
   const formatFetchedAt = (ts: number | null): string => {
@@ -355,9 +390,10 @@
             </div>
           {:else}
             {@const isOpenRouter = selectedProvider === "openrouter"}
-            {@const sourceList = isOpenRouter
+            {@const baseList = isOpenRouter
               ? $openRouterModels
               : ($catalog[selectedProvider] ?? [])}
+            {@const sourceList = augmentWithCustom(baseList, selectedProvider)}
             {@const filtered = filterList(sourceList, modelFilter, activeTags)}
             {@const visible = filtered.slice(0, visibleCount)}
 
@@ -468,6 +504,44 @@
                 </button>
               {/if}
             {/if}
+
+            <div
+              class="mt-4 pt-4 border-t"
+              style="border-color: var(--border);"
+            >
+              <div
+                class="text-[11px] uppercase tracking-wider font-semibold mb-2"
+                style="color: var(--text-tertiary);"
+              >
+                Custom model id
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  type="text"
+                  bind:value={customDraft}
+                  placeholder="e.g. gpt-4-turbo-2024-04-09"
+                  autocomplete="off"
+                  class="flex-1 min-w-0 h-8 text-xs px-2.5 rounded-md border bg-transparent outline-none font-mono"
+                  style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+                  on:keydown={(e) => e.key === "Enter" && submitCustom()}
+                />
+                <button
+                  type="button"
+                  class="h-8 px-3 text-xs rounded-md text-white cursor-pointer disabled:opacity-50"
+                  style="background-color: var(--accent);"
+                  on:click={submitCustom}
+                  disabled={!customDraft.trim() || addingCustom}
+                >
+                  {addingCustom ? "…" : "Add"}
+                </button>
+              </div>
+              {#if customError}
+                <div class="mt-2 text-xs" style="color: #ef4444;">{customError}</div>
+              {/if}
+              <div class="mt-2 text-[11px]" style="color: var(--text-tertiary);">
+                Not validated — the id must match what the provider accepts.
+              </div>
+            </div>
           {/if}
         </section>
       </div>

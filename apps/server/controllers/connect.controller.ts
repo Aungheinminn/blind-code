@@ -24,7 +24,7 @@ const keyBody = z.object({
 });
 
 const modelsBody = z.object({
-  modelIds: z.array(z.string().trim().min(1)).max(50),
+  modelIds: z.array(z.string()).max(50),
 });
 
 const unauthorized = (set: { status?: number | string }) => {
