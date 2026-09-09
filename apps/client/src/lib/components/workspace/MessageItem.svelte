@@ -4,6 +4,14 @@
   export let message: AgentMessage;
 
   $: isAgent = message.role === "agent";
+  $: hasReasoning = Boolean(message.reasoning && message.reasoning.trim().length > 0);
+
+  let manualExpanded: boolean | null = null;
+  $: reasoningExpanded = manualExpanded ?? !message.content;
+
+  const toggleReasoning = () => {
+    manualExpanded = !reasoningExpanded;
+  };
 </script>
 
 <div class="flex gap-[11px] items-start">
@@ -16,6 +24,40 @@
     {isAgent ? "AI" : "YOU"}
   </div>
   <div class="flex-1 min-w-0 pt-[3px]">
+    {#if hasReasoning}
+      <div
+        class="mb-2 rounded-md border overflow-hidden"
+        style="border-color: var(--border); background-color: var(--bg-tertiary);"
+      >
+        <button
+          type="button"
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] cursor-pointer text-left"
+          style="color: var(--text-tertiary); background-color: transparent;"
+          on:click={toggleReasoning}
+        >
+          <span
+            class="inline-block transition-transform"
+            style="transform: rotate({reasoningExpanded ? 90 : 0}deg);"
+          >▸</span>
+          <span class="uppercase tracking-wider font-semibold">Thinking</span>
+          {#if !message.content}
+            <span
+              class="ml-1 w-1.5 h-1.5 rounded-full animate-pulse"
+              style="background-color: var(--accent);"
+              aria-hidden="true"
+            ></span>
+          {/if}
+        </button>
+        {#if reasoningExpanded}
+          <div
+            class="px-3 pb-2 pt-0 text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
+            style="color: var(--text-secondary);"
+          >
+            {message.reasoning}
+          </div>
+        {/if}
+      </div>
+    {/if}
     {#if message.content}
       <div
         class="text-[13.5px] leading-[1.6] whitespace-pre-wrap break-words"
