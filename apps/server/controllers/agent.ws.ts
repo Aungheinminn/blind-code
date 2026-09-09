@@ -1,7 +1,12 @@
 import type { Elysia } from "elysia";
 import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
-import { runCoder, type CoderChatMessage, type CoderEvent } from "../services/coder";
+import {
+  extractErrorMessage,
+  runCoder,
+  type CoderChatMessage,
+  type CoderEvent,
+} from "../services/coder";
 import { runPlanner, type Plan } from "../services/planner";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
@@ -211,8 +216,7 @@ export const agentController = (app: Elysia) =>
               });
             }
           } catch (err) {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            await publish({ type: "plan-error", error: errMsg });
+            await publish({ type: "plan-error", error: extractErrorMessage(err) });
           }
         }
 
@@ -282,7 +286,7 @@ export const agentController = (app: Elysia) =>
           }
         } catch (err) {
           terminalStatus = "failed";
-          terminalError = err instanceof Error ? err.message : String(err);
+          terminalError = extractErrorMessage(err);
         }
 
         await flushText();

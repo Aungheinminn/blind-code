@@ -5,6 +5,7 @@ import type { Plan } from "./planner";
 
 export type CoderEvent =
   | { type: "text-delta"; text: string }
+  | { type: "reasoning-delta"; text: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
   | { type: "tool-result"; toolCallId: string; toolName: string; output: unknown }
   | { type: "step-finish"; finishReason: string }
@@ -14,6 +15,22 @@ export type CoderEvent =
 export type CoderChatMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+export const extractErrorMessage = (v: unknown): string => {
+  if (v == null) return "unknown error";
+  if (typeof v === "string") return v;
+  if (v instanceof Error) return v.message;
+  if (typeof v === "object") {
+    const msg = (v as { message?: unknown }).message;
+    if (typeof msg === "string") return msg;
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return "unknown error";
+    }
+  }
+  return String(v);
 };
 
 export type RunCoderOptions = {
@@ -82,6 +99,11 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
         case "text-delta":
           opts.onEvent({ type: "text-delta", text: (chunk as any).text ?? "" });
           break;
+        case "reasoning-delta" as any: {
+          const text = (chunk as any).delta ?? (chunk as any).text ?? "";
+          if (text) opts.onEvent({ type: "reasoning-delta", text });
+          break;
+        }
         case "tool-call":
           opts.onEvent({
             type: "tool-call",
@@ -115,12 +137,12 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
         case "error":
           opts.onEvent({
             type: "error",
-            error: String((chunk as any).error ?? "unknown error"),
+            error: extractErrorMessage((chunk as any).error),
           });
           break;
       }
     }
   } catch (err) {
-    opts.onEvent({ type: "error", error: err instanceof Error ? err.message : String(err) });
+    opts.onEvent({ type: "error", error: extractErrorMessage(err) });
   }
 };
