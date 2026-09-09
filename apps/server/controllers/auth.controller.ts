@@ -11,6 +11,7 @@ import {
   readSessionCookie,
 } from "../services/session";
 import { getUserFromRequest } from "../services/authGuard";
+import { mintTicket } from "../services/wsTicket";
 
 const signupSchema = z.object({
   email: z.string().email().max(255),
@@ -108,4 +109,12 @@ export const authController = (app: Elysia) =>
         return { error: "unauthorized" };
       }
       return { data: { user } };
+    })
+    .post("/auth/ws-ticket", async ({ request, set }) => {
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      return { data: mintTicket(user.id) };
     });

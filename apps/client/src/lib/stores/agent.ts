@@ -1,5 +1,6 @@
 import { writable, get } from "svelte/store";
 import { enabledModels, loadConnect, providersState } from "./connect";
+import { getWsTicket } from "$lib/api/auth";
 
 export type AgentMessage = {
   id: string;
@@ -142,12 +143,18 @@ const clearSavedTurn = (projectId: string | null) => {
   } catch {}
 };
 
-const ensureSocket = (): Promise<WebSocket> =>
-  new Promise((resolve, reject) => {
-    if (socket && socket.readyState === WebSocket.OPEN) return resolve(socket);
-    if (socket) socket.close();
+const ensureSocket = async (): Promise<WebSocket> => {
+  if (socket && socket.readyState === WebSocket.OPEN) return socket;
+  if (socket) socket.close();
 
-    const ws = new WebSocket(agentWsUrl());
+  let url = agentWsUrl();
+  try {
+    const { ticket } = await getWsTicket();
+    url = `${url}?ticket=${encodeURIComponent(ticket)}`;
+  } catch {}
+
+  return new Promise<WebSocket>((resolve, reject) => {
+    const ws = new WebSocket(url);
     socket = ws;
 
     ws.addEventListener("open", () => resolve(ws));
@@ -158,6 +165,7 @@ const ensureSocket = (): Promise<WebSocket> =>
       currentAgentMessageId = null;
     });
   });
+};
 
 const startAgentMessage = () => {
   const id = crypto.randomUUID();

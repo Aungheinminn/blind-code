@@ -23,3 +23,6 @@ export const logout = () =>
   fetchJson<{ ok: boolean }>("/auth/logout", { method: "POST" });
 
 export const me = () => fetchJson<{ user: AuthUser }>("/auth/me");
+
+export const getWsTicket = () =>
+  fetchJson<{ ticket: string; expiresAt: number }>("/auth/ws-ticket", { method: "POST" });

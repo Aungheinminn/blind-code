@@ -10,6 +10,7 @@ import {
 import { runPlanner, type Plan } from "../services/planner";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
+import { consumeTicket } from "../services/wsTicket";
 import { previewManager } from "../services/preview";
 import { turnBus } from "../services/turnBus";
 import {
@@ -60,16 +61,24 @@ export const agentController = (app: Elysia) =>
     .get("/agent/providers", async () => ({ data: await listAvailableProviders() }))
     .ws("/ws/agent", {
       open: async (ws) => {
-        const request: Request | undefined = (ws.data as any).request;
-        const user = request ? await getUserFromRequest(request) : null;
-        if (!user) {
+        const data = ws.data as any;
+        const req: Request | undefined = data.request;
+        const url = req ? new URL(req.url) : null;
+        const ticketParam = url?.searchParams.get("ticket") ?? null;
+        const ticketUserId = ticketParam ? consumeTicket(ticketParam) : null;
+        let userId: string | null = ticketUserId;
+        if (!userId && req) {
+          const user = await getUserFromRequest(req);
+          userId = user?.id ?? null;
+        }
+        if (!userId) {
           ws.send({ type: "error", error: "unauthorized" });
           ws.close();
           return;
         }
-        (ws.data as any).userId = user.id;
-        (ws.data as any).abort = new AbortController();
-        (ws.data as any).unsubscribes = [];
+        data.userId = userId;
+        data.abort = new AbortController();
+        data.unsubscribes = [];
       },
       close: (ws) => {
         (ws.data as any).abort?.abort();
