@@ -1,6 +1,7 @@
 import { writable, get } from "svelte/store";
 import { enabledModels, loadConnect, providersState } from "./connect";
 import { getWsTicket } from "$lib/api/auth";
+import { getProjectHistory } from "$lib/api/projects";
 
 export type AgentMessage = {
   id: string;
@@ -76,6 +77,24 @@ const WELCOME_MESSAGE: AgentMessage = {
   content:
     "Hi. Pick a provider on the right, describe what you want to build, and I'll write the files into your sandbox.",
   timestamp: new Date(),
+};
+
+export const loadHistory = async (projectId: string): Promise<void> => {
+  try {
+    const history = await getProjectHistory(projectId);
+    if (!history || history.length === 0) return;
+    messages.set(
+      history.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        toolCalls: m.toolCalls,
+        timestamp: new Date(m.timestamp),
+      })),
+    );
+  } catch (e) {
+    console.warn("Failed to load history", e);
+  }
 };
 
 export const resetWorkspace = () => {

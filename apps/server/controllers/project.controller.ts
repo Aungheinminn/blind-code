@@ -5,6 +5,7 @@ import {
   ensureProject,
   updateProjectForOwner,
   deleteProjectForOwner,
+  getProjectHistory,
 } from "../db/repo";
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
@@ -66,6 +67,17 @@ export const projectController = (app: Elysia) =>
         return { error: "not found" };
       }
       return { data: updated };
+    })
+    .get("/projects/:id/history", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: await getProjectHistory(project.id) };
     })
     .delete("/projects/:id", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

@@ -36,3 +36,21 @@ export const deleteProject = (id: string) =>
   fetchJson<{ id: string; deleted: boolean }>(`/projects/${id}`, {
     method: "DELETE",
   });
+
+export type HistoryToolCall = {
+  id: string;
+  name: string;
+  input: unknown;
+  output?: unknown;
+};
+
+export type HistoryMessage = {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  toolCalls?: HistoryToolCall[];
+  timestamp: string;
+};
+
+export const getProjectHistory = (id: string) =>
+  fetchJson<HistoryMessage[]>(`/projects/${id}/history`);

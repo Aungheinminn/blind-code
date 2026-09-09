@@ -11,6 +11,7 @@
     cancelAgent,
     previewState,
     restartPreview,
+    loadHistory,
     resetWorkspace,
     resumeTurn,
     activePlan,
@@ -46,7 +47,9 @@
   $: if (projectId && projectId !== activeProjectId) {
     activeProjectId = projectId;
     resetWorkspace();
-    resumeTurn(projectId).catch(() => {});
+    loadHistory(projectId).finally(() => {
+      resumeTurn(projectId).catch(() => {});
+    });
   }
 
   const handleSubmit = (event: CustomEvent<string>) => {

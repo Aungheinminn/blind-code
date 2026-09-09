@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
 import { isUuid, stringToUuid } from "../services/uuid";
 
@@ -124,6 +124,98 @@ export const recordAgentAction = async (
     stdout: data.stdout ?? null,
     stderr: data.stderr ?? null,
   });
+};
+
+export type HistoryToolCall = {
+  id: string;
+  name: string;
+  input: unknown;
+  output?: unknown;
+};
+
+export type HistoryMessage = {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  toolCalls?: HistoryToolCall[];
+  timestamp: string;
+};
+
+export const getProjectHistory = async (projectId: string): Promise<HistoryMessage[]> => {
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: schema.agentActions.id,
+      actionType: schema.agentActions.actionType,
+      payload: schema.agentActions.payload,
+      createdAt: schema.agentActions.createdAt,
+    })
+    .from(schema.agentActions)
+    .innerJoin(
+      schema.agentSessions,
+      eq(schema.agentSessions.id, schema.agentActions.sessionId),
+    )
+    .where(eq(schema.agentSessions.projectId, projectId))
+    .orderBy(asc(schema.agentActions.createdAt), asc(schema.agentActions.id));
+
+  const messages: HistoryMessage[] = [];
+  let currentAgent: HistoryMessage | null = null;
+
+  for (const row of rows) {
+    const payload = (row.payload ?? {}) as Record<string, unknown>;
+    const timestamp = row.createdAt.toISOString();
+
+    if (row.actionType === "user_prompt") {
+      currentAgent = null;
+      messages.push({
+        id: row.id,
+        role: "user",
+        content: typeof payload.prompt === "string" ? payload.prompt : "",
+        timestamp,
+      });
+      continue;
+    }
+
+    if (!currentAgent) {
+      currentAgent = {
+        id: row.id,
+        role: "agent",
+        content: "",
+        toolCalls: [],
+        timestamp,
+      };
+      messages.push(currentAgent);
+    }
+
+    if (row.actionType === "assistant_text") {
+      if (typeof payload.text === "string") currentAgent.content += payload.text;
+      continue;
+    }
+
+    if (row.actionType.startsWith("tool_call:")) {
+      const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : row.id;
+      const name = row.actionType.slice("tool_call:".length);
+      currentAgent.toolCalls ??= [];
+      currentAgent.toolCalls.push({
+        id: toolCallId,
+        name,
+        input: payload.input,
+      });
+      continue;
+    }
+
+    if (row.actionType.startsWith("tool_result:")) {
+      const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : null;
+      if (!toolCallId || !currentAgent.toolCalls) continue;
+      const call = currentAgent.toolCalls.find((c) => c.id === toolCallId);
+      if (call) call.output = payload.output;
+      continue;
+    }
+  }
+
+  return messages.filter(
+    (m) => m.content.length > 0 || (m.toolCalls && m.toolCalls.length > 0),
+  );
 };
 
 export const listProjectFiles = async (projectId: string) => {
