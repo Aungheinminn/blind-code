@@ -4,6 +4,9 @@
 
   export let messages: AgentMessage[] = [];
   export let isRunning = false;
+
+  $: last = messages[messages.length - 1];
+  $: showTypingIndicator = isRunning && (!last || last.role !== "agent");
 </script>
 
 <div class="flex-1 overflow-y-auto px-[18px] py-[18px] flex flex-col gap-4">
@@ -11,7 +14,7 @@
     <MessageItem {message} />
   {/each}
 
-  {#if isRunning}
+  {#if showTypingIndicator}
     <div class="flex gap-[11px] items-start">
       <div
         class="w-[26px] h-[26px] rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0"
