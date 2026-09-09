@@ -137,11 +137,11 @@ export const MODEL_CATALOG: Record<ProviderName, ModelInfo[]> = {
     { id: "qwen-3-32b", label: "Qwen 3 32B" },
   ],
   openrouter: [
-    { id: "minimax/minimax-m3:free", label: "MiniMax M3", tags: ["free"] },
     { id: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
     { id: "deepseek/deepseek-r1", label: "DeepSeek R1", tags: ["reasoning"] },
     { id: "moonshotai/kimi-k2", label: "Kimi K2" },
     { id: "z-ai/glm-4.5", label: "GLM 4.5" },
+    { id: "minimax/minimax-m3", label: "MiniMax M3" },
     { id: "qwen/qwen-2.5-coder-32b-instruct", label: "Qwen 2.5 Coder 32B" },
   ],
 };
@@ -159,7 +159,7 @@ export const DEFAULT_ENABLED: Record<ProviderName, string[]> = {
   togetherai: ["meta-llama/Llama-3.3-70B-Instruct-Turbo"],
   fireworks: ["accounts/fireworks/models/llama-v3p3-70b-instruct"],
   cerebras: ["llama3.3-70b"],
-  openrouter: ["minimax/minimax-m3:free"],
+  openrouter: ["deepseek/deepseek-chat"],
 };
 
 export const getCatalogFor = (provider: ProviderName): ModelInfo[] =>

@@ -39,9 +39,9 @@ const asNumber = (v: unknown): number | null => {
   return null;
 };
 
-const deriveTags = (raw: RawModel, id: string, promptPrice: number | null): ModelTag[] => {
+const deriveTags = (raw: RawModel, id: string): ModelTag[] => {
   const tags: ModelTag[] = [];
-  if (id.endsWith(":free") || promptPrice === 0) tags.push("free");
+  if (id.endsWith(":free")) tags.push("free");
   const inputs = raw.architecture?.input_modalities;
   const modality = raw.architecture?.modality;
   const hasImage =
@@ -66,7 +66,7 @@ const normalize = (raw: RawModel): OpenRouterModel | null => {
   const label = asString(raw.name) ?? id;
   const contextLength = asNumber(raw.context_length);
   const promptPrice = asNumber(raw.pricing?.prompt);
-  const tags = deriveTags(raw, id, promptPrice);
+  const tags = deriveTags(raw, id);
   return {
     id,
     label,
