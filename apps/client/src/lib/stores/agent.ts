@@ -5,6 +5,7 @@ export type AgentMessage = {
   id: string;
   role: "user" | "agent";
   content: string;
+  reasoning?: string;
   toolCalls?: Array<{ id: string; name: string; input: unknown; output?: unknown }>;
   timestamp: Date;
 };
@@ -175,6 +176,16 @@ const appendText = (delta: string) => {
   );
 };
 
+const appendReasoning = (delta: string) => {
+  if (!currentAgentMessageId) startAgentMessage();
+  const id = currentAgentMessageId!;
+  messages.update((list) =>
+    list.map((m) =>
+      m.id === id ? { ...m, reasoning: (m.reasoning ?? "") + delta } : m,
+    ),
+  );
+};
+
 const recordToolCall = (call: { id: string; name: string; input: unknown }) => {
   if (!currentAgentMessageId) startAgentMessage();
   const id = currentAgentMessageId!;
@@ -240,6 +251,9 @@ const handleEvent = (raw: unknown) => {
       break;
     case "text-delta":
       appendText(event.text ?? "");
+      break;
+    case "reasoning-delta":
+      appendReasoning(event.text ?? "");
       break;
     case "tool-call":
       if (event.toolName === "update_todo" && event.input) {
