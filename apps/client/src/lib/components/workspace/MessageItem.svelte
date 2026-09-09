@@ -5,6 +5,8 @@
 
   $: isAgent = message.role === "agent";
   $: hasReasoning = Boolean(message.reasoning && message.reasoning.trim().length > 0);
+  $: hasToolCalls = Boolean(message.toolCalls && message.toolCalls.length > 0);
+  $: isEmptyAgent = isAgent && !message.content && !hasReasoning && !hasToolCalls;
 
   let manualExpanded: boolean | null = null;
   $: reasoningExpanded = manualExpanded ?? !message.content;
@@ -24,6 +26,33 @@
     {isAgent ? "AI" : "YOU"}
   </div>
   <div class="flex-1 min-w-0 pt-[3px]">
+    {#if isEmptyAgent}
+      <div
+        class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5"
+        style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
+      >
+        <span
+          class="w-1.5 h-1.5 rounded-full animate-pulse"
+          style="background-color: var(--accent);"
+          aria-hidden="true"
+        ></span>
+        <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
+        <span class="flex items-center gap-0.5">
+          <span
+            class="w-1 h-1 rounded-full animate-pulse"
+            style="background-color: var(--text-tertiary);"
+          ></span>
+          <span
+            class="w-1 h-1 rounded-full animate-pulse"
+            style="background-color: var(--text-tertiary); animation-delay: 0.2s;"
+          ></span>
+          <span
+            class="w-1 h-1 rounded-full animate-pulse"
+            style="background-color: var(--text-tertiary); animation-delay: 0.4s;"
+          ></span>
+        </span>
+      </div>
+    {/if}
     {#if hasReasoning}
       <div
         class="mb-2 rounded-md border overflow-hidden"
