@@ -5,7 +5,7 @@
   import ProviderSelector from "./ProviderSelector.svelte";
   import MessageList from "./MessageList.svelte";
   import PromptComposer from "./PromptComposer.svelte";
-  import TodoList from "./TodoList.svelte";
+  import TodoTray from "./TodoTray.svelte";
 
   export let open = false;
   export let messages: AgentMessage[] = [];
@@ -19,7 +19,7 @@
   export let todoStatuses: Record<string, TodoStatus> = {};
   export let planError: string | null = null;
 
-  $: showTodos = plan !== null || (isRunning && !planError) || planError !== null;
+  $: showTray = plan !== null || (isRunning && !planError) || planError !== null;
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -61,30 +61,12 @@
     bind:selectedModel
   />
 
-  {#if showTodos}
-    <div
-      class="border-b px-4 py-3 overflow-y-auto"
-      style="border-color: var(--border); max-height: 40%;"
-    >
-      {#if plan?.summary}
-        <div
-          class="text-[11px] uppercase tracking-wider font-semibold mb-2"
-          style="color: var(--text-tertiary);"
-        >
-          Plan
-        </div>
-        <div
-          class="text-[12.5px] mb-3"
-          style="color: var(--text-secondary);"
-        >
-          {plan.summary}
-        </div>
-      {/if}
-      <TodoList {plan} statuses={todoStatuses} {isRunning} {planError} />
-    </div>
-  {/if}
-
-  <MessageList {messages} {isRunning} />
+  <div class="flex-1 relative flex flex-col min-h-0">
+    {#if showTray}
+      <TodoTray {plan} statuses={todoStatuses} {isRunning} {planError} />
+    {/if}
+    <MessageList {messages} {isRunning} />
+  </div>
 
   <PromptComposer disabled={isRunning} on:submit={onSubmit} />
 </div>
