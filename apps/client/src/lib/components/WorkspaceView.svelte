@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import {
     messages,
     isRunning,
@@ -56,6 +57,14 @@
     if ($isRunning) return;
     sendPrompt(projectId, event.detail);
   };
+
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    } else {
+      goto("/");
+    }
+  };
 </script>
 
 <div
@@ -86,6 +95,7 @@
     on:close={() => (panelOpen = false)}
     on:submit={handleSubmit}
     on:cancel={cancelAgent}
+    on:back={goBack}
   />
 
   <AgentLauncher

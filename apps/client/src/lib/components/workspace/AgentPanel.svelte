@@ -25,6 +25,7 @@
     close: void;
     submit: string;
     cancel: void;
+    back: void;
     "provider-change": string;
     "model-change": string;
   }>();
@@ -50,6 +51,7 @@
     {isRunning}
     on:close={() => dispatch("close")}
     on:cancel={() => dispatch("cancel")}
+    on:back={() => dispatch("back")}
   />
 
   <ProviderSelector

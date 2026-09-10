@@ -55,6 +55,14 @@
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key === "Escape") menuOpen = false;
   };
+
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    } else {
+      goto("/");
+    }
+  };
 </script>
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
@@ -217,5 +225,44 @@
     </header>
   {/if}
 
+  {#if $page.url.pathname !== "/" && !isFullscreen($page.url.pathname)}
+    <button
+      type="button"
+      class="back-button fixed left-4 z-40"
+      style="top: 4.5rem;"
+      on:click={goBack}
+      aria-label="Go back"
+      title="Back"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+    </button>
+  {/if}
+
   <slot />
 </div>
+
+<style>
+  .back-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--chrome-border);
+    background: var(--chrome);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .back-button:hover {
+    background: var(--chrome-hover);
+    color: var(--text-primary);
+  }
+</style>
