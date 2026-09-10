@@ -184,14 +184,36 @@ export const agentController = (app: Elysia) =>
           });
         }
 
-        let currentText = "";
-        const flushText = async () => {
-          if (!sessionId || !currentText) return;
-          await recordAgentAction(sessionId, "assistant_text", {
-            summary: currentText.slice(0, 200),
-            payload: { text: currentText },
+        const textBlocks = new Map<string, string>();
+        const reasoningBlocks = new Map<string, string>();
+
+        const persistBlock = async (
+          kind: "assistant_text" | "assistant_reasoning",
+          id: string,
+          text: string,
+        ) => {
+          if (!sessionId || !text) return;
+          await recordAgentAction(sessionId, kind, {
+            summary: text.slice(0, 200),
+            payload: { text, blockId: id },
           });
-          currentText = "";
+        };
+
+        const flushTextBlock = async (id: string) => {
+          const text = textBlocks.get(id);
+          textBlocks.delete(id);
+          if (text) await persistBlock("assistant_text", id, text);
+        };
+
+        const flushReasoningBlock = async (id: string) => {
+          const text = reasoningBlocks.get(id);
+          reasoningBlocks.delete(id);
+          if (text) await persistBlock("assistant_reasoning", id, text);
+        };
+
+        const flushAllBlocks = async () => {
+          for (const id of [...textBlocks.keys()]) await flushTextBlock(id);
+          for (const id of [...reasoningBlocks.keys()]) await flushReasoningBlock(id);
         };
 
         const publish = async (event: CoderEvent | Record<string, unknown>) => {
@@ -233,11 +255,29 @@ export const agentController = (app: Elysia) =>
           await publish(event);
           if (!sessionId) return;
           switch (event.type) {
+            case "text-start":
+              textBlocks.set(event.id, "");
+              break;
             case "text-delta":
-              currentText += event.text;
+              textBlocks.set(event.id, (textBlocks.get(event.id) ?? "") + event.text);
+              break;
+            case "text-end":
+              await flushTextBlock(event.id);
+              break;
+            case "reasoning-start":
+              reasoningBlocks.set(event.id, "");
+              break;
+            case "reasoning-delta":
+              reasoningBlocks.set(
+                event.id,
+                (reasoningBlocks.get(event.id) ?? "") + event.text,
+              );
+              break;
+            case "reasoning-end":
+              await flushReasoningBlock(event.id);
               break;
             case "tool-call":
-              await flushText();
+              await flushAllBlocks();
               await recordAgentAction(sessionId, `tool_call:${event.toolName}`, {
                 summary: `${event.toolName}`,
                 payload: { input: event.input, toolCallId: event.toolCallId },
@@ -250,10 +290,10 @@ export const agentController = (app: Elysia) =>
               });
               break;
             case "step-finish":
-              await flushText();
+              await flushAllBlocks();
               break;
             case "finish":
-              await flushText();
+              await flushAllBlocks();
               await recordAgentAction(sessionId, "finish", {
                 summary: event.finishReason,
                 payload: { finishReason: event.finishReason, usage: event.usage },
@@ -298,7 +338,7 @@ export const agentController = (app: Elysia) =>
           terminalError = extractErrorMessage(err);
         }
 
-        await flushText();
+        await flushAllBlocks();
         if (sessionId) await endAgentSession(sessionId);
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 

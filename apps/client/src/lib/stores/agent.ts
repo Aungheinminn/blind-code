@@ -12,8 +12,8 @@ export type ToolPart = {
 };
 
 export type MessagePart =
-  | { kind: "text"; text: string }
-  | { kind: "reasoning"; text: string }
+  | { kind: "text"; id?: string; text: string }
+  | { kind: "reasoning"; id?: string; text: string }
   | ToolPart;
 
 export type AgentMessage = {
@@ -97,11 +97,12 @@ export const loadHistory = async (projectId: string): Promise<void> => {
     if (!history || history.length === 0) return;
     messages.set(
       history.map((m) => {
-        const parts: MessagePart[] = [];
-        if (m.content) parts.push({ kind: "text", text: m.content });
-        for (const c of m.toolCalls ?? []) {
-          parts.push({ kind: "tool", id: c.id, name: c.name, input: c.input, output: c.output });
-        }
+        const parts: MessagePart[] =
+          m.parts?.map((p) =>
+            p.kind === "tool"
+              ? { kind: "tool", id: p.id, name: p.name, input: p.input, output: p.output }
+              : { kind: p.kind, text: p.text },
+          ) ?? (m.content ? [{ kind: "text", text: m.content }] : []);
         return {
           id: m.id,
           role: m.role,
@@ -220,30 +221,63 @@ const updateAgentMessage = (mutate: (m: AgentMessage) => AgentMessage) => {
   messages.update((list) => list.map((m) => (m.id === id ? mutate(m) : m)));
 };
 
-const appendToLastPart = (
+const mergeStreamPart = (
   parts: MessagePart[],
   kind: "text" | "reasoning",
+  id: string | undefined,
   delta: string,
 ): MessagePart[] => {
+  if (id) {
+    const existingIdx = parts.findIndex((p) => p.kind === kind && p.id === id);
+    if (existingIdx >= 0) {
+      const existing = parts[existingIdx] as { kind: typeof kind; id?: string; text: string };
+      const updated: MessagePart = { kind, id, text: existing.text + delta };
+      return [...parts.slice(0, existingIdx), updated, ...parts.slice(existingIdx + 1)];
+    }
+    return [...parts, { kind, id, text: delta }];
+  }
   const last = parts[parts.length - 1];
-  if (last && last.kind === kind) {
+  if (last && last.kind === kind && !last.id) {
     return [...parts.slice(0, -1), { kind, text: last.text + delta }];
   }
   return [...parts, { kind, text: delta }];
 };
 
-const appendText = (delta: string) => {
+const startStreamPart = (
+  parts: MessagePart[],
+  kind: "text" | "reasoning",
+  id: string,
+): MessagePart[] => {
+  if (parts.some((p) => p.kind === kind && p.id === id)) return parts;
+  return [...parts, { kind, id, text: "" }];
+};
+
+const appendText = (id: string | undefined, delta: string) => {
   updateAgentMessage((m) => ({
     ...m,
     content: m.content + delta,
-    parts: appendToLastPart(m.parts ?? [], "text", delta),
+    parts: mergeStreamPart(m.parts ?? [], "text", id, delta),
   }));
 };
 
-const appendReasoning = (delta: string) => {
+const appendReasoning = (id: string | undefined, delta: string) => {
   updateAgentMessage((m) => ({
     ...m,
-    parts: appendToLastPart(m.parts ?? [], "reasoning", delta),
+    parts: mergeStreamPart(m.parts ?? [], "reasoning", id, delta),
+  }));
+};
+
+const startTextPart = (id: string) => {
+  updateAgentMessage((m) => ({
+    ...m,
+    parts: startStreamPart(m.parts ?? [], "text", id),
+  }));
+};
+
+const startReasoningPart = (id: string) => {
+  updateAgentMessage((m) => ({
+    ...m,
+    parts: startStreamPart(m.parts ?? [], "reasoning", id),
   }));
 };
 
@@ -300,11 +334,24 @@ const handleEvent = (raw: unknown) => {
     case "plan-error":
       planError.set(typeof event.error === "string" ? event.error : "planner failed");
       break;
+    case "text-start":
+      if (typeof event.id === "string") startTextPart(event.id);
+      break;
     case "text-delta":
-      appendText(event.text ?? "");
+      appendText(typeof event.id === "string" ? event.id : undefined, event.text ?? "");
+      break;
+    case "text-end":
+      break;
+    case "reasoning-start":
+      if (typeof event.id === "string") startReasoningPart(event.id);
       break;
     case "reasoning-delta":
-      appendReasoning(event.text ?? "");
+      appendReasoning(
+        typeof event.id === "string" ? event.id : undefined,
+        event.text ?? "",
+      );
+      break;
+    case "reasoning-end":
       break;
     case "tool-call":
       if (event.toolName === "update_todo" && event.input) {
@@ -319,13 +366,13 @@ const handleEvent = (raw: unknown) => {
       recordToolResult(event.toolCallId, event.output);
       break;
     case "error":
-      appendText(`\n\n_Error: ${event.error}_`);
+      appendText(undefined, `\n\n_Error: ${event.error}_`);
       break;
     case "preview":
       if (event.status) previewState.set(event.status);
       break;
     case "turn-terminal":
-      appendText(`\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
+      appendText(undefined, `\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
       isRunning.set(false);
       currentAgentMessageId = null;
       clearSavedTurn(activeProjectId);
@@ -394,7 +441,7 @@ export const sendPrompt = async (
     );
   } catch (e) {
     isRunning.set(false);
-    appendText(`\n\n_Failed to reach agent server: ${String(e)}_`);
+    appendText(undefined, `\n\n_Failed to reach agent server: ${String(e)}_`);
   }
 };
 

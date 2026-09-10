@@ -37,18 +37,16 @@ export const deleteProject = (id: string) =>
     method: "DELETE",
   });
 
-export type HistoryToolCall = {
-  id: string;
-  name: string;
-  input: unknown;
-  output?: unknown;
-};
+export type HistoryPart =
+  | { kind: "text"; text: string }
+  | { kind: "reasoning"; text: string }
+  | { kind: "tool"; id: string; name: string; input: unknown; output?: unknown };
 
 export type HistoryMessage = {
   id: string;
   role: "user" | "agent";
   content: string;
-  toolCalls?: HistoryToolCall[];
+  parts?: HistoryPart[];
   timestamp: string;
 };
 

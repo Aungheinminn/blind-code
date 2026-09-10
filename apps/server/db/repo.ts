@@ -126,18 +126,16 @@ export const recordAgentAction = async (
   });
 };
 
-export type HistoryToolCall = {
-  id: string;
-  name: string;
-  input: unknown;
-  output?: unknown;
-};
+export type HistoryPart =
+  | { kind: "text"; text: string }
+  | { kind: "reasoning"; text: string }
+  | { kind: "tool"; id: string; name: string; input: unknown; output?: unknown };
 
 export type HistoryMessage = {
   id: string;
   role: "user" | "agent";
   content: string;
-  toolCalls?: HistoryToolCall[];
+  parts?: HistoryPart[];
   timestamp: string;
 };
 
@@ -160,6 +158,19 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
 
   const messages: HistoryMessage[] = [];
   let currentAgent: HistoryMessage | null = null;
+  let currentText = "";
+
+  const startAgent = (id: string, timestamp: string) => {
+    currentText = "";
+    currentAgent = {
+      id,
+      role: "agent",
+      content: "",
+      parts: [],
+      timestamp,
+    };
+    messages.push(currentAgent);
+  };
 
   for (const row of rows) {
     const payload = (row.payload ?? {}) as Record<string, unknown>;
@@ -167,6 +178,7 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
 
     if (row.actionType === "user_prompt") {
       currentAgent = null;
+      currentText = "";
       messages.push({
         id: row.id,
         role: "user",
@@ -176,27 +188,31 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
       continue;
     }
 
-    if (!currentAgent) {
-      currentAgent = {
-        id: row.id,
-        role: "agent",
-        content: "",
-        toolCalls: [],
-        timestamp,
-      };
-      messages.push(currentAgent);
-    }
+    if (!currentAgent) startAgent(row.id, timestamp);
+    const agent = currentAgent!;
+    agent.parts ??= [];
 
     if (row.actionType === "assistant_text") {
-      if (typeof payload.text === "string") currentAgent.content += payload.text;
+      const text = typeof payload.text === "string" ? payload.text : "";
+      if (!text) continue;
+      agent.parts.push({ kind: "text", text });
+      currentText += (currentText ? "\n\n" : "") + text;
+      agent.content = currentText;
+      continue;
+    }
+
+    if (row.actionType === "assistant_reasoning") {
+      const text = typeof payload.text === "string" ? payload.text : "";
+      if (!text) continue;
+      agent.parts.push({ kind: "reasoning", text });
       continue;
     }
 
     if (row.actionType.startsWith("tool_call:")) {
       const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : row.id;
       const name = row.actionType.slice("tool_call:".length);
-      currentAgent.toolCalls ??= [];
-      currentAgent.toolCalls.push({
+      agent.parts.push({
+        kind: "tool",
         id: toolCallId,
         name,
         input: payload.input,
@@ -206,15 +222,17 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
 
     if (row.actionType.startsWith("tool_result:")) {
       const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : null;
-      if (!toolCallId || !currentAgent.toolCalls) continue;
-      const call = currentAgent.toolCalls.find((c) => c.id === toolCallId);
-      if (call) call.output = payload.output;
+      if (!toolCallId) continue;
+      const tool = [...agent.parts].reverse().find(
+        (p) => p.kind === "tool" && p.id === toolCallId,
+      );
+      if (tool && tool.kind === "tool") tool.output = payload.output;
       continue;
     }
   }
 
   return messages.filter(
-    (m) => m.content.length > 0 || (m.toolCalls && m.toolCalls.length > 0),
+    (m) => m.content.length > 0 || (m.parts && m.parts.length > 0),
   );
 };
 

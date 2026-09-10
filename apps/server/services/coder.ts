@@ -4,8 +4,12 @@ import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
 
 export type CoderEvent =
-  | { type: "text-delta"; text: string }
-  | { type: "reasoning-delta"; text: string }
+  | { type: "text-start"; id: string }
+  | { type: "text-delta"; id: string; text: string }
+  | { type: "text-end"; id: string }
+  | { type: "reasoning-start"; id: string }
+  | { type: "reasoning-delta"; id: string; text: string }
+  | { type: "reasoning-end"; id: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
   | { type: "tool-result"; toolCallId: string; toolName: string; output: unknown }
   | { type: "step-finish"; finishReason: string }
@@ -105,14 +109,31 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
 
     for await (const chunk of result.fullStream) {
       switch (chunk.type) {
+        case "text-start" as any:
+          opts.onEvent({ type: "text-start", id: (chunk as any).id });
+          break;
         case "text-delta":
-          opts.onEvent({ type: "text-delta", text: (chunk as any).text ?? "" });
+          opts.onEvent({
+            type: "text-delta",
+            id: (chunk as any).id,
+            text: (chunk as any).text ?? (chunk as any).delta ?? "",
+          });
+          break;
+        case "text-end" as any:
+          opts.onEvent({ type: "text-end", id: (chunk as any).id });
+          break;
+        case "reasoning-start" as any:
+          opts.onEvent({ type: "reasoning-start", id: (chunk as any).id });
           break;
         case "reasoning-delta" as any: {
           const text = (chunk as any).delta ?? (chunk as any).text ?? "";
-          if (text) opts.onEvent({ type: "reasoning-delta", text });
+          if (text)
+            opts.onEvent({ type: "reasoning-delta", id: (chunk as any).id, text });
           break;
         }
+        case "reasoning-end" as any:
+          opts.onEvent({ type: "reasoning-end", id: (chunk as any).id });
+          break;
         case "tool-call":
           opts.onEvent({
             type: "tool-call",
