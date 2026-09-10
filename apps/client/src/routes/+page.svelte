@@ -35,15 +35,6 @@
       >
         View Projects
       </button>
-      <a
-        href="https://github.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="px-5 py-2.5 rounded-lg text-sm font-medium border no-underline transition-colors"
-        style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-secondary);"
-      >
-        GitHub
-      </a>
     </div>
   </div>
 </div>

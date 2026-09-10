@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import type { AgentMessage, Plan, ProviderInfo, TodoStatus } from "$lib/stores/agent";
-  import AgentPanelHeader from "./AgentPanelHeader.svelte";
-  import ProviderSelector from "./ProviderSelector.svelte";
-  import MessageList from "./MessageList.svelte";
-  import PromptComposer from "./PromptComposer.svelte";
+  import AgentPanelHeader from "./agent/AgentPanelHeader.svelte";
+  import ProviderSelector from "./agent/ProviderSelector.svelte";
+  import MessageList from "./agent/MessageList.svelte";
+  import PromptComposer from "./agent/PromptComposer.svelte";
   import TodoTray from "./TodoTray.svelte";
 
   export let open = false;
@@ -48,9 +48,7 @@
 >
   <AgentPanelHeader
     {statusText}
-    {isRunning}
     on:close={() => dispatch("close")}
-    on:cancel={() => dispatch("cancel")}
     on:back={() => dispatch("back")}
   />
 
@@ -68,5 +66,10 @@
     <MessageList {messages} {isRunning} />
   </div>
 
-  <PromptComposer disabled={isRunning} on:submit={onSubmit} />
+  <PromptComposer
+    {isRunning}
+    {statusText}
+    on:submit={onSubmit}
+    on:cancel={() => dispatch("cancel")}
+  />
 </div>

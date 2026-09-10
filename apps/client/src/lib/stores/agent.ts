@@ -3,12 +3,24 @@ import { enabledModels, loadConnect, providersState } from "./connect";
 import { getWsTicket } from "$lib/api/auth";
 import { getProjectHistory } from "$lib/api/projects";
 
+export type ToolPart = {
+  kind: "tool";
+  id: string;
+  name: string;
+  input: unknown;
+  output?: unknown;
+};
+
+export type MessagePart =
+  | { kind: "text"; text: string }
+  | { kind: "reasoning"; text: string }
+  | ToolPart;
+
 export type AgentMessage = {
   id: string;
   role: "user" | "agent";
   content: string;
-  reasoning?: string;
-  toolCalls?: Array<{ id: string; name: string; input: unknown; output?: unknown }>;
+  parts?: MessagePart[];
   timestamp: Date;
 };
 
@@ -84,13 +96,20 @@ export const loadHistory = async (projectId: string): Promise<void> => {
     const history = await getProjectHistory(projectId);
     if (!history || history.length === 0) return;
     messages.set(
-      history.map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        toolCalls: m.toolCalls,
-        timestamp: new Date(m.timestamp),
-      })),
+      history.map((m) => {
+        const parts: MessagePart[] = [];
+        if (m.content) parts.push({ kind: "text", text: m.content });
+        for (const c of m.toolCalls ?? []) {
+          parts.push({ kind: "tool", id: c.id, name: c.name, input: c.input, output: c.output });
+        }
+        return {
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          parts: m.role === "agent" ? parts : undefined,
+          timestamp: new Date(m.timestamp),
+        };
+      }),
     );
   } catch (e) {
     console.warn("Failed to load history", e);
@@ -191,53 +210,58 @@ const startAgentMessage = () => {
   currentAgentMessageId = id;
   messages.update((list) => [
     ...list,
-    { id, role: "agent", content: "", toolCalls: [], timestamp: new Date() },
+    { id, role: "agent", content: "", parts: [], timestamp: new Date() },
   ]);
 };
 
-const appendText = (delta: string) => {
+const updateAgentMessage = (mutate: (m: AgentMessage) => AgentMessage) => {
   if (!currentAgentMessageId) startAgentMessage();
   const id = currentAgentMessageId!;
-  messages.update((list) =>
-    list.map((m) => (m.id === id ? { ...m, content: m.content + delta } : m)),
-  );
+  messages.update((list) => list.map((m) => (m.id === id ? mutate(m) : m)));
+};
+
+const appendToLastPart = (
+  parts: MessagePart[],
+  kind: "text" | "reasoning",
+  delta: string,
+): MessagePart[] => {
+  const last = parts[parts.length - 1];
+  if (last && last.kind === kind) {
+    return [...parts.slice(0, -1), { kind, text: last.text + delta }];
+  }
+  return [...parts, { kind, text: delta }];
+};
+
+const appendText = (delta: string) => {
+  updateAgentMessage((m) => ({
+    ...m,
+    content: m.content + delta,
+    parts: appendToLastPart(m.parts ?? [], "text", delta),
+  }));
 };
 
 const appendReasoning = (delta: string) => {
-  if (!currentAgentMessageId) startAgentMessage();
-  const id = currentAgentMessageId!;
-  messages.update((list) =>
-    list.map((m) =>
-      m.id === id ? { ...m, reasoning: (m.reasoning ?? "") + delta } : m,
-    ),
-  );
+  updateAgentMessage((m) => ({
+    ...m,
+    parts: appendToLastPart(m.parts ?? [], "reasoning", delta),
+  }));
 };
 
 const recordToolCall = (call: { id: string; name: string; input: unknown }) => {
-  if (!currentAgentMessageId) startAgentMessage();
-  const id = currentAgentMessageId!;
-  messages.update((list) =>
-    list.map((m) =>
-      m.id === id ? { ...m, toolCalls: [...(m.toolCalls ?? []), call] } : m,
-    ),
-  );
+  updateAgentMessage((m) => ({
+    ...m,
+    parts: [...(m.parts ?? []), { kind: "tool", ...call }],
+  }));
 };
 
 const recordToolResult = (toolCallId: string, output: unknown) => {
   if (!currentAgentMessageId) return;
-  const id = currentAgentMessageId;
-  messages.update((list) =>
-    list.map((m) =>
-      m.id === id
-        ? {
-            ...m,
-            toolCalls: (m.toolCalls ?? []).map((c) =>
-              c.id === toolCallId ? { ...c, output } : c,
-            ),
-          }
-        : m,
+  updateAgentMessage((m) => ({
+    ...m,
+    parts: (m.parts ?? []).map((p) =>
+      p.kind === "tool" && p.id === toolCallId ? { ...p, output } : p,
     ),
-  );
+  }));
 };
 
 const handleEvent = (raw: unknown) => {

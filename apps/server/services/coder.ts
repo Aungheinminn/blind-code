@@ -1,5 +1,5 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
-import { resolveModel } from "./providers";
+import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
 
@@ -55,6 +55,11 @@ const buildPlanAppendix = (plan: Plan): string => {
 
 const DEFAULT_SYSTEM_PROMPT = `You are a coding agent working inside a sandboxed project directory. You build small web apps (React, Svelte, static sites, Node scripts) end-to-end from a user's natural-language request.
 
+Narration:
+- Before every tool call, output a single short sentence (5–15 words) describing what you're about to do. Example: "Listing files to see what's already here." or "Rewriting index.html with the new layout."
+- After a tool returns, only speak if the result changes your plan — one short line, no headers.
+- Keep narration terse; never restate the tool arguments or dump output back to the user.
+
 Your workflow:
 1. Call list_files first to see what already exists.
 2. Read any relevant files before modifying them.
@@ -73,6 +78,7 @@ Tools available: list_files, read_file, write_file, delete_file, run_command, up
 export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const model = await resolveModel(opts.provider, opts.model);
   const tools = buildCoderTools(opts.toolContext);
+  const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
   const messages: ModelMessage[] = [
     ...(opts.history ?? []).map(
@@ -92,6 +98,8 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
       tools,
       stopWhen: stepCountIs(opts.maxSteps ?? 20),
       abortSignal: opts.signal,
+      ...(reasoning.providerOptions ? { providerOptions: reasoning.providerOptions } : {}),
+      ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
     });
 
     for await (const chunk of result.fullStream) {

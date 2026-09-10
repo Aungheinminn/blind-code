@@ -1,4 +1,14 @@
-import type { LanguageModel } from "ai";
+import {
+  extractReasoningMiddleware,
+  streamText,
+  wrapLanguageModel,
+  type LanguageModel,
+} from "ai";
+
+type WrappedLanguageModel = Parameters<typeof wrapLanguageModel>[0]["model"];
+type StreamTextProviderOptions = NonNullable<
+  Parameters<typeof streamText>[0]["providerOptions"]
+>;
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -13,6 +23,35 @@ import { createFireworks } from "@ai-sdk/fireworks";
 import { createCerebras } from "@ai-sdk/cerebras";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getStoredKey, last4 } from "./authStore";
+
+const thinkTagMiddleware = extractReasoningMiddleware({ tagName: "think" });
+
+const emitsThinkTag = (provider: ProviderName, modelId: string): boolean => {
+  const id = modelId.toLowerCase();
+  switch (provider) {
+    case "perplexity":
+      return id.startsWith("sonar-reasoning") || id.startsWith("sonar-deep-research");
+    case "openrouter":
+      return id.includes("deepseek-r1") || id.includes("qwen");
+    case "togetherai":
+      return id.includes("deepseek-r1") || id.includes("qwen");
+    case "fireworks":
+      return id.includes("deepseek-r1");
+    case "cerebras":
+      return id.startsWith("qwen") || id.startsWith("deepseek");
+    default:
+      return false;
+  }
+};
+
+const wrapIfThinkTag = (
+  provider: ProviderName,
+  modelId: string,
+  model: WrappedLanguageModel,
+): WrappedLanguageModel =>
+  emitsThinkTag(provider, modelId)
+    ? wrapLanguageModel({ model, middleware: thinkTagMiddleware })
+    : model;
 
 export type ProviderName =
   | "anthropic"
@@ -44,7 +83,7 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
   openai: {
     envVar: "OPENAI_API_KEY",
     defaultModel: "gpt-4o",
-    build: (id, apiKey) => createOpenAI({ apiKey })(id),
+    build: (id, apiKey) => createOpenAI({ apiKey }).responses(id),
   },
   google: {
     envVar: "GOOGLE_GENERATIVE_AI_API_KEY",
@@ -79,27 +118,32 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
   perplexity: {
     envVar: "PERPLEXITY_API_KEY",
     defaultModel: "sonar-pro",
-    build: (id, apiKey) => createPerplexity({ apiKey })(id),
+    build: (id, apiKey) =>
+      wrapIfThinkTag("perplexity", id, createPerplexity({ apiKey })(id)),
   },
   togetherai: {
     envVar: "TOGETHER_AI_API_KEY",
     defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    build: (id, apiKey) => createTogetherAI({ apiKey })(id),
+    build: (id, apiKey) =>
+      wrapIfThinkTag("togetherai", id, createTogetherAI({ apiKey })(id)),
   },
   fireworks: {
     envVar: "FIREWORKS_API_KEY",
     defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct",
-    build: (id, apiKey) => createFireworks({ apiKey })(id),
+    build: (id, apiKey) =>
+      wrapIfThinkTag("fireworks", id, createFireworks({ apiKey })(id)),
   },
   cerebras: {
     envVar: "CEREBRAS_API_KEY",
     defaultModel: "llama3.3-70b",
-    build: (id, apiKey) => createCerebras({ apiKey })(id),
+    build: (id, apiKey) =>
+      wrapIfThinkTag("cerebras", id, createCerebras({ apiKey })(id)),
   },
   openrouter: {
     envVar: "OPENROUTER_API_KEY",
     defaultModel: "minimax/minimax-m3:free",
-    build: (id, apiKey) => createOpenRouter({ apiKey })(id),
+    build: (id, apiKey) =>
+      wrapIfThinkTag("openrouter", id, createOpenRouter({ apiKey })(id)),
   },
 };
 
@@ -147,6 +191,53 @@ export type ProviderStatus = {
   configured: boolean;
   source: ProviderKeySource;
   last4: string | null;
+};
+
+export type ReasoningRuntimeOptions = {
+  providerOptions?: StreamTextProviderOptions;
+  maxOutputTokens?: number;
+};
+
+export const getReasoningProviderOptions = (
+  provider: string,
+  modelId?: string,
+): ReasoningRuntimeOptions => {
+  const entry = PROVIDERS[provider as ProviderName];
+  if (!entry) return {};
+  const id = (modelId?.trim() || entry.defaultModel).toLowerCase();
+  switch (provider as ProviderName) {
+    case "openai":
+      return { providerOptions: { openai: { reasoningSummary: "auto" } } };
+    case "anthropic":
+      if (/^claude-(3-7|(sonnet|opus|haiku)-4)/.test(id)) {
+        return {
+          providerOptions: {
+            anthropic: { thinking: { type: "enabled", budgetTokens: 2048 } },
+          },
+          maxOutputTokens: 16000,
+        };
+      }
+      return {};
+    case "google":
+      if (id.startsWith("gemini-2.5")) {
+        return {
+          providerOptions: { google: { thinkingConfig: { includeThoughts: true } } },
+        };
+      }
+      return {};
+    case "xai":
+      if (id === "grok-3-mini" || id.startsWith("grok-4")) {
+        return { providerOptions: { xai: { reasoningEffort: "medium" } } };
+      }
+      return {};
+    case "groq":
+      if (id.startsWith("deepseek-r1") || id.startsWith("qwen")) {
+        return { providerOptions: { groq: { reasoningFormat: "parsed" } } };
+      }
+      return {};
+    default:
+      return {};
+  }
 };
 
 export const listAvailableProviders = async (): Promise<ProviderStatus[]> => {
