@@ -54,34 +54,45 @@
       </div>
     {/if}
     {#if hasReasoning}
-      <div class="mb-2">
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer"
-          style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
-          on:click={toggleReasoning}
+      {@const streaming = !message.content}
+      {#if streaming}
+        <div
+          class="mb-2 px-3 py-2 rounded-md border text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
+          style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-secondary);"
         >
-          <span
-            class="w-1.5 h-1.5 rounded-full {message.content ? '' : 'animate-pulse'}"
-            style="background-color: var(--accent);"
-            aria-hidden="true"
-          ></span>
-          <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
-          <span
-            class="inline-block text-[10px] transition-transform"
-            style="transform: rotate({reasoningExpanded ? 90 : 0}deg);"
-            aria-hidden="true"
-          >▸</span>
-        </button>
-        {#if reasoningExpanded}
-          <div
-            class="mt-2 pl-2 text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
-            style="color: var(--text-secondary); border-left: 2px solid var(--border);"
+          {message.reasoning}
+        </div>
+      {:else}
+        <div class="mb-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer"
+            style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
+            on:click={toggleReasoning}
+            aria-expanded={reasoningExpanded}
           >
-            <div class="pl-2">{message.reasoning}</div>
-          </div>
-        {/if}
-      </div>
+            <span
+              class="w-1.5 h-1.5 rounded-full"
+              style="background-color: var(--accent);"
+              aria-hidden="true"
+            ></span>
+            <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
+            <span
+              class="text-[10px]"
+              style="transform: rotate({reasoningExpanded ? 90 : 0}deg); transition: transform 150ms;"
+              aria-hidden="true"
+            >▸</span>
+          </button>
+          {#if reasoningExpanded}
+            <div
+              class="mt-1 px-3 py-2 rounded-md border text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
+              style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-secondary);"
+            >
+              {message.reasoning}
+            </div>
+          {/if}
+        </div>
+      {/if}
     {/if}
     {#if message.content}
       <div
