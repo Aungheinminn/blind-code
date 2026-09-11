@@ -74,6 +74,8 @@ const pickDevCommand = (pkg: any, port: number): string[] | null => {
   return null;
 };
 
+const STATIC_SERVER_SCRIPT = join(import.meta.dir, "staticServer.ts");
+
 export type PreviewStatus =
   | { state: "none"; reason: string }
   | { state: "installing" }
@@ -98,22 +100,28 @@ export class PreviewManager {
     const cwd = join(SANDBOX_ROOT, projectId);
     await mkdir(cwd, { recursive: true });
     const pkg = await readPackageJson(cwd);
+    const hasIndexHtml = existsSync(join(cwd, "index.html"));
 
-    if (!pkg) {
-      const s: PreviewStatus = { state: "none", reason: "no package.json in project" };
+    if (!pkg && !hasIndexHtml) {
+      const s: PreviewStatus = {
+        state: "none",
+        reason: "no package.json or index.html in project",
+      };
       onStatus?.(s);
       return s;
     }
 
     const port = await findFreePort();
-    const command = pickDevCommand(pkg, port);
+    const devCommand = pkg ? pickDevCommand(pkg, port) : null;
+    const command =
+      devCommand ?? (hasIndexHtml ? ["bun", "run", STATIC_SERVER_SCRIPT] : null);
     if (!command) {
       const s: PreviewStatus = { state: "none", reason: "no 'dev' or 'start' script" };
       onStatus?.(s);
       return s;
     }
 
-    if (existsSync(join(cwd, "package.json")) && !existsSync(join(cwd, "node_modules"))) {
+    if (pkg && existsSync(join(cwd, "package.json")) && !existsSync(join(cwd, "node_modules"))) {
       onStatus?.({ state: "installing" });
       const install = Bun.spawn(["bun", "install"], {
         cwd,
