@@ -18,7 +18,7 @@
     activePlan,
     todoStatuses,
     planError,
-    projectFiles,
+    assembledFiles,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
@@ -77,7 +77,7 @@
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell"
     style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
   >
-    <SandpackPreview bind:this={sandpack} files={$projectFiles} />
+    <SandpackPreview bind:this={sandpack} files={$assembledFiles} />
   </div>
 
   <FloatingControls on:restart={() => sandpack?.refresh()} />

@@ -1,4 +1,5 @@
-import { writable, get } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
+import { assembleReactProject } from "$lib/preview/reactAssembler";
 import { enabledModels, loadConnect, providersState } from "./connect";
 import { getWsTicket } from "$lib/api/auth";
 import { getProjectFiles, getProjectHistory } from "$lib/api/projects";
@@ -74,6 +75,10 @@ export type PreviewState =
 export const previewState = writable<PreviewState>({ state: "idle" });
 
 export const projectFiles = writable<Record<string, string>>({});
+
+export const assembledFiles = derived(projectFiles, ($files) =>
+  Object.keys($files).length === 0 ? {} : assembleReactProject($files),
+);
 
 export const activePlan = writable<Plan | null>(null);
 export const todoStatuses = writable<Record<string, TodoStatus>>({});
