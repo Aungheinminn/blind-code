@@ -186,6 +186,8 @@ export const agentController = (app: Elysia) =>
 
         const textBlocks = new Map<string, string>();
         const reasoningBlocks = new Map<string, string>();
+        const pendingWrites = new Map<string, { path: string; content: string }>();
+        const pendingDeletes = new Map<string, { path: string }>();
 
         const persistBlock = async (
           kind: "assistant_text" | "assistant_reasoning",
@@ -253,6 +255,41 @@ export const agentController = (app: Elysia) =>
 
         const handleEvent = async (event: CoderEvent) => {
           await publish(event);
+          if (event.type === "tool-call") {
+            if (event.toolName === "write_file") {
+              const input = event.input as { path?: string; content?: string } | undefined;
+              if (typeof input?.path === "string" && typeof input?.content === "string") {
+                pendingWrites.set(event.toolCallId, { path: input.path, content: input.content });
+              }
+            } else if (event.toolName === "delete_file") {
+              const input = event.input as { path?: string } | undefined;
+              if (typeof input?.path === "string") {
+                pendingDeletes.set(event.toolCallId, { path: input.path });
+              }
+            }
+          } else if (event.type === "tool-result") {
+            const outputHasPath =
+              event.output != null &&
+              typeof event.output === "object" &&
+              typeof (event.output as { path?: unknown }).path === "string";
+            if (event.toolName === "write_file" && outputHasPath) {
+              const pending = pendingWrites.get(event.toolCallId);
+              if (pending) {
+                pendingWrites.delete(event.toolCallId);
+                await publish({
+                  type: "file-updated",
+                  path: pending.path,
+                  content: pending.content,
+                });
+              }
+            } else if (event.toolName === "delete_file" && outputHasPath) {
+              const pending = pendingDeletes.get(event.toolCallId);
+              if (pending) {
+                pendingDeletes.delete(event.toolCallId);
+                await publish({ type: "file-deleted", path: pending.path });
+              }
+            }
+          }
           if (!sessionId) return;
           switch (event.type) {
             case "text-start":

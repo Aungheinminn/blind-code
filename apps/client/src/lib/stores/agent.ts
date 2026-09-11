@@ -1,7 +1,7 @@
 import { writable, get } from "svelte/store";
 import { enabledModels, loadConnect, providersState } from "./connect";
 import { getWsTicket } from "$lib/api/auth";
-import { getProjectHistory } from "$lib/api/projects";
+import { getProjectFiles, getProjectHistory } from "$lib/api/projects";
 
 export type ToolPart = {
   kind: "tool";
@@ -73,6 +73,8 @@ export type PreviewState =
 
 export const previewState = writable<PreviewState>({ state: "idle" });
 
+export const projectFiles = writable<Record<string, string>>({});
+
 export const activePlan = writable<Plan | null>(null);
 export const todoStatuses = writable<Record<string, TodoStatus>>({});
 export const planError = writable<string | null>(null);
@@ -89,6 +91,16 @@ const WELCOME_MESSAGE: AgentMessage = {
   content:
     "Hi. Pick a provider on the right, describe what you want to build, and I'll write the files into your sandbox.",
   timestamp: new Date(),
+};
+
+export const loadProjectFiles = async (projectId: string): Promise<void> => {
+  try {
+    const files = await getProjectFiles(projectId);
+    projectFiles.set(files ?? {});
+  } catch (e) {
+    console.warn("Failed to load project files", e);
+    projectFiles.set({});
+  }
 };
 
 export const loadHistory = async (projectId: string): Promise<void> => {
@@ -127,6 +139,7 @@ export const resetWorkspace = () => {
   isRunning.set(false);
   resetPlan();
   previewState.set({ state: "idle" });
+  projectFiles.set({});
   currentAgentMessageId = null;
   activeTurnId = null;
   activeProjectId = null;
@@ -370,6 +383,20 @@ const handleEvent = (raw: unknown) => {
       break;
     case "preview":
       if (event.status) previewState.set(event.status);
+      break;
+    case "file-updated":
+      if (typeof event.path === "string" && typeof event.content === "string") {
+        projectFiles.update((f) => ({ ...f, [event.path]: event.content }));
+      }
+      break;
+    case "file-deleted":
+      if (typeof event.path === "string") {
+        projectFiles.update((f) => {
+          const next = { ...f };
+          delete next[event.path];
+          return next;
+        });
+      }
       break;
     case "turn-terminal":
       appendText(undefined, `\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);

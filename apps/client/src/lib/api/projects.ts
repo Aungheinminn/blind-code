@@ -52,3 +52,6 @@ export type HistoryMessage = {
 
 export const getProjectHistory = (id: string) =>
   fetchJson<HistoryMessage[]>(`/projects/${id}/history`);
+
+export const getProjectFiles = (id: string) =>
+  fetchJson<Record<string, string>>(`/projects/${id}/files`);
