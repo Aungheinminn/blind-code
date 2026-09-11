@@ -11,7 +11,6 @@
     sendPrompt,
     cancelAgent,
     previewState,
-    restartPreview,
     loadHistory,
     resetWorkspace,
     resumeTurn,
@@ -19,7 +18,7 @@
     todoStatuses,
     planError,
   } from "$lib/stores/agent";
-  import PreviewWindow from "$lib/components/PreviewWindow.svelte";
+  import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import FloatingControls from "$lib/components/workspace/FloatingControls.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
@@ -28,8 +27,9 @@
 
   let panelOpen = true;
   let activeProjectId: string | null = null;
+  let sandpack: SandpackPreview | undefined;
+  const files: Record<string, string> = {};
 
-  $: previewUrl = $previewState.state === "ready" ? $previewState.url : "";
   $: statusText =
     $previewState.state === "installing"
       ? "installing…"
@@ -75,10 +75,10 @@
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell"
     style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
   >
-    <PreviewWindow url={previewUrl} />
+    <SandpackPreview bind:this={sandpack} {files} />
   </div>
 
-  <FloatingControls on:restart={() => restartPreview(projectId)} />
+  <FloatingControls on:restart={() => sandpack?.refresh()} />
 
   <AgentPanel
     open={panelOpen}
