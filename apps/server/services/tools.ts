@@ -177,59 +177,6 @@ export const buildWriteTools = (ctx: ToolContext) => {
         note?: string;
       }) => ({ id, status, note: note ?? null }),
     }),
-
-    run_command: tool({
-      description:
-        "Run a shell command inside the project sandbox. Returns stdout, stderr, and the exit code. Use for installs, builds, and quick checks. Long-running dev servers should NOT be started with this — the platform manages those separately.",
-      inputSchema: z.object({
-        command: z
-          .array(z.string())
-          .min(1)
-          .describe("Argv array, e.g. ['bun', 'install'] or ['bun', 'run', 'build']"),
-        timeoutMs: z
-          .number()
-          .int()
-          .positive()
-          .max(120_000)
-          .optional()
-          .describe("Kill the process after this many ms. Default 60000."),
-      }),
-      execute: idem(
-        "run_command",
-        async ({ command, timeoutMs }: { command: string[]; timeoutMs?: number }) => {
-          const cwd = sandboxDir(sandboxProjectId);
-          await mkdir(cwd, { recursive: true });
-
-          const child = Bun.spawn(command, {
-            cwd,
-            stdout: "pipe",
-            stderr: "pipe",
-            env: { ...process.env, CI: "1" },
-          });
-
-          const timer = setTimeout(() => {
-            try {
-              child.kill("SIGKILL");
-            } catch {}
-          }, timeoutMs ?? 60_000);
-
-          const [stdout, stderr, exitCode] = await Promise.all([
-            new Response(child.stdout).text(),
-            new Response(child.stderr).text(),
-            child.exited,
-          ]);
-          clearTimeout(timer);
-
-          const cap = (s: string) => (s.length > 8000 ? s.slice(0, 8000) + "\n…[truncated]" : s);
-          return {
-            command: command.join(" "),
-            exitCode,
-            stdout: cap(stdout),
-            stderr: cap(stderr),
-          };
-        },
-      ),
-    }),
   };
 };
 

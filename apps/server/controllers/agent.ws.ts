@@ -11,7 +11,6 @@ import { runPlanner, type Plan } from "../services/planner";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
-import { previewManager } from "../services/preview";
 import { turnBus } from "../services/turnBus";
 import {
   ensureProject,
@@ -34,12 +33,10 @@ type AgentIncoming =
       history?: CoderChatMessage[];
       maxSteps?: number;
       systemPrompt?: string;
-      autoPreview?: boolean;
       usePlan?: boolean;
       plannerMaxSteps?: number;
     }
   | { type: "cancel" }
-  | { type: "restart-preview"; projectId: string }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
 
 const hydrateSandbox = async (sandboxProjectId: string, dbProjectId: string | null) => {
@@ -103,20 +100,6 @@ export const agentController = (app: Elysia) =>
           (ws.data as any).abort?.abort();
           (ws.data as any).abort = new AbortController();
           ws.send({ type: "cancelled" });
-          return;
-        }
-
-        if (msg.type === "restart-preview") {
-          const owned = await ensureProject(msg.projectId, userId);
-          if (owned?.forbidden) {
-            ws.send({ type: "error", error: "forbidden" });
-            return;
-          }
-          previewManager.stop(msg.projectId);
-          const status = await previewManager.ensureRunning(msg.projectId, (s) =>
-            ws.send({ type: "preview", status: s }),
-          );
-          ws.send({ type: "preview", status });
           return;
         }
 
@@ -380,13 +363,5 @@ export const agentController = (app: Elysia) =>
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 
         await publish({ type: "done" });
-
-        if (msg.autoPreview !== false) {
-          previewManager.stop(msg.projectId);
-          const status = await previewManager.ensureRunning(msg.projectId, (s) =>
-            ws.send({ type: "preview", status: s }),
-          );
-          ws.send({ type: "preview", status });
-        }
       },
     });

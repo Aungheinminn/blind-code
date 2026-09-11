@@ -64,16 +64,6 @@ export const providers = writable<ProviderInfo[]>([]);
 export const selectedProvider = writable<string>("anthropic");
 export const selectedModel = writable<string>("");
 
-export type PreviewState =
-  | { state: "idle" }
-  | { state: "installing" }
-  | { state: "starting"; port: number }
-  | { state: "ready"; url: string }
-  | { state: "none"; reason: string }
-  | { state: "error"; error: string };
-
-export const previewState = writable<PreviewState>({ state: "idle" });
-
 export const projectFiles = writable<Record<string, string>>({});
 
 export const assembledFiles = derived(projectFiles, ($files) =>
@@ -143,7 +133,6 @@ export const resetWorkspace = () => {
   messages.set([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
   isRunning.set(false);
   resetPlan();
-  previewState.set({ state: "idle" });
   projectFiles.set({});
   currentAgentMessageId = null;
   activeTurnId = null;
@@ -386,9 +375,6 @@ const handleEvent = (raw: unknown) => {
     case "error":
       appendText(undefined, `\n\n_Error: ${event.error}_`);
       break;
-    case "preview":
-      if (event.status) previewState.set(event.status);
-      break;
     case "file-updated":
       if (typeof event.path === "string" && typeof event.content === "string") {
         projectFiles.update((f) => ({ ...f, [event.path]: event.content }));
@@ -419,15 +405,6 @@ const handleEvent = (raw: unknown) => {
       lastOrdinal = -1;
       break;
   }
-};
-
-export const restartPreview = (projectId: string) => {
-  previewState.set({ state: "starting", port: 0 });
-  const send = () => {
-    socket?.send(JSON.stringify({ type: "restart-preview", projectId }));
-  };
-  if (socket && socket.readyState === WebSocket.OPEN) send();
-  else ensureSocket().then(send).catch(() => {});
 };
 
 export const sendPrompt = async (

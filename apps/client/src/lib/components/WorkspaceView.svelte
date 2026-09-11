@@ -10,7 +10,6 @@
     loadProviders,
     sendPrompt,
     cancelAgent,
-    previewState,
     loadHistory,
     loadProjectFiles,
     resetWorkspace,
@@ -31,14 +30,7 @@
   let activeProjectId: string | null = null;
   let sandpack: SandpackPreview | undefined;
 
-  $: statusText =
-    $previewState.state === "installing"
-      ? "installing…"
-      : $previewState.state === "starting"
-      ? "starting…"
-      : $isRunning
-      ? "working…"
-      : "idle";
+  $: statusText = $isRunning ? "working…" : "idle";
   $: currentProvider = $providers.find((p) => p.name === $selectedProvider);
   $: modelPlaceholder = currentProvider?.defaultModel ?? "";
 
