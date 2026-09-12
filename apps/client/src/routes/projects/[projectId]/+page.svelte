@@ -200,25 +200,18 @@
         </div>
       </form>
 
-      <div
-        class="mt-12 rounded-xl border p-4"
-        style="border-color: #ef4444; background-color: rgba(239, 68, 68, 0.05);"
-      >
-        <p class="text-sm font-medium" style="color: #ef4444;">Danger zone</p>
-        <p class="mt-1 text-xs" style="color: var(--text-secondary);">
-          Deleting a project removes it permanently. This cannot be undone.
-        </p>
+      <div class="mt-12">
         {#if !confirmingDelete}
           <button
             type="button"
-            class="mt-3 px-3 py-2 rounded-md text-sm font-medium border cursor-pointer"
+            class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer"
             style="border-color: #ef4444; color: #ef4444; background-color: transparent;"
             on:click={() => (confirmingDelete = true)}
           >
             Delete project
           </button>
         {:else}
-          <div class="mt-3 flex items-center gap-2">
+          <div class="flex items-center gap-2">
             <button
               type="button"
               disabled={deleteBusy}
