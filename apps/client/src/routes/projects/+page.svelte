@@ -2,8 +2,15 @@
   import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
   import { page as pageStore } from "$app/stores";
-  import { listProjects, createProject, type Project } from "$lib/api/projects";
+  import {
+    listProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+    type Project,
+  } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
+  import ProjectCard from "$lib/components/projects/ProjectCard.svelte";
 
   const PAGE_SIZE = 12;
 
@@ -23,9 +30,21 @@
 
   let showCreate = false;
   let newName = "";
+  let newDescription = "";
   let createBusy = false;
   let createError = "";
   let nameInput: HTMLInputElement | null = null;
+
+  let editTarget: Project | null = null;
+  let editName = "";
+  let editDescription = "";
+  let editBusy = false;
+  let editError = "";
+  let editNameInput: HTMLInputElement | null = null;
+
+  let deleteTarget: Project | null = null;
+  let deleteBusy = false;
+  let deleteError = "";
 
   onMount(() => {
     const params = $pageStore.url.searchParams;
@@ -102,6 +121,7 @@
     showCreate = true;
     createError = "";
     newName = "";
+    newDescription = "";
     await tick();
     nameInput?.focus();
   };
@@ -110,6 +130,7 @@
     if (createBusy) return;
     showCreate = false;
     newName = "";
+    newDescription = "";
     createError = "";
   };
 
@@ -119,9 +140,11 @@
     createBusy = true;
     createError = "";
     try {
-      await createProject(name);
+      const description = newDescription.trim() ? newDescription : null;
+      await createProject({ name, description });
       showCreate = false;
       newName = "";
+      newDescription = "";
       lastKey = "";
       page = 1;
       q = "";
@@ -133,20 +156,98 @@
     }
   };
 
-  const onKeydown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") closeCreate();
+  const openEdit = async (project: Project) => {
+    editTarget = project;
+    editName = project.name;
+    editDescription = project.description ?? "";
+    editError = "";
+    await tick();
+    editNameInput?.focus();
+    editNameInput?.select();
   };
 
-  const formatDate = (iso: string) => {
+  const closeEdit = () => {
+    if (editBusy) return;
+    editTarget = null;
+    editName = "";
+    editDescription = "";
+    editError = "";
+  };
+
+  const submitEdit = async () => {
+    if (!editTarget || editBusy) return;
+    const name = editName.trim();
+    if (!name) return;
+    const currentDesc = editTarget.description ?? "";
+    const nextDesc = editDescription.trim() === "" ? null : editDescription;
+    const nameChanged = name !== editTarget.name;
+    const descChanged = (nextDesc ?? "") !== currentDesc;
+    if (!nameChanged && !descChanged) {
+      closeEdit();
+      return;
+    }
+    editBusy = true;
+    editError = "";
     try {
-      return new Date(iso).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "";
+      const patch: { name?: string; description?: string | null } = {};
+      if (nameChanged) patch.name = name;
+      if (descChanged) patch.description = nextDesc;
+      const updated = await updateProject(editTarget.id, patch);
+      if (updated) {
+        items = items.map((p) => (p.id === updated.id ? updated : p));
+      }
+      editTarget = null;
+      editName = "";
+      editDescription = "";
+    } catch (e) {
+      editError = e instanceof Error ? e.message : String(e);
+    } finally {
+      editBusy = false;
     }
   };
+
+  const openDelete = (project: Project) => {
+    deleteTarget = project;
+    deleteError = "";
+  };
+
+  const closeDelete = () => {
+    if (deleteBusy) return;
+    deleteTarget = null;
+    deleteError = "";
+  };
+
+  const submitDelete = async () => {
+    if (!deleteTarget || deleteBusy) return;
+    deleteBusy = true;
+    deleteError = "";
+    try {
+      await deleteProject(deleteTarget.id);
+      const removedId = deleteTarget.id;
+      deleteTarget = null;
+      items = items.filter((p) => p.id !== removedId);
+      total = Math.max(0, total - 1);
+      if (items.length === 0 && page > 1) {
+        page = page - 1;
+      } else {
+        lastKey = "";
+        load();
+      }
+    } catch (e) {
+      deleteError = e instanceof Error ? e.message : String(e);
+    } finally {
+      deleteBusy = false;
+    }
+  };
+
+  const onKeydown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      closeCreate();
+      closeEdit();
+      closeDelete();
+    }
+  };
+
 </script>
 
 <svelte:head>
@@ -248,37 +349,19 @@
     {:else}
       <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each items as project (project.id)}
-          <a
-            href={`/projects/${project.id}/workspace`}
-            class="block rounded-xl border transition-transform no-underline p-4"
-            style="border-color: var(--border); background-color: var(--bg-secondary); color: var(--text-primary);"
-          >
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm font-medium truncate">{project.name}</span>
-              <span class="text-[11px] shrink-0" style="color: var(--text-tertiary);">
-                {formatDate(project.updatedAt)}
-              </span>
-            </div>
-            <p class="mt-3 text-xs line-clamp-2" style="color: var(--text-secondary);">
-              {project.description ?? "No description."}
-            </p>
-            {#if project.isArchived}
-              <span
-                class="mt-3 inline-block text-[10px] px-1.5 py-0.5 rounded"
-                style="background-color: var(--bg-tertiary); color: var(--text-tertiary);"
-              >
-                Archived
-              </span>
-            {/if}
-          </a>
+          <ProjectCard
+            {project}
+            on:edit={(e) => openEdit(e.detail)}
+            on:delete={(e) => openDelete(e.detail)}
+          />
         {/each}
       </div>
 
-      {#if totalPages > 1}
-        <div class="mt-8 flex items-center justify-between gap-3">
-          <span class="text-xs" style="color: var(--text-tertiary);">
-            {total} project{total === 1 ? "" : "s"}
-          </span>
+      <div class="mt-8 flex items-center justify-between gap-3">
+        <span class="text-xs" style="color: var(--text-tertiary);">
+          {total} project{total === 1 ? "" : "s"}
+        </span>
+        {#if totalPages > 1}
           <div class="flex items-center gap-2">
             <button
               type="button"
@@ -302,8 +385,8 @@
               Next
             </button>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     {/if}
   </div>
 </div>
@@ -331,7 +414,7 @@
         </p>
       </div>
 
-      <div class="px-5 py-5">
+      <div class="px-5 py-5 space-y-4">
         <label class="block text-xs font-medium" style="color: var(--text-secondary);">
           Project name
           <input
@@ -343,6 +426,17 @@
             class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
             style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
           />
+        </label>
+
+        <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+          Description
+          <textarea
+            rows="3"
+            bind:value={newDescription}
+            placeholder="What is this project for?"
+            class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none resize-none"
+            style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          ></textarea>
         </label>
 
         {#if createError}
@@ -378,5 +472,148 @@
         </button>
       </div>
     </form>
+  </div>
+{/if}
+
+{#if editTarget}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    style="background-color: rgba(0, 0, 0, 0.55);"
+    on:click|self={closeEdit}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="edit-project-title"
+    tabindex="-1"
+  >
+    <form
+      on:submit|preventDefault={submitEdit}
+      class="w-full max-w-md rounded-xl border shadow-xl"
+      style="border-color: var(--border); background-color: var(--bg-secondary);"
+    >
+      <div class="px-5 pt-5 pb-4 border-b" style="border-color: var(--border);">
+        <h2 id="edit-project-title" class="text-base font-semibold">Edit project</h2>
+        <p class="mt-1 text-xs" style="color: var(--text-secondary);">
+          Update the name or description.
+        </p>
+      </div>
+
+      <div class="px-5 py-5 space-y-4">
+        <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+          Project name
+          <input
+            type="text"
+            bind:this={editNameInput}
+            bind:value={editName}
+            required
+            class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
+            style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          />
+        </label>
+
+        <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+          Description
+          <textarea
+            rows="3"
+            bind:value={editDescription}
+            placeholder="What is this project for?"
+            class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none resize-none"
+            style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          ></textarea>
+        </label>
+
+        {#if editError}
+          <div
+            class="rounded-md border px-3 py-2 text-xs"
+            style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
+          >
+            {editError}
+          </div>
+        {/if}
+      </div>
+
+      <div
+        class="px-5 py-4 flex items-center justify-end gap-2 border-t"
+        style="border-color: var(--border); background-color: var(--bg-tertiary); border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"
+      >
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
+          style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-panel);"
+          disabled={editBusy}
+          on:click={closeEdit}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={!editName.trim() || editBusy}
+          class="px-3 py-2 rounded-md text-sm font-medium text-white cursor-pointer disabled:opacity-50"
+          style="background-color: var(--accent);"
+        >
+          {editBusy ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </form>
+  </div>
+{/if}
+
+{#if deleteTarget}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    style="background-color: rgba(0, 0, 0, 0.55);"
+    on:click|self={closeDelete}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-project-title"
+    tabindex="-1"
+  >
+    <div
+      class="w-full max-w-md rounded-xl border shadow-xl"
+      style="border-color: var(--border); background-color: var(--bg-secondary);"
+    >
+      <div class="px-5 pt-5 pb-4 border-b" style="border-color: var(--border);">
+        <h2 id="delete-project-title" class="text-base font-semibold">Delete project</h2>
+        <p class="mt-1 text-xs" style="color: var(--text-secondary);">
+          "{deleteTarget.name}" will be permanently deleted. This cannot be undone.
+        </p>
+      </div>
+
+      {#if deleteError}
+        <div class="px-5 pt-4">
+          <div
+            class="rounded-md border px-3 py-2 text-xs"
+            style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
+          >
+            {deleteError}
+          </div>
+        </div>
+      {/if}
+
+      <div
+        class="px-5 py-4 flex items-center justify-end gap-2 border-t mt-4"
+        style="border-color: var(--border); background-color: var(--bg-tertiary); border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"
+      >
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
+          style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-panel);"
+          disabled={deleteBusy}
+          on:click={closeDelete}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={deleteBusy}
+          on:click={submitDelete}
+          class="px-3 py-2 rounded-md text-sm font-medium text-white cursor-pointer disabled:opacity-50"
+          style="background-color: #ef4444;"
+        >
+          {deleteBusy ? "Deleting…" : "Delete"}
+        </button>
+      </div>
+    </div>
   </div>
 {/if}

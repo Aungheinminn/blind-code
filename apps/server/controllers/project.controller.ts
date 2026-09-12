@@ -53,7 +53,8 @@ export const projectController = (app: Elysia) =>
         set.status = 400;
         return { error: "name required" };
       }
-      const project = await ensureProject(name, user.id);
+      const description = typeof b.description === "string" ? b.description : undefined;
+      const project = await ensureProject(name, user.id, { description });
       if (project?.forbidden) {
         set.status = 409;
         return { error: "project name already taken" };

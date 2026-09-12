@@ -40,11 +40,13 @@ export const listProjects = (opts: ProjectListQuery = {}) => {
 
 export const getProject = (id: string) => fetchJson<Project | null>(`/projects/${id}`);
 
-export const createProject = (name: string) =>
-  fetchJson<{ id: string; created: boolean } | Project>("/projects", {
+export const createProject = (input: string | { name: string; description?: string | null }) => {
+  const body = typeof input === "string" ? { name: input } : input;
+  return fetchJson<{ id: string; created: boolean } | Project>("/projects", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
+};
 
 export const updateProject = (id: string, patch: ProjectPatch) =>
   fetchJson<Project | null>(`/projects/${id}`, {

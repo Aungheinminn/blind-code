@@ -31,6 +31,7 @@ export const createUser = async (
 export const ensureProject = async (
   projectIdOrName: string,
   ownerId: string,
+  opts: { description?: string | null } = {},
 ): Promise<{ id: string; created: boolean; forbidden?: boolean } | null> => {
   if (!db) return null;
   const id = projectIdFor(projectIdOrName, ownerId);
@@ -40,9 +41,14 @@ export const ensureProject = async (
     return { id: found[0].id, created: false };
   }
 
+  const description =
+    typeof opts.description === "string" && opts.description.trim().length > 0
+      ? opts.description
+      : null;
+
   const [created] = await db
     .insert(schema.projects)
-    .values({ id, ownerId, name: projectIdOrName })
+    .values({ id, ownerId, name: projectIdOrName, description })
     .returning();
   return { id: created.id, created: true };
 };
