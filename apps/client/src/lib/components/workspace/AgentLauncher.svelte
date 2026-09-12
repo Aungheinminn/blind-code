@@ -37,7 +37,7 @@
 
 <button
   type="button"
-  class="absolute left-4 bottom-4 z-20 w-[290px] max-w-[calc(100%-32px)] rounded-[14px] border flex flex-col overflow-hidden cursor-pointer text-left transition-all duration-200 launcher"
+  class="absolute left-[19px] bottom-[19px] z-20 w-[290px] max-w-[calc(100%-38px)] rounded-[14px] border flex flex-col overflow-hidden cursor-pointer text-left transition-all duration-200 launcher"
   style="border-color: var(--chrome-border); background: var(--chrome); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); opacity: {hidden
     ? 0
     : 1}; pointer-events: {hidden ? 'none' : 'auto'}; transform: {hidden

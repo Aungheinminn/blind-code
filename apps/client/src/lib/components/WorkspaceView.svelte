@@ -69,10 +69,9 @@
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell"
     style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
   >
-    <SandpackPreview bind:this={sandpack} files={$assembledFiles} />
+    <SandpackPreview bind:this={sandpack} files={$assembledFiles} framed={panelOpen} />
+    <FloatingControls on:restart={() => sandpack?.refresh()} />
   </div>
-
-  <FloatingControls on:restart={() => sandpack?.refresh()} />
 
   <AgentPanel
     open={panelOpen}

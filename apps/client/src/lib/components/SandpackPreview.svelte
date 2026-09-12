@@ -9,6 +9,7 @@
 
   export let files: Record<string, string> = {};
   export let template: SandpackTemplate = "create-react-app-typescript";
+  export let framed: boolean = true;
 
   let iframe: HTMLIFrameElement;
   let client: SandpackClient | null = null;
@@ -138,12 +139,35 @@ button {
   }
 </script>
 
-<div class="h-full w-full" style="background-color: var(--bg-primary);">
-  <iframe
-    bind:this={iframe}
-    class="h-full w-full border-0"
-    title="Preview"
-    allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
-    sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
-  ></iframe>
+<div
+  class="h-full w-full flex preview-canvas"
+  class:framed
+  style="background-color: var(--bg-primary);"
+>
+  <div
+    class="flex-1 min-w-0 min-h-0 overflow-hidden preview-frame"
+    class:framed
+    style="background-color: #ffffff;"
+  >
+    <iframe
+      bind:this={iframe}
+      class="h-full w-full border-0 block"
+      title="Preview"
+      allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
+      sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
+    ></iframe>
+  </div>
 </div>
+
+<style>
+  .preview-canvas.framed {
+    padding: 16px;
+  }
+  .preview-frame.framed {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow:
+      0 10px 30px -12px rgba(0, 0, 0, 0.45),
+      0 2px 6px -2px rgba(0, 0, 0, 0.35);
+  }
+</style>

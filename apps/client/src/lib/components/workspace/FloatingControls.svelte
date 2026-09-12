@@ -5,7 +5,7 @@
   const dispatch = createEventDispatcher<{ restart: void }>();
 </script>
 
-<div class="absolute bottom-4 right-4 z-30 flex gap-2">
+<div class="absolute bottom-[19px] right-[19px] z-30 flex gap-2">
   <button
     type="button"
     class="chrome-button"
