@@ -1,40 +1,20 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import PromptGenerator from "$lib/components/landing/PromptGenerator.svelte";
+  import SampleBuilds from "$lib/components/landing/SampleBuilds.svelte";
 </script>
 
 <svelte:head>
   <title>Blind Code — AI Coding Platform</title>
-  <meta name="description" content="Build, preview, and deploy with an AI coding agent." />
+  <meta
+    name="description"
+    content="Describe the app you want to build. Watch the agent scaffold it with a live preview."
+  />
 </svelte:head>
 
-<div class="flex flex-col items-center justify-center px-6" style="min-height: calc(100vh - 3.5rem);">
-  <div class="max-w-lg w-full text-center">
-    <div
-      class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
-      style="background-color: var(--accent-subtle); color: var(--accent);"
-    >
-      <span class="w-1.5 h-1.5 rounded-full" style="background-color: var(--success);"></span>
-      Ready
-    </div>
-
-    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-      Code with AI,<br/>preview in real-time.
-    </h1>
-
-    <p class="mt-4 text-sm leading-relaxed max-w-md mx-auto" style="color: var(--text-secondary);">
-      An AI-powered coding workspace. Describe what you want, watch the agent build it, and see live previews — all in one place.
-    </p>
-
-    <div class="mt-8 flex items-center justify-center gap-3">
-      <button
-        class="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-colors cursor-pointer"
-        style="background-color: var(--accent);"
-        on:mouseenter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
-        on:mouseleave={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
-        on:click={() => goto("/projects")}
-      >
-        View Projects
-      </button>
-    </div>
-  </div>
+<div
+  class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20 flex flex-col gap-14"
+  style="min-height: calc(100vh - 3.5rem);"
+>
+  <PromptGenerator />
+  <SampleBuilds />
 </div>
