@@ -41,12 +41,13 @@
   // considered "active" (streaming, inline) when it's the last group in the
   // message; once anything follows, it collapses to a pill with a toggle.
   let manualExpanded: Record<number, boolean> = {};
-  const toggleReasoning = (i: number, currentlyExpanded: boolean) => {
-    manualExpanded = { ...manualExpanded, [i]: !currentlyExpanded };
-  };
-  const isReasoningExpanded = (partIndex: number, isLastGroup: boolean): boolean => {
-    if (partIndex in manualExpanded) return manualExpanded[partIndex];
-    return isLastGroup;
+  const toggleReasoning = (partIndex: number) => {
+    const idx = groups.findIndex(
+      (g) => g.kind === "reasoning" && g.lastIndex === partIndex,
+    );
+    const isLast = idx === groups.length - 1;
+    const current = partIndex in manualExpanded ? manualExpanded[partIndex] : isLast;
+    manualExpanded = { ...manualExpanded, [partIndex]: !current };
   };
 </script>
 
@@ -114,45 +115,35 @@
       {/if}
     {:else if group.kind === "reasoning"}
       {@const partIndex = group.lastIndex}
-      {@const expanded = isReasoningExpanded(partIndex, isLastGroup)}
-      {#if isLastGroup && !(partIndex in manualExpanded)}
-        <div
-          class="px-3 py-2 rounded-md border text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
-          style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-secondary);"
+      {@const expanded = partIndex in manualExpanded ? manualExpanded[partIndex] : isLastGroup}
+      <button
+        type="button"
+        class="reasoning-toggle flex items-start gap-1.5 text-left italic w-full min-w-0"
+        style="color: var(--text-tertiary); font-size: 13.5px; line-height: 1.7; letter-spacing: -0.003em;"
+        on:click|preventDefault|stopPropagation={() => toggleReasoning(partIndex)}
+        aria-expanded={expanded}
+      >
+        <svg
+          class="shrink-0"
+          width="10"
+          height="10"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="margin-top: 7px; transform: rotate({expanded ? 90 : 0}deg); transition: transform 150ms;"
+          aria-hidden="true"
         >
-          {group.text}
-        </div>
-      {:else}
-        <div>
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer"
-            style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
-            on:click={() => toggleReasoning(partIndex, expanded)}
-            aria-expanded={expanded}
-          >
-            <span
-              class="w-1.5 h-1.5 rounded-full"
-              style="background-color: var(--accent);"
-              aria-hidden="true"
-            ></span>
-            <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
-            <span
-              class="text-[10px]"
-              style="transform: rotate({expanded ? 90 : 0}deg); transition: transform 150ms;"
-              aria-hidden="true"
-            >▸</span>
-          </button>
-          {#if expanded}
-            <div
-              class="mt-1.5 px-3 py-2 rounded-md border text-[12.5px] leading-[1.55] whitespace-pre-wrap break-words italic"
-              style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-secondary);"
-            >
-              {group.text}
-            </div>
-          {/if}
-        </div>
-      {/if}
+          <polyline points="4 2 8 6 4 10" />
+        </svg>
+        {#if expanded}
+          <span class="whitespace-pre-wrap break-words flex-1 min-w-0">{group.text}</span>
+        {:else}
+          <span class="truncate flex-1 min-w-0">{group.text}</span>
+        {/if}
+      </button>
     {:else if group.kind === "tools"}
       <ToolCallList calls={group.calls} />
     {/if}
@@ -166,5 +157,17 @@
   @keyframes rise {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
+  }
+  .reasoning-toggle {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
+  .reasoning-toggle:hover {
+    color: var(--text-secondary);
   }
 </style>
