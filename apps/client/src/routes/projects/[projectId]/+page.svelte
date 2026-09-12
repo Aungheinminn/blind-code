@@ -103,11 +103,11 @@
 <div class="px-6 py-8">
   <div class="max-w-2xl mx-auto">
     <a
-      href="/projects"
+      href={`/projects/${projectId}/workspace`}
       class="text-xs no-underline"
       style="color: var(--text-tertiary);"
     >
-      ← Back to projects
+      ← Back to workspace
     </a>
 
     {#if loading}
@@ -120,20 +120,7 @@
         {error}
       </div>
     {:else if project}
-      <div class="mt-4 flex items-start justify-between gap-4">
-        <h1 class="text-2xl font-semibold break-words">{project.name}</h1>
-        <a
-          href={`/projects/${project.id}/workspace`}
-          class="shrink-0 px-3 py-2 rounded-lg text-sm font-medium text-white no-underline"
-          style="background-color: var(--accent);"
-        >
-          Open workspace
-        </a>
-      </div>
-
-      <p class="mt-1 text-xs font-mono" style="color: var(--text-tertiary);">
-        {project.id}
-      </p>
+      <h1 class="mt-4 text-2xl font-semibold break-words">{project.name}</h1>
 
       {#if error}
         <div

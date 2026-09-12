@@ -33,14 +33,9 @@
   </div>
 
   <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-    <a
-      href={settingsHref}
-      class="text-sm font-semibold tracking-tight truncate no-underline project-name"
-      style="color: var(--text-primary);"
-      title="Project settings"
-    >
+    <span class="text-sm font-semibold tracking-tight truncate" style="color: var(--text-primary);">
       {displayName}
-    </a>
+    </span>
     <span class="flex items-center gap-1.5 text-[11.5px] truncate" style="color: var(--text-tertiary);">
       <span
         class="w-[6px] h-[6px] rounded-full animate-pulse shrink-0"
@@ -87,8 +82,5 @@
   .hover-outline:hover {
     color: var(--text-primary);
     border-color: var(--border-strong);
-  }
-  .project-name:hover {
-    color: var(--accent);
   }
 </style>

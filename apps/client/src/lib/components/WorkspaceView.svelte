@@ -61,11 +61,7 @@
   };
 
   const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-    } else {
-      goto("/");
-    }
+    goto("/projects");
   };
 </script>
 
