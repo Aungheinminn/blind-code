@@ -122,63 +122,29 @@
     {:else}
       <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each projects as project (project.id)}
-          <div
-            class="relative rounded-xl border transition-transform"
+          <a
+            href={`/projects/${project.id}/workspace`}
+            class="block rounded-xl border transition-transform no-underline p-4"
             style="border-color: var(--border); background-color: var(--bg-secondary); color: var(--text-primary);"
           >
-            <a
-              href={`/projects/${project.id}/workspace`}
-              class="block p-4 pr-11 no-underline"
-              style="color: var(--text-primary);"
-            >
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-medium truncate">{project.name}</span>
-                <span class="text-[11px] shrink-0" style="color: var(--text-tertiary);">
-                  {formatDate(project.updatedAt)}
-                </span>
-              </div>
-              <p class="mt-3 text-xs line-clamp-2" style="color: var(--text-secondary);">
-                {project.description ?? "No description."}
-              </p>
-              {#if project.isArchived}
-                <span
-                  class="mt-3 inline-block text-[10px] px-1.5 py-0.5 rounded"
-                  style="background-color: var(--bg-tertiary); color: var(--text-tertiary);"
-                >
-                  Archived
-                </span>
-              {/if}
-            </a>
-            <a
-              href={`/projects/${project.id}`}
-              class="absolute top-3 right-3 w-7 h-7 rounded-md flex items-center justify-center no-underline transition-colors"
-              style="color: var(--text-tertiary); background-color: transparent;"
-              title="Project settings"
-              aria-label="Project settings"
-              on:mouseenter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--bg-tertiary)";
-                e.currentTarget.style.color = "var(--text-primary)";
-              }}
-              on:mouseleave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--text-tertiary)";
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-medium truncate">{project.name}</span>
+              <span class="text-[11px] shrink-0" style="color: var(--text-tertiary);">
+                {formatDate(project.updatedAt)}
+              </span>
+            </div>
+            <p class="mt-3 text-xs line-clamp-2" style="color: var(--text-secondary);">
+              {project.description ?? "No description."}
+            </p>
+            {#if project.isArchived}
+              <span
+                class="mt-3 inline-block text-[10px] px-1.5 py-0.5 rounded"
+                style="background-color: var(--bg-tertiary); color: var(--text-tertiary);"
               >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </a>
-          </div>
+                Archived
+              </span>
+            {/if}
+          </a>
         {/each}
       </div>
     {/if}

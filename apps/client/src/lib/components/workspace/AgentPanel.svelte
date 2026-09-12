@@ -8,6 +8,8 @@
   import TodoTray from "./TodoTray.svelte";
 
   export let open = false;
+  export let projectId = "";
+  export let projectName = "";
   export let messages: AgentMessage[] = [];
   export let isRunning = false;
   export let providers: ProviderInfo[] = [];
@@ -48,6 +50,8 @@
 >
   <AgentPanelHeader
     {statusText}
+    {projectId}
+    {projectName}
     on:close={() => dispatch("close")}
     on:back={() => dispatch("back")}
   />

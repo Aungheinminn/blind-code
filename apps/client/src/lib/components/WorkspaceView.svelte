@@ -23,12 +23,14 @@
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import FloatingControls from "$lib/components/workspace/FloatingControls.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
+  import { getProject } from "$lib/api/projects";
 
   export let projectId: string = "default";
 
   let panelOpen = true;
   let activeProjectId: string | null = null;
   let sandpack: SandpackPreview | undefined;
+  let projectName = "";
 
   $: statusText = $isRunning ? "working…" : "idle";
   $: currentProvider = $providers.find((p) => p.name === $selectedProvider);
@@ -40,11 +42,17 @@
 
   $: if (projectId && projectId !== activeProjectId) {
     activeProjectId = projectId;
+    projectName = "";
     resetWorkspace();
     loadHistory(projectId).finally(() => {
       resumeTurn(projectId).catch(() => {});
     });
     loadProjectFiles(projectId).catch(() => {});
+    getProject(projectId)
+      .then((p) => {
+        if (p && activeProjectId === projectId) projectName = p.name;
+      })
+      .catch(() => {});
   }
 
   const handleSubmit = (event: CustomEvent<string>) => {
@@ -75,6 +83,8 @@
 
   <AgentPanel
     open={panelOpen}
+    {projectId}
+    {projectName}
     messages={$messages}
     isRunning={$isRunning}
     providers={$providers}
