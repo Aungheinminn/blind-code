@@ -23,11 +23,14 @@ const dbUnavailable = (set: { status?: number | string }) => {
 
 export const projectController = (app: Elysia) =>
   app
-    .get("/projects", async ({ request, set }) => {
+    .get("/projects", async ({ request, query, set }) => {
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
-      return { data: await listProjectsForOwner(user.id) };
+      const q = typeof query.q === "string" ? query.q : undefined;
+      const page = query.page ? Number(query.page) : undefined;
+      const pageSize = query.pageSize ? Number(query.pageSize) : undefined;
+      return { data: await listProjectsForOwner(user.id, { q, page, pageSize }) };
     })
     .get("/projects/:id", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

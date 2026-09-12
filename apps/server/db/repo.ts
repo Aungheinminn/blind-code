@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
 import { isUuid, stringToUuid } from "../services/uuid";
 
@@ -47,9 +47,38 @@ export const ensureProject = async (
   return { id: created.id, created: true };
 };
 
-export const listProjectsForOwner = async (ownerId: string) => {
-  if (!db) return [];
-  return db.select().from(schema.projects).where(eq(schema.projects.ownerId, ownerId));
+export const listProjectsForOwner = async (
+  ownerId: string,
+  opts: { q?: string; page?: number; pageSize?: number } = {},
+) => {
+  if (!db) return { items: [], total: 0, page: 1, pageSize: opts.pageSize ?? 12 };
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize ?? 12)));
+  const q = (opts.q ?? "").trim();
+
+  const ownerFilter = eq(schema.projects.ownerId, ownerId);
+  const searchFilter = q
+    ? or(
+        ilike(schema.projects.name, `%${q}%`),
+        ilike(schema.projects.description, `%${q}%`),
+      )
+    : undefined;
+  const where = searchFilter ? and(ownerFilter, searchFilter) : ownerFilter;
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.projects)
+    .where(where);
+
+  const items = await db
+    .select()
+    .from(schema.projects)
+    .where(where)
+    .orderBy(desc(schema.projects.updatedAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  return { items, total: Number(count) || 0, page, pageSize };
 };
 
 export const getProjectForOwner = async (idOrName: string, ownerId: string) => {

@@ -16,7 +16,27 @@ export type ProjectPatch = Partial<{
   isArchived: boolean;
 }>;
 
-export const listProjects = () => fetchJson<Project[]>("/projects");
+export type ProjectListPage = {
+  items: Project[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ProjectListQuery = {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export const listProjects = (opts: ProjectListQuery = {}) => {
+  const params = new URLSearchParams();
+  if (opts.q && opts.q.trim()) params.set("q", opts.q.trim());
+  if (opts.page && opts.page > 1) params.set("page", String(opts.page));
+  if (opts.pageSize) params.set("pageSize", String(opts.pageSize));
+  const qs = params.toString();
+  return fetchJson<ProjectListPage>(`/projects${qs ? `?${qs}` : ""}`);
+};
 
 export const getProject = (id: string) => fetchJson<Project | null>(`/projects/${id}`);
 

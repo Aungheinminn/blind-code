@@ -18,7 +18,7 @@
     loading = true;
     error = "";
     try {
-      projects = await listProjects();
+      projects = (await listProjects()).items;
       loaded = true;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
