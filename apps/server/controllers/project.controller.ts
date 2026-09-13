@@ -10,6 +10,7 @@ import {
 } from "../db/repo";
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
+import { generateProjectTitle } from "../services/titler";
 
 const unauthorized = (set: { status?: number | string }) => {
   set.status = 401;
@@ -60,6 +61,40 @@ export const projectController = (app: Elysia) =>
         return { error: "project name already taken" };
       }
       return { data: project };
+    })
+    .post("/projects/from-prompt", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      const prompt = typeof b.prompt === "string" ? b.prompt.trim() : "";
+      const provider = typeof b.provider === "string" ? b.provider : "";
+      const model = typeof b.model === "string" ? b.model : undefined;
+      if (!prompt) {
+        set.status = 400;
+        return { error: "prompt required" };
+      }
+      if (!provider) {
+        set.status = 400;
+        return { error: "provider required" };
+      }
+      const { title, description } = await generateProjectTitle({
+        prompt,
+        provider,
+        model,
+      });
+      let baseName = title;
+      let project = await ensureProject(baseName, user.id, { description });
+      let suffix = 2;
+      while (project?.forbidden && suffix < 20) {
+        baseName = `${title} ${suffix++}`;
+        project = await ensureProject(baseName, user.id, { description });
+      }
+      if (!project || project.forbidden) {
+        set.status = 409;
+        return { error: "could not allocate project name" };
+      }
+      return { data: { ...project, name: baseName, description, title } };
     })
     .put("/projects/:id", async ({ params, body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
