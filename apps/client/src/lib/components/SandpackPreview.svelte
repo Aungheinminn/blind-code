@@ -113,8 +113,7 @@ button {
     return out;
   };
 
-  const currentFiles = (): Record<string, string> =>
-    Object.keys(files).length > 0 ? files : STARTER_FILES;
+  $: activeFiles = Object.keys(files).length > 0 ? files : STARTER_FILES;
 
   export const refresh = () => {
     client?.dispatch({ type: "refresh" });
@@ -123,7 +122,7 @@ button {
   onMount(async () => {
     client = await loadSandpackClient(
       iframe,
-      { files: toBundlerFiles(currentFiles()), template },
+      { files: toBundlerFiles(activeFiles), template },
       { showOpenInCodeSandbox: false },
     );
     ready = true;
@@ -135,7 +134,7 @@ button {
   });
 
   $: if (ready && client) {
-    client.updateSandbox({ files: toBundlerFiles(currentFiles()), template });
+    client.updateSandbox({ files: toBundlerFiles(activeFiles), template });
   }
 </script>
 
