@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import {
     messages,
@@ -25,6 +26,8 @@
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import { getProject } from "$lib/api/projects";
 
+  const PENDING_PROMPT_PREFIX = "vibe-pending-prompt:";
+
   export let projectId: string = "default";
 
   let panelOpen = true;
@@ -40,13 +43,42 @@
     loadProviders();
   });
 
+  const readPendingPrompt = (id: string): string => {
+    try {
+      const val = sessionStorage.getItem(PENDING_PROMPT_PREFIX + id) ?? "";
+      if (val) sessionStorage.removeItem(PENDING_PROMPT_PREFIX + id);
+      return val;
+    } catch {
+      return "";
+    }
+  };
+
+  const consumePendingPrompt = async (id: string, pending: string) => {
+    if (!pending) return;
+    if (get(providers).length === 0) {
+      await loadProviders();
+    }
+    if (activeProjectId !== id) return;
+    const nonWelcome = get(messages).filter((m) => m.id !== "welcome");
+    if (nonWelcome.length > 0) return;
+    if (get(isRunning)) return;
+    if (!get(selectedProvider)) return;
+    sendPrompt(id, pending);
+  };
+
+  const bootstrapProject = async (id: string, pending: string) => {
+    await loadHistory(id).catch(() => {});
+    if (activeProjectId !== id) return;
+    resumeTurn(id).catch(() => {});
+    await consumePendingPrompt(id, pending);
+  };
+
   $: if (projectId && projectId !== activeProjectId) {
     activeProjectId = projectId;
     projectName = "";
     resetWorkspace();
-    loadHistory(projectId).finally(() => {
-      resumeTurn(projectId).catch(() => {});
-    });
+    const pending = readPendingPrompt(projectId);
+    bootstrapProject(projectId, pending);
     loadProjectFiles(projectId).catch(() => {});
     getProject(projectId)
       .then((p) => {
