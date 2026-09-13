@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ProviderChip from "./ProviderChip.svelte";
+
   let prompt = "";
 
   const suggestions = [
@@ -35,9 +37,12 @@
     ></textarea>
 
     <div class="flex items-center justify-between gap-3 flex-wrap">
-      <span class="text-[12.5px]" style="color: var(--text-tertiary);">
-        {hintText}
-      </span>
+      <div class="flex items-center gap-3 flex-wrap min-w-0">
+        <ProviderChip />
+        <span class="text-[12.5px] truncate" style="color: var(--text-tertiary);">
+          {hintText}
+        </span>
+      </div>
       <div class="flex items-center gap-2.5">
         <a
           href="/projects"

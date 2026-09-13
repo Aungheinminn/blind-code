@@ -61,8 +61,32 @@ export const messages = writable<AgentMessage[]>([
 
 export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
-export const selectedProvider = writable<string>("anthropic");
-export const selectedModel = writable<string>("");
+
+const PROVIDER_KEY = "vibe-selected-provider";
+const MODEL_KEY = "vibe-selected-model";
+
+const readStored = (key: string, fallback: string): string => {
+  if (typeof localStorage === "undefined") return fallback;
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStored = (key: string, value: string) => {
+  if (typeof localStorage === "undefined") return;
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch {}
+};
+
+export const selectedProvider = writable<string>(readStored(PROVIDER_KEY, "anthropic"));
+export const selectedModel = writable<string>(readStored(MODEL_KEY, ""));
+
+selectedProvider.subscribe((v) => writeStored(PROVIDER_KEY, v));
+selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
 
@@ -144,11 +168,16 @@ export const loadProviders = async () => {
   await loadConnect();
   const list = get(providersState);
   providers.set(list);
-  const configured = list.find((p) => p.configured);
-  if (configured) {
-    selectedProvider.set(configured.name);
-    const enabled = get(enabledModels)[configured.name] ?? [];
-    if (enabled.length > 0 && !get(selectedModel)) {
+
+  const stored = get(selectedProvider);
+  const configuredMatch = list.find((p) => p.name === stored && p.configured);
+  const fallback = list.find((p) => p.configured);
+  const active = configuredMatch ?? fallback;
+  if (active) {
+    if (active.name !== stored) selectedProvider.set(active.name);
+    const enabled = get(enabledModels)[active.name] ?? [];
+    const currentModel = get(selectedModel);
+    if (enabled.length > 0 && !enabled.includes(currentModel)) {
       selectedModel.set(enabled[0]);
     }
   }
