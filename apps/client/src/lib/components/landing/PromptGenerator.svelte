@@ -20,11 +20,9 @@
 
   $: hintText = error
     ? error
-    : busy
-      ? "Naming your project…"
-      : prompt.trim()
-        ? `${prompt.trim().length} characters`
-        : "";
+    : prompt.trim()
+      ? `${prompt.trim().length} characters`
+      : "";
   $: canCreate = prompt.trim().length > 0 && !busy;
 
   const applySuggestion = (label: string) => {
@@ -108,7 +106,7 @@
           class="px-[22px] py-[11px] rounded-[10px] border-0 text-[14.5px] font-semibold text-white create-btn"
           style="background-color: {canCreate ? 'var(--accent)' : 'var(--bg-tertiary)'}; color: {canCreate ? '#ffffff' : 'var(--text-tertiary)'}; cursor: {canCreate ? 'pointer' : 'not-allowed'};"
         >
-          {busy ? "Creating…" : "Create"}
+          Create
         </button>
       </div>
     </div>
@@ -127,6 +125,27 @@
     {/each}
   </div>
 </section>
+
+{#if busy}
+  <div
+    class="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-4 loading-overlay"
+    aria-live="polite"
+    role="status"
+  >
+    <div class="loader-ring" aria-hidden="true"></div>
+    <div class="flex flex-col items-center gap-1.5 text-center px-6">
+      <span
+        class="text-[16px] font-semibold tracking-tight"
+        style="color: var(--text-primary);"
+      >
+        Naming your project…
+      </span>
+      <span class="text-[13px]" style="color: var(--text-secondary);">
+        Hang tight, we're scaffolding your workspace.
+      </span>
+    </div>
+  </div>
+{/if}
 
 <style>
   .view-projects-btn {
@@ -149,5 +168,21 @@
   .chip:hover {
     color: var(--text-primary);
     border-color: var(--border-strong);
+  }
+  .loader-ring {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--accent);
+    animation: loader-spin 700ms linear infinite;
+  }
+  @keyframes loader-spin {
+    to { transform: rotate(360deg); }
+  }
+  .loading-overlay {
+    background-color: var(--chrome);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
   }
 </style>
