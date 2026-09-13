@@ -55,8 +55,7 @@ const detectDeps = (files: Record<string, string>): Record<string, string> => {
 };
 
 const normalizePath = (raw: string): string => {
-  let p = raw.startsWith("/") ? raw.slice(1) : raw;
-  if (p.startsWith("src/")) p = p.slice(4);
+  const p = raw.startsWith("/") ? raw.slice(1) : raw;
   return `/${p}`;
 };
 
