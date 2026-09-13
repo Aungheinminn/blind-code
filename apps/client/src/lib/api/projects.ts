@@ -48,6 +48,24 @@ export const createProject = (input: string | { name: string; description?: stri
   });
 };
 
+export type CreatedProjectFromPrompt = {
+  id: string;
+  created: boolean;
+  name: string;
+  description: string;
+  title: string;
+};
+
+export const createProjectFromPrompt = (input: {
+  prompt: string;
+  provider: string;
+  model?: string;
+}) =>
+  fetchJson<CreatedProjectFromPrompt>("/projects/from-prompt", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+
 export const updateProject = (id: string, patch: ProjectPatch) =>
   fetchJson<Project | null>(`/projects/${id}`, {
     method: "PUT",

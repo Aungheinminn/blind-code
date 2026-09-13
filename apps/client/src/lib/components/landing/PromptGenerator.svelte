@@ -1,7 +1,16 @@
 <script lang="ts">
+  import { get } from "svelte/store";
+  import { goto } from "$app/navigation";
   import ProviderChip from "./ProviderChip.svelte";
+  import { createProjectFromPrompt } from "$lib/api/projects";
+  import { auth } from "$lib/stores/auth";
+  import { selectedProvider, selectedModel } from "$lib/stores/agent";
+
+  const PENDING_PROMPT_PREFIX = "vibe-pending-prompt:";
 
   let prompt = "";
+  let busy = false;
+  let error = "";
 
   const suggestions = [
     "Habit tracker with streaks",
@@ -9,17 +18,53 @@
     "Recipe finder",
   ];
 
-  $: hintText = prompt.trim()
-    ? `${prompt.trim().length} characters`
-    : "Press Create to scaffold a new project";
-  $: canCreate = prompt.trim().length > 0;
+  $: hintText = error
+    ? error
+    : busy
+      ? "Naming your project…"
+      : prompt.trim()
+        ? `${prompt.trim().length} characters`
+        : "Press Create to scaffold a new project";
+  $: canCreate = prompt.trim().length > 0 && !busy;
 
   const applySuggestion = (label: string) => {
     prompt = label;
   };
 
-  const onCreate = () => {
-    // TODO: wire to createProject + navigate to workspace
+  const onCreate = async () => {
+    if (!canCreate) return;
+    const text = prompt.trim();
+
+    if (get(auth).status !== "authed") {
+      try {
+        sessionStorage.setItem("vibe-pending-landing-prompt", text);
+      } catch {}
+      goto("/login");
+      return;
+    }
+
+    const provider = get(selectedProvider);
+    if (!provider) {
+      error = "Pick a provider first.";
+      return;
+    }
+
+    busy = true;
+    error = "";
+    try {
+      const project = await createProjectFromPrompt({
+        prompt: text,
+        provider,
+        model: get(selectedModel) || undefined,
+      });
+      try {
+        sessionStorage.setItem(PENDING_PROMPT_PREFIX + project.id, text);
+      } catch {}
+      goto(`/projects/${project.id}/workspace`);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+      busy = false;
+    }
   };
 </script>
 
@@ -39,7 +84,10 @@
     <div class="flex items-center justify-between gap-3 flex-wrap">
       <div class="flex items-center gap-3 flex-wrap min-w-0">
         <ProviderChip />
-        <span class="text-[12.5px] truncate" style="color: var(--text-tertiary);">
+        <span
+          class="text-[12.5px] truncate"
+          style="color: {error ? '#ef4444' : 'var(--text-tertiary)'};"
+        >
           {hintText}
         </span>
       </div>
@@ -58,7 +106,7 @@
           class="px-[22px] py-[11px] rounded-[10px] border-0 text-[14.5px] font-semibold text-white create-btn"
           style="background-color: {canCreate ? 'var(--accent)' : 'var(--bg-tertiary)'}; color: {canCreate ? '#ffffff' : 'var(--text-tertiary)'}; cursor: {canCreate ? 'pointer' : 'not-allowed'};"
         >
-          Create
+          {busy ? "Creating…" : "Create"}
         </button>
       </div>
     </div>
