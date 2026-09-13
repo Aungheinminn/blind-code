@@ -11,7 +11,13 @@
 </script>
 
 {#if plan}
-  <div class="flex flex-col" class:gap-2={!compact} class:gap-[9px]={compact}>
+  {@const scrollable = compact && plan.todos.length > 5}
+  <div
+    class="flex flex-col"
+    class:gap-2={!compact}
+    class:gap-[9px]={compact}
+    class:todo-scroll={scrollable}
+  >
     {#each plan.todos as todo (todo.id)}
       {@const status = statuses[todo.id] ?? "pending"}
       <div class="flex items-start" class:gap-[9px]={compact} class:gap-2.5={!compact}>
@@ -73,6 +79,11 @@
 {/if}
 
 <style>
+  .todo-scroll {
+    max-height: 168px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
   .spinner {
     width: 14px;
     height: 14px;
