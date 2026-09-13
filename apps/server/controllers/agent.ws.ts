@@ -232,6 +232,7 @@ export const agentController = (app: Elysia) =>
               });
             }
           } catch (err) {
+            console.error("[planner] failed", err);
             await publish({ type: "plan-error", error: extractErrorMessage(err) });
           }
         }

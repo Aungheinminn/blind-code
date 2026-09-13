@@ -67,7 +67,7 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
     system: opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT,
     messages,
     tools,
-    stopWhen: stepCountIs(opts.maxSteps ?? 5),
+    stopWhen: stepCountIs(opts.maxSteps ?? 10),
     experimental_output: Output.object({ schema: planSchema }),
     abortSignal: opts.signal,
   });
