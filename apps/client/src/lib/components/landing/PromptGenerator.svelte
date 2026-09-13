@@ -24,7 +24,7 @@
       ? "Naming your project…"
       : prompt.trim()
         ? `${prompt.trim().length} characters`
-        : "Press Create to scaffold a new project";
+        : "";
   $: canCreate = prompt.trim().length > 0 && !busy;
 
   const applySuggestion = (label: string) => {
@@ -84,12 +84,14 @@
     <div class="flex items-center justify-between gap-3 flex-wrap">
       <div class="flex items-center gap-3 flex-wrap min-w-0">
         <ProviderChip />
-        <span
-          class="text-[12.5px] truncate"
-          style="color: {error ? '#ef4444' : 'var(--text-tertiary)'};"
-        >
-          {hintText}
-        </span>
+        {#if hintText}
+          <span
+            class="text-[12.5px] truncate"
+            style="color: {error ? '#ef4444' : 'var(--text-tertiary)'};"
+          >
+            {hintText}
+          </span>
+        {/if}
       </div>
       <div class="flex items-center gap-2.5">
         <a
