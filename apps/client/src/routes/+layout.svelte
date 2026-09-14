@@ -69,11 +69,51 @@
       class="h-14 flex items-center justify-between px-6 border-b"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
-      <a href="/" class="text-sm font-semibold no-underline" style="color: var(--text-primary);">
-        Blind Code
-      </a>
+      <div class="flex items-center gap-2">
+        {#if $page.url.pathname !== "/"}
+          <button
+            type="button"
+            class="back-icon-btn"
+            on:click={goBack}
+            aria-label="Go back"
+            title="Back"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        {/if}
+        <a href="/" class="text-sm font-semibold no-underline" style="color: var(--text-primary);">
+          Blind Code
+        </a>
+      </div>
 
       <div class="flex items-center gap-3 text-xs">
+        <button
+          type="button"
+          class="header-icon-btn"
+          on:click={toggleTheme}
+          title={$theme === "dark" ? "Switch to light" : "Switch to dark"}
+          aria-label="Toggle theme"
+        >
+          {#if $theme === "dark"}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          {:else}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          {/if}
+        </button>
         {#if $auth.status === "authed"}
           <div class="relative" bind:this={menuAnchor}>
             <button
@@ -119,36 +159,6 @@
                   role="menuitem"
                   class="w-full text-left px-3 py-2 text-[12px] cursor-pointer flex items-center gap-2 hover:opacity-90"
                   style="color: var(--text-primary); background-color: transparent;"
-                  on:click={() => {
-                    toggleTheme();
-                  }}
-                >
-                  {#if $theme === "dark"}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="5" />
-                      <line x1="12" y1="1" x2="12" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="23" />
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                      <line x1="1" y1="12" x2="3" y2="12" />
-                      <line x1="21" y1="12" x2="23" y2="12" />
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                    <span>Light theme</span>
-                  {:else}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                    <span>Dark theme</span>
-                  {/if}
-                </button>
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="w-full text-left px-3 py-2 text-[12px] cursor-pointer flex items-center gap-2 hover:opacity-90"
-                  style="color: var(--text-primary); background-color: transparent;"
                   on:click={goToSettings}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -176,32 +186,6 @@
             {/if}
           </div>
         {:else if $auth.status === "anonymous"}
-          <button
-            type="button"
-            class="w-8 h-8 rounded-md border cursor-pointer flex items-center justify-center"
-            style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
-            on:click={toggleTheme}
-            title={$theme === "dark" ? "Switch to light" : "Switch to dark"}
-            aria-label="Toggle theme"
-          >
-            {#if $theme === "dark"}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" />
-                <line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            {:else}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            {/if}
-          </button>
           <a
             href="/login"
             class="px-3 py-1.5 rounded-md no-underline"
@@ -221,44 +205,42 @@
     </header>
   {/if}
 
-  {#if $page.url.pathname !== "/" && !isFullscreen($page.url.pathname)}
-    <button
-      type="button"
-      class="back-button fixed left-4 z-40"
-      style="top: 4.5rem;"
-      on:click={goBack}
-      aria-label="Go back"
-      title="Back"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12" />
-        <polyline points="12 19 5 12 12 5" />
-      </svg>
-    </button>
-  {/if}
-
   <slot />
 </div>
 
 <style>
-  .back-button {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    border: 1px solid var(--chrome-border);
-    background: var(--chrome);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  .header-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
   }
-  .back-button:hover {
-    background: var(--chrome-hover);
+  .header-icon-btn:hover {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .back-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    transition: color 150ms ease;
+  }
+  .back-icon-btn:hover {
     color: var(--text-primary);
   }
 </style>
