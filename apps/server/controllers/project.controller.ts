@@ -1,5 +1,5 @@
 import type { Elysia } from "elysia";
-import { randomBytes } from "crypto";
+import { randomInt } from "crypto";
 import {
   listProjectsForOwner,
   getProjectForOwner,
@@ -89,7 +89,7 @@ export const projectController = (app: Elysia) =>
       let project = await ensureProject(candidateName, user.id, { description });
       let attempts = 0;
       while (project && !project.forbidden && !project.created && attempts < 5) {
-        candidateName = `${title} ${randomBytes(2).toString("hex")}`;
+        candidateName = `${title} ${randomInt(1000, 10000)}`;
         project = await ensureProject(candidateName, user.id, { description });
         attempts++;
       }
