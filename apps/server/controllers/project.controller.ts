@@ -1,4 +1,5 @@
 import type { Elysia } from "elysia";
+import { randomBytes } from "crypto";
 import {
   listProjectsForOwner,
   getProjectForOwner,
@@ -56,9 +57,9 @@ export const projectController = (app: Elysia) =>
       }
       const description = typeof b.description === "string" ? b.description : undefined;
       const project = await ensureProject(name, user.id, { description });
-      if (project?.forbidden) {
+      if (!project || project.forbidden || !project.created) {
         set.status = 409;
-        return { error: "project name already taken" };
+        return { error: "A project with that name already exists." };
       }
       return { data: project };
     })
@@ -84,18 +85,19 @@ export const projectController = (app: Elysia) =>
       const { title, description } = presetName
         ? { title: presetName, description: presetDescription }
         : await generateProjectTitle({ prompt, provider, model });
-      let baseName = title;
-      let project = await ensureProject(baseName, user.id, { description });
-      let suffix = 2;
-      while (project?.forbidden && suffix < 20) {
-        baseName = `${title} ${suffix++}`;
-        project = await ensureProject(baseName, user.id, { description });
+      let candidateName = title;
+      let project = await ensureProject(candidateName, user.id, { description });
+      let attempts = 0;
+      while (project && !project.forbidden && !project.created && attempts < 5) {
+        candidateName = `${title} ${randomBytes(2).toString("hex")}`;
+        project = await ensureProject(candidateName, user.id, { description });
+        attempts++;
       }
-      if (!project || project.forbidden) {
-        set.status = 409;
+      if (!project || project.forbidden || !project.created) {
+        set.status = 500;
         return { error: "could not allocate project name" };
       }
-      return { data: { ...project, name: baseName, description, title } };
+      return { data: { ...project, name: candidateName, description, title } };
     })
     .put("/projects/:id", async ({ params, body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

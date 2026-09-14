@@ -34,7 +34,7 @@
   $: canCreate = prompt.trim().length > 0 && !busy;
 
   const applySuggestion = (s: { name: string; prompt: string }) => {
-    prompt = `name: ${s.name}\n${s.prompt}`;
+    prompt = s.prompt;
   };
 
   const onCreate = () => {

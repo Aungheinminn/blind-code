@@ -44,6 +44,7 @@
         model: get(selectedModel) || undefined,
         ...(preset ? { name: preset.name, description: preset.description ?? "" } : {}),
       });
+      if (!project?.id) throw new Error("Failed to create project.");
       try {
         sessionStorage.setItem(PENDING_PROMPT_PREFIX + project.id, trimmed);
       } catch {}

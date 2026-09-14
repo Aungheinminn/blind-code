@@ -141,17 +141,11 @@
     createError = "";
     try {
       const description = newDescription.trim() ? newDescription : null;
-      await createProject({ name, description });
-      showCreate = false;
-      newName = "";
-      newDescription = "";
-      lastKey = "";
-      page = 1;
-      q = "";
-      searchInput = "";
+      const project = await createProject({ name, description });
+      if (!project?.id) throw new Error("Failed to create project.");
+      goto(`/projects/${project.id}/workspace`);
     } catch (e) {
       createError = e instanceof Error ? e.message : String(e);
-    } finally {
       createBusy = false;
     }
   };
