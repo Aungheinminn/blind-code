@@ -1,11 +1,17 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
   export let name: string;
   export let description: string;
   export let accent: string;
+  export let prompt: string = "";
+
+  const dispatch = createEventDispatcher<{ select: { name: string; prompt: string } }>();
 </script>
 
 <button
   type="button"
+  on:click={() => dispatch("select", { name, prompt })}
   class="text-left rounded-2xl border overflow-hidden flex flex-col cursor-pointer sample-card"
   style="border-color: var(--border); background-color: var(--bg-panel);"
 >

@@ -1,6 +1,12 @@
 <script lang="ts">
   import PromptGenerator from "$lib/components/landing/PromptGenerator.svelte";
   import SampleBuilds from "$lib/components/landing/SampleBuilds.svelte";
+
+  let prompt = "";
+
+  const onSampleSelect = (e: CustomEvent<{ name: string; prompt: string }>) => {
+    prompt = `name: ${e.detail.name}\n${e.detail.prompt}`;
+  };
 </script>
 
 <svelte:head>
@@ -15,6 +21,6 @@
   class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20 flex flex-col gap-14"
   style="min-height: calc(100vh - 3.5rem);"
 >
-  <PromptGenerator />
-  <SampleBuilds />
+  <PromptGenerator bind:prompt />
+  <SampleBuilds on:select={onSampleSelect} />
 </div>

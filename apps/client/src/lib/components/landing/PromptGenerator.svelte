@@ -8,14 +8,26 @@
 
   const PENDING_PROMPT_PREFIX = "vibe-pending-prompt:";
 
-  let prompt = "";
+  export let prompt = "";
   let busy = false;
   let error = "";
 
-  const suggestions = [
-    "Habit tracker with streaks",
-    "Team standup board",
-    "Recipe finder",
+  const suggestions: Array<{ name: string; prompt: string }> = [
+    {
+      name: "Habit tracker with streaks",
+      prompt:
+        "Build a habit tracker where the user can add habits, check them off each day, see current and longest streaks, and view a 7-day dot heatmap per habit. Persist state to localStorage.",
+    },
+    {
+      name: "Team standup board",
+      prompt:
+        "Build a daily standup board with three columns per teammate: Yesterday, Today, and Blockers. Support adding/removing teammates and editing each field inline. Persist state to localStorage.",
+    },
+    {
+      name: "Recipe finder",
+      prompt:
+        "Build a recipe finder. The user types an ingredient and sees matching mock recipes from a local list, each with a title, image placeholder, and cook time. Include a filter for recipes under 30 minutes.",
+    },
   ];
 
   $: hintText = error
@@ -25,8 +37,8 @@
       : "";
   $: canCreate = prompt.trim().length > 0 && !busy;
 
-  const applySuggestion = (label: string) => {
-    prompt = label;
+  const applySuggestion = (s: { name: string; prompt: string }) => {
+    prompt = `name: ${s.name}\n${s.prompt}`;
   };
 
   const onCreate = async () => {
@@ -113,14 +125,14 @@
   </div>
 
   <div class="flex gap-2 flex-wrap justify-center">
-    {#each suggestions as label}
+    {#each suggestions as s}
       <button
         type="button"
-        on:click={() => applySuggestion(label)}
+        on:click={() => applySuggestion(s)}
         class="px-[13px] py-[7px] rounded-full border text-[13px] cursor-pointer chip"
         style="background-color: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary);"
       >
-        {label}
+        {s.name}
       </button>
     {/each}
   </div>
