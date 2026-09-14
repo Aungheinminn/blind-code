@@ -35,7 +35,7 @@
       return;
     }
 
-    busy = true;
+    if (!preset) busy = true;
     error = "";
     try {
       const project = await createProjectFromPrompt({
@@ -50,7 +50,7 @@
       goto(`/projects/${project.id}/workspace`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
-      busy = false;
+      if (!preset) busy = false;
     }
   };
 
@@ -82,7 +82,7 @@
 
 {#if busy}
   <FullPageLoader
-    title="Setting up your workspace…"
-    subtitle="Hang tight, we're scaffolding it for you."
+    title="Naming your project…"
+    subtitle="Hang tight, we're scaffolding your workspace."
   />
 {/if}

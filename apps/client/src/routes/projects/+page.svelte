@@ -11,7 +11,6 @@
   } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
   import ProjectCard from "$lib/components/projects/ProjectCard.svelte";
-  import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   const PAGE_SIZE = 12;
 
@@ -474,13 +473,6 @@
       </div>
     </form>
   </div>
-{/if}
-
-{#if createBusy}
-  <FullPageLoader
-    title="Setting up your workspace…"
-    subtitle="Hang tight, we're scaffolding it for you."
-  />
 {/if}
 
 {#if editTarget}
