@@ -70,6 +70,9 @@ export const projectController = (app: Elysia) =>
       const prompt = typeof b.prompt === "string" ? b.prompt.trim() : "";
       const provider = typeof b.provider === "string" ? b.provider : "";
       const model = typeof b.model === "string" ? b.model : undefined;
+      const presetName = typeof b.name === "string" ? b.name.trim() : "";
+      const presetDescription =
+        typeof b.description === "string" ? b.description.trim() : "";
       if (!prompt) {
         set.status = 400;
         return { error: "prompt required" };
@@ -78,11 +81,9 @@ export const projectController = (app: Elysia) =>
         set.status = 400;
         return { error: "provider required" };
       }
-      const { title, description } = await generateProjectTitle({
-        prompt,
-        provider,
-        model,
-      });
+      const { title, description } = presetName
+        ? { title: presetName, description: presetDescription }
+        : await generateProjectTitle({ prompt, provider, model });
       let baseName = title;
       let project = await ensureProject(baseName, user.id, { description });
       let suffix = 2;

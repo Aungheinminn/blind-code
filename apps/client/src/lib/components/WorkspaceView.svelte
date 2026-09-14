@@ -55,9 +55,6 @@
 
   const consumePendingPrompt = async (id: string, pending: string) => {
     if (!pending) return;
-    if (get(providers).length === 0) {
-      await loadProviders();
-    }
     if (activeProjectId !== id) return;
     const nonWelcome = get(messages).filter((m) => m.id !== "welcome");
     if (nonWelcome.length > 0) return;
@@ -67,9 +64,13 @@
   };
 
   const bootstrapProject = async (id: string, pending: string) => {
-    await loadHistory(id).catch(() => {});
+    await Promise.all([
+      loadHistory(id).catch(() => {}),
+      loadProjectFiles(id).catch(() => {}),
+      resumeTurn(id).catch(() => {}),
+      get(providers).length === 0 ? loadProviders().catch(() => {}) : Promise.resolve(),
+    ]);
     if (activeProjectId !== id) return;
-    resumeTurn(id).catch(() => {});
     await consumePendingPrompt(id, pending);
   };
 
@@ -79,7 +80,6 @@
     resetWorkspace();
     const pending = readPendingPrompt(projectId);
     bootstrapProject(projectId, pending);
-    loadProjectFiles(projectId).catch(() => {});
     getProject(projectId)
       .then((p) => {
         if (p && activeProjectId === projectId) projectName = p.name;

@@ -60,6 +60,8 @@ export const createProjectFromPrompt = (input: {
   prompt: string;
   provider: string;
   model?: string;
+  name?: string;
+  description?: string;
 }) =>
   fetchJson<CreatedProjectFromPrompt>("/projects/from-prompt", {
     method: "POST",

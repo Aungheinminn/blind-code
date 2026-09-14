@@ -6,12 +6,14 @@
   export let accent: string;
   export let prompt: string = "";
 
-  const dispatch = createEventDispatcher<{ select: { name: string; prompt: string } }>();
+  const dispatch = createEventDispatcher<{
+    select: { name: string; prompt: string; description: string };
+  }>();
 </script>
 
 <button
   type="button"
-  on:click={() => dispatch("select", { name, prompt })}
+  on:click={() => dispatch("select", { name, prompt, description })}
   class="text-left rounded-2xl border overflow-hidden flex flex-col cursor-pointer sample-card"
   style="border-color: var(--border); background-color: var(--bg-panel);"
 >
