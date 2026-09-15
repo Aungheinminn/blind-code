@@ -401,14 +401,14 @@
       class="w-full max-w-md rounded-xl border shadow-xl"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
-      <div class="px-5 pt-5 pb-4 border-b" style="border-color: var(--border);">
+      <div class="px-5 pt-5 pb-4">
         <h2 id="create-project-title" class="text-base font-semibold">New project</h2>
         <p class="mt-1 text-xs" style="color: var(--text-secondary);">
           Give it a short, memorable name. You can rename it later.
         </p>
       </div>
 
-      <div class="px-5 py-5 space-y-4">
+      <div class="px-5 pb-4 space-y-4">
         <label class="block text-xs font-medium" style="color: var(--text-secondary);">
           Project name
           <input
@@ -443,10 +443,7 @@
         {/if}
       </div>
 
-      <div
-        class="px-5 py-4 flex items-center justify-end gap-2 border-t"
-        style="border-color: var(--border); background-color: var(--bg-tertiary); border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"
-      >
+      <div class="px-5 pb-5 flex items-center justify-end gap-2">
         <button
           type="button"
           class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
@@ -485,14 +482,14 @@
       class="w-full max-w-md rounded-xl border shadow-xl"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
-      <div class="px-5 pt-5 pb-4 border-b" style="border-color: var(--border);">
+      <div class="px-5 pt-5 pb-4">
         <h2 id="edit-project-title" class="text-base font-semibold">Edit project</h2>
         <p class="mt-1 text-xs" style="color: var(--text-secondary);">
           Update the name or description.
         </p>
       </div>
 
-      <div class="px-5 py-5 space-y-4">
+      <div class="px-5 pb-4 space-y-4">
         <label class="block text-xs font-medium" style="color: var(--text-secondary);">
           Project name
           <input
@@ -526,10 +523,7 @@
         {/if}
       </div>
 
-      <div
-        class="px-5 py-4 flex items-center justify-end gap-2 border-t"
-        style="border-color: var(--border); background-color: var(--bg-tertiary); border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"
-      >
+      <div class="px-5 pb-5 flex items-center justify-end gap-2">
         <button
           type="button"
           class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
@@ -567,7 +561,7 @@
       class="w-full max-w-md rounded-xl border shadow-xl"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
-      <div class="px-5 pt-5 pb-4 border-b" style="border-color: var(--border);">
+      <div class="px-5 pt-5 pb-4">
         <h2 id="delete-project-title" class="text-base font-semibold">Delete project</h2>
         <p class="mt-1 text-xs" style="color: var(--text-secondary);">
           "{deleteTarget.name}" will be permanently deleted. This cannot be undone.
@@ -575,7 +569,7 @@
       </div>
 
       {#if deleteError}
-        <div class="px-5 pt-4">
+        <div class="px-5 pb-2">
           <div
             class="rounded-md border px-3 py-2 text-xs"
             style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
@@ -586,8 +580,7 @@
       {/if}
 
       <div
-        class="px-5 py-4 flex items-center justify-end gap-2 border-t mt-4"
-        style="border-color: var(--border); background-color: var(--bg-tertiary); border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"
+        class="px-5 pb-5 flex items-center justify-end gap-2"
       >
         <button
           type="button"
