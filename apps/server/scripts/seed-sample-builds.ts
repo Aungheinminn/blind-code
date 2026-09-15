@@ -63,6 +63,22 @@ if (!hasDb || !db) {
   process.exit(1);
 }
 
+await db.execute(sql`
+  CREATE TABLE IF NOT EXISTS sample_builds (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug varchar(80) NOT NULL UNIQUE,
+    name varchar(160) NOT NULL,
+    description text NOT NULL,
+    accent varchar(40) NOT NULL,
+    prompt text NOT NULL,
+    image text,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+  )
+`);
+console.log("[seed] ensured sample_builds table");
+
 for (let i = 0; i < samples.length; i++) {
   const s = samples[i];
   await db
