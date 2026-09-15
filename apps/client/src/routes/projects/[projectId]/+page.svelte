@@ -102,14 +102,6 @@
 
 <div class="px-6 py-8">
   <div class="max-w-2xl mx-auto">
-    <a
-      href={`/projects/${projectId}/workspace`}
-      class="text-xs no-underline"
-      style="color: var(--text-tertiary);"
-    >
-      ← Back to workspace
-    </a>
-
     {#if loading}
       <div class="mt-6 text-sm" style="color: var(--text-tertiary);">Loading…</div>
     {:else if error && !project}

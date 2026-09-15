@@ -11,6 +11,8 @@
 
   const isPublic = (path: string) => PUBLIC_ROUTES.includes(path);
   const isFullscreen = (path: string) => path.includes("/workspace");
+  const projectDetailIdRe = /^\/projects\/([^/]+)$/;
+  const projectDetailId = (path: string) => path.match(projectDetailIdRe)?.[1] ?? null;
 
   let menuOpen = false;
   let menuAnchor: HTMLDivElement | null = null;
@@ -57,6 +59,8 @@
   };
 
   const goBack = () => {
+    const pid = projectDetailId($page.url.pathname);
+    if (pid) return goto(`/projects/${pid}/workspace`);
     goto("/");
   };
 </script>
@@ -66,7 +70,7 @@
 <div class="min-h-screen" style="background-color: var(--bg-primary); color: var(--text-primary);">
   {#if !isFullscreen($page.url.pathname)}
     <header
-      class="h-14 flex items-center justify-between px-6 border-b"
+      class="sticky top-0 z-40 h-14 flex items-center justify-between px-6 border-b"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
       <div class="flex items-center gap-2">
