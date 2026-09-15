@@ -1,0 +1,41 @@
+<svg viewBox="0 0 320 116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Booking calendar preview">
+  <rect x="0" y="0" width="180" height="116" rx="10" fill="#202020"/>
+  <rect x="190" y="0" width="130" height="116" rx="10" fill="#202020"/>
+
+  <rect x="22" y="14" width="46" height="6" rx="3" fill="#3a3a3a"/>
+  <g fill="#2a2a2a">
+    <rect x="22" y="28" width="16" height="4" rx="2"/><rect x="42" y="28" width="16" height="4" rx="2"/>
+    <rect x="62" y="28" width="16" height="4" rx="2"/><rect x="82" y="28" width="16" height="4" rx="2"/>
+    <rect x="102" y="28" width="16" height="4" rx="2"/><rect x="122" y="28" width="16" height="4" rx="2"/>
+    <rect x="142" y="28" width="16" height="4" rx="2"/>
+  </g>
+  <g fill="#2b2b2b">
+    <rect x="22" y="40" width="16" height="14" rx="3"/><rect x="42" y="40" width="16" height="14" rx="3"/>
+    <rect x="62" y="40" width="16" height="14" rx="3"/><rect x="82" y="40" width="16" height="14" rx="3"/>
+    <rect x="102" y="40" width="16" height="14" rx="3"/>
+    <rect x="122" y="40" width="16" height="14" rx="3" fill="#232323"/>
+    <rect x="142" y="40" width="16" height="14" rx="3" fill="#232323"/>
+
+    <rect x="22" y="60" width="16" height="14" rx="3"/><rect x="42" y="60" width="16" height="14" rx="3"/>
+    <rect x="62" y="60" width="16" height="14" rx="3"/>
+    <rect x="82" y="60" width="16" height="14" rx="3" fill="#f97316"/>
+    <rect x="102" y="60" width="16" height="14" rx="3"/>
+    <rect x="122" y="60" width="16" height="14" rx="3" fill="#232323"/>
+    <rect x="142" y="60" width="16" height="14" rx="3" fill="#232323"/>
+
+    <rect x="22" y="80" width="16" height="14" rx="3"/><rect x="42" y="80" width="16" height="14" rx="3"/>
+    <rect x="62" y="80" width="16" height="14" rx="3"/><rect x="82" y="80" width="16" height="14" rx="3"/>
+    <rect x="102" y="80" width="16" height="14" rx="3"/>
+    <rect x="122" y="80" width="16" height="14" rx="3" fill="#232323"/>
+    <rect x="142" y="80" width="16" height="14" rx="3" fill="#232323"/>
+  </g>
+
+  <rect x="204" y="12" width="102" height="18" rx="9" fill="#2b2b2b"/>
+  <rect x="214" y="18" width="40" height="6" rx="3" fill="#3d3d3d"/>
+  <rect x="204" y="38" width="102" height="18" rx="9" fill="#f97316"/>
+  <rect x="214" y="44" width="40" height="6" rx="3" fill="#1b1b1b" opacity=".55"/>
+  <rect x="204" y="64" width="102" height="18" rx="9" fill="#2b2b2b"/>
+  <rect x="214" y="70" width="46" height="6" rx="3" fill="#3d3d3d"/>
+  <rect x="204" y="90" width="102" height="18" rx="9" fill="#232323"/>
+  <rect x="214" y="96" width="34" height="6" rx="3" fill="#2c2c2c"/>
+</svg>

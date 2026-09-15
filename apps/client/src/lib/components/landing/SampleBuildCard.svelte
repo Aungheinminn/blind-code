@@ -20,7 +20,7 @@
 >
   {#if image}
     <div
-      class="h-32 border-b overflow-hidden"
+      class="border-b overflow-hidden p-4"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
     >
       <img
@@ -28,7 +28,7 @@
         alt={name}
         loading="lazy"
         decoding="async"
-        class="w-full h-full object-cover"
+        class="block w-full h-auto rounded-md"
       />
     </div>
   {:else}

@@ -1,0 +1,27 @@
+<svg viewBox="0 0 320 116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dashboard preview">
+  <rect x="0" y="0" width="188" height="116" rx="10" fill="#202020"/>
+  <rect x="16" y="14" width="52" height="7" rx="3.5" fill="#3a3a3a"/>
+  <rect x="16" y="27" width="32" height="5" rx="2.5" fill="#2b2b2b"/>
+  <rect x="16" y="66" width="15" height="32" rx="3" fill="#2f2f2f"/>
+  <rect x="40" y="52" width="15" height="46" rx="3" fill="#2f2f2f"/>
+  <rect x="64" y="72" width="15" height="26" rx="3" fill="#2f2f2f"/>
+  <rect x="88" y="44" width="15" height="54" rx="3" fill="#2f2f2f"/>
+  <rect x="112" y="60" width="15" height="38" rx="3" fill="#2f2f2f"/>
+  <rect x="136" y="36" width="15" height="62" rx="3" fill="#3d3d3d"/>
+  <rect x="160" y="48" width="15" height="50" rx="3" fill="#4f8df5"/>
+
+  <rect x="198" y="0" width="122" height="54" rx="10" fill="#202020"/>
+  <rect x="212" y="13" width="38" height="6" rx="3" fill="#333"/>
+  <rect x="212" y="25" width="60" height="10" rx="3" fill="#484848"/>
+  <polyline points="212,45 230,41 244,46 262,36 280,40 304,31"
+            fill="none" stroke="#4f8df5" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="198" y="62" width="122" height="54" rx="10" fill="#202020"/>
+  <circle cx="228" cy="89" r="16" fill="none" stroke="#2f2f2f" stroke-width="7"/>
+  <circle cx="228" cy="89" r="16" fill="none" stroke="#4f8df5" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="42 101"
+          transform="rotate(-90 228 89)"/>
+  <rect x="256" y="80" width="48" height="6" rx="3" fill="#333"/>
+  <rect x="256" y="93" width="32" height="6" rx="3" fill="#2a2a2a"/>
+</svg>
