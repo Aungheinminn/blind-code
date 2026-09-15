@@ -5,6 +5,7 @@
     ToolPart,
   } from "$lib/stores/agent";
   import ToolCallList from "./ToolCallList.svelte";
+  import ThinkingIndicator from "./ThinkingIndicator.svelte";
 
   export let message: AgentMessageType;
 
@@ -75,31 +76,7 @@
   </div>
 
   {#if isEmpty}
-    <div
-      class="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 self-start"
-      style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-tertiary);"
-    >
-      <span
-        class="w-1.5 h-1.5 rounded-full animate-pulse"
-        style="background-color: var(--accent);"
-        aria-hidden="true"
-      ></span>
-      <span class="text-[11px] uppercase tracking-wider font-semibold">Thinking</span>
-      <span class="flex items-center gap-0.5">
-        <span
-          class="w-1 h-1 rounded-full animate-pulse"
-          style="background-color: var(--text-tertiary);"
-        ></span>
-        <span
-          class="w-1 h-1 rounded-full animate-pulse"
-          style="background-color: var(--text-tertiary); animation-delay: 0.2s;"
-        ></span>
-        <span
-          class="w-1 h-1 rounded-full animate-pulse"
-          style="background-color: var(--text-tertiary); animation-delay: 0.4s;"
-        ></span>
-      </span>
-    </div>
+    <ThinkingIndicator />
   {/if}
 
   {#each groups as group, gi (gi)}
