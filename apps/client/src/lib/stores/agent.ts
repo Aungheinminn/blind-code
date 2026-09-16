@@ -23,6 +23,7 @@ export type AgentMessage = {
   content: string;
   parts?: MessagePart[];
   timestamp: Date;
+  interrupted?: boolean;
 };
 
 export type ProviderInfo = {
@@ -447,20 +448,23 @@ const handleEvent = (raw: unknown) => {
 export const sendPrompt = async (
   projectId: string,
   prompt: string,
+  opts: { skipUserAppend?: boolean } = {},
 ): Promise<void> => {
   if (!prompt.trim() || get(isRunning)) return;
 
   activeProjectId = projectId;
 
-  messages.update((list) => [
-    ...list,
-    {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: prompt.trim(),
-      timestamp: new Date(),
-    },
-  ]);
+  if (!opts.skipUserAppend) {
+    messages.update((list) => [
+      ...list,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: prompt.trim(),
+        timestamp: new Date(),
+      },
+    ]);
+  }
   isRunning.set(true);
 
   const history = get(messages)
@@ -498,9 +502,31 @@ export const cancelAgent = () => {
   isRunning.set(false);
   clearSavedTurn(activeProjectId);
   activeTurnId = null;
+  const interruptedId = currentAgentMessageId;
   currentAgentMessageId = null;
   lastOrdinal = -1;
   resetPlan();
+  if (interruptedId) {
+    messages.update((list) =>
+      list.map((m) => (m.id === interruptedId ? { ...m, interrupted: true } : m)),
+    );
+  }
+};
+
+export const retryLastPrompt = async (projectId: string): Promise<void> => {
+  if (get(isRunning)) return;
+  const list = get(messages);
+  let userIdx = -1;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i].role === "user") {
+      userIdx = i;
+      break;
+    }
+  }
+  if (userIdx < 0) return;
+  const prompt = list[userIdx].content;
+  messages.set(list.slice(0, userIdx + 1));
+  await sendPrompt(projectId, prompt, { skipUserAppend: true });
 };
 
 export const resumeTurn = async (projectId: string): Promise<void> => {

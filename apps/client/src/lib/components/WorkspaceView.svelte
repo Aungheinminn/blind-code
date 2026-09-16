@@ -11,6 +11,7 @@
     loadProviders,
     sendPrompt,
     cancelAgent,
+    retryLastPrompt,
     loadHistory,
     loadProjectFiles,
     resetWorkspace,
@@ -126,6 +127,7 @@
     on:close={() => (panelOpen = false)}
     on:submit={handleSubmit}
     on:cancel={cancelAgent}
+    on:retry={() => retryLastPrompt(projectId)}
     on:back={goBack}
   />
 

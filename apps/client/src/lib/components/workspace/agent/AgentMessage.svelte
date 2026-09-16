@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import type {
     AgentMessage as AgentMessageType,
     MessagePart,
@@ -8,6 +9,8 @@
   import ThinkingIndicator from "./ThinkingIndicator.svelte";
 
   export let message: AgentMessageType;
+
+  const dispatch = createEventDispatcher<{ retry: void }>();
 
   type RenderGroup =
     | { kind: "text"; text: string; lastIndex: number }
@@ -75,7 +78,7 @@
     {/if}
   </div>
 
-  {#if isEmpty}
+  {#if isEmpty && !message.interrupted}
     <ThinkingIndicator />
   {/if}
 
@@ -125,6 +128,37 @@
       <ToolCallList calls={group.calls} />
     {/if}
   {/each}
+
+  {#if message.interrupted}
+    <div
+      class="flex items-center gap-2 text-[12.5px] mt-0.5"
+      style="color: var(--text-tertiary);"
+    >
+      <span class="italic">Response was interrupted.</span>
+      <button
+        type="button"
+        class="retry-btn inline-flex items-center gap-1 px-2 py-0.5 rounded-md border cursor-pointer"
+        style="border-color: var(--border); background-color: var(--bg-panel); color: var(--text-secondary);"
+        on:click={() => dispatch("retry")}
+      >
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="1 4 1 10 7 10" />
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+        </svg>
+        Try again
+      </button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -146,5 +180,12 @@
   }
   .reasoning-toggle:hover {
     color: var(--text-secondary);
+  }
+  .retry-btn {
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  }
+  .retry-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
   }
 </style>

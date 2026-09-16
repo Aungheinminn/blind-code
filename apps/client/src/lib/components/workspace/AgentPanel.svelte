@@ -27,6 +27,7 @@
     close: void;
     submit: string;
     cancel: void;
+    retry: void;
     back: void;
     "provider-change": string;
     "model-change": string;
@@ -67,7 +68,7 @@
     {#if showTray}
       <TodoTray {plan} statuses={todoStatuses} {isRunning} {planError} />
     {/if}
-    <MessageList {messages} {isRunning} />
+    <MessageList {messages} {isRunning} on:retry={() => dispatch("retry")} />
   </div>
 
   <PromptComposer

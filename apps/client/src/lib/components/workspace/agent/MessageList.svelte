@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import type { AgentMessage as AgentMessageType } from "$lib/stores/agent";
   import UserMessage from "./UserMessage.svelte";
   import AgentMessage from "./AgentMessage.svelte";
@@ -6,6 +7,8 @@
 
   export let messages: AgentMessageType[] = [];
   export let isRunning = false;
+
+  const dispatch = createEventDispatcher<{ retry: void }>();
 
   $: last = messages[messages.length - 1];
   $: showTypingIndicator = isRunning && (!last || last.role !== "agent");
@@ -16,7 +19,7 @@
     {#if message.role === "user"}
       <UserMessage content={message.content} />
     {:else}
-      <AgentMessage {message} />
+      <AgentMessage {message} on:retry={() => dispatch("retry")} />
     {/if}
   {/each}
 
