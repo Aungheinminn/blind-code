@@ -172,6 +172,7 @@ export type HistoryMessage = {
   content: string;
   parts?: HistoryPart[];
   timestamp: string;
+  interrupted?: boolean;
 };
 
 export const getProjectHistory = async (projectId: string): Promise<HistoryMessage[]> => {
@@ -179,95 +180,135 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
   const rows = await db
     .select({
       id: schema.agentActions.id,
+      sessionId: schema.agentActions.sessionId,
       actionType: schema.agentActions.actionType,
       payload: schema.agentActions.payload,
       createdAt: schema.agentActions.createdAt,
+      turnStatus: schema.turns.status,
     })
     .from(schema.agentActions)
     .innerJoin(
       schema.agentSessions,
       eq(schema.agentSessions.id, schema.agentActions.sessionId),
     )
+    .leftJoin(schema.turns, eq(schema.turns.sessionId, schema.agentActions.sessionId))
     .where(eq(schema.agentSessions.projectId, projectId))
     .orderBy(asc(schema.agentActions.createdAt), asc(schema.agentActions.id));
 
-  const messages: HistoryMessage[] = [];
-  let currentAgent: HistoryMessage | null = null;
-  let currentText = "";
-
-  const startAgent = (id: string, timestamp: string) => {
-    currentText = "";
-    currentAgent = {
-      id,
-      role: "agent",
-      content: "",
-      parts: [],
-      timestamp,
-    };
-    messages.push(currentAgent);
+  type SessionBucket = {
+    sessionId: string;
+    cancelled: boolean;
+    rows: typeof rows;
+    firstAt: string;
   };
-
+  const bySession = new Map<string, SessionBucket>();
   for (const row of rows) {
-    const payload = (row.payload ?? {}) as Record<string, unknown>;
-    const timestamp = row.createdAt.toISOString();
+    let bucket = bySession.get(row.sessionId);
+    if (!bucket) {
+      bucket = {
+        sessionId: row.sessionId,
+        cancelled: row.turnStatus === "cancelled",
+        rows: [],
+        firstAt: row.createdAt.toISOString(),
+      };
+      bySession.set(row.sessionId, bucket);
+    }
+    bucket.rows.push(row);
+  }
 
-    if (row.actionType === "user_prompt") {
-      currentAgent = null;
-      currentText = "";
+  const sessions = [...bySession.values()].sort((a, b) =>
+    a.firstAt < b.firstAt ? -1 : a.firstAt > b.firstAt ? 1 : 0,
+  );
+
+  const messages: HistoryMessage[] = [];
+
+  for (const session of sessions) {
+    let agent: HistoryMessage | null = null;
+    let text = "";
+
+    const ensureAgent = (id: string, timestamp: string) => {
+      if (agent) return;
+      agent = { id, role: "agent", content: "", parts: [], timestamp };
+      if (session.cancelled) agent.interrupted = true;
+      messages.push(agent);
+    };
+
+    let lastTimestamp = session.firstAt;
+
+    for (const row of session.rows) {
+      const payload = (row.payload ?? {}) as Record<string, unknown>;
+      const timestamp = row.createdAt.toISOString();
+      lastTimestamp = timestamp;
+
+      if (row.actionType === "user_prompt") {
+        messages.push({
+          id: row.id,
+          role: "user",
+          content: typeof payload.prompt === "string" ? payload.prompt : "",
+          timestamp,
+        });
+        continue;
+      }
+
+      ensureAgent(row.id, timestamp);
+      const a = agent!;
+      a.parts ??= [];
+
+      if (row.actionType === "assistant_text") {
+        const t = typeof payload.text === "string" ? payload.text : "";
+        if (!t) continue;
+        a.parts.push({ kind: "text", text: t });
+        text += (text ? "\n\n" : "") + t;
+        a.content = text;
+        continue;
+      }
+
+      if (row.actionType === "assistant_reasoning") {
+        const t = typeof payload.text === "string" ? payload.text : "";
+        if (!t) continue;
+        a.parts.push({ kind: "reasoning", text: t });
+        continue;
+      }
+
+      if (row.actionType.startsWith("tool_call:")) {
+        const toolCallId =
+          typeof payload.toolCallId === "string" ? payload.toolCallId : row.id;
+        const name = row.actionType.slice("tool_call:".length);
+        a.parts.push({
+          kind: "tool",
+          id: toolCallId,
+          name,
+          input: payload.input,
+        });
+        continue;
+      }
+
+      if (row.actionType.startsWith("tool_result:")) {
+        const toolCallId =
+          typeof payload.toolCallId === "string" ? payload.toolCallId : null;
+        if (!toolCallId) continue;
+        const tool = [...a.parts].reverse().find(
+          (p) => p.kind === "tool" && p.id === toolCallId,
+        );
+        if (tool && tool.kind === "tool") tool.output = payload.output;
+        continue;
+      }
+    }
+
+    if (session.cancelled && !agent) {
       messages.push({
-        id: row.id,
-        role: "user",
-        content: typeof payload.prompt === "string" ? payload.prompt : "",
-        timestamp,
+        id: `${session.sessionId}-interrupted`,
+        role: "agent",
+        content: "",
+        parts: [],
+        timestamp: lastTimestamp,
+        interrupted: true,
       });
-      continue;
-    }
-
-    if (!currentAgent) startAgent(row.id, timestamp);
-    const agent = currentAgent!;
-    agent.parts ??= [];
-
-    if (row.actionType === "assistant_text") {
-      const text = typeof payload.text === "string" ? payload.text : "";
-      if (!text) continue;
-      agent.parts.push({ kind: "text", text });
-      currentText += (currentText ? "\n\n" : "") + text;
-      agent.content = currentText;
-      continue;
-    }
-
-    if (row.actionType === "assistant_reasoning") {
-      const text = typeof payload.text === "string" ? payload.text : "";
-      if (!text) continue;
-      agent.parts.push({ kind: "reasoning", text });
-      continue;
-    }
-
-    if (row.actionType.startsWith("tool_call:")) {
-      const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : row.id;
-      const name = row.actionType.slice("tool_call:".length);
-      agent.parts.push({
-        kind: "tool",
-        id: toolCallId,
-        name,
-        input: payload.input,
-      });
-      continue;
-    }
-
-    if (row.actionType.startsWith("tool_result:")) {
-      const toolCallId = typeof payload.toolCallId === "string" ? payload.toolCallId : null;
-      if (!toolCallId) continue;
-      const tool = [...agent.parts].reverse().find(
-        (p) => p.kind === "tool" && p.id === toolCallId,
-      );
-      if (tool && tool.kind === "tool") tool.output = payload.output;
-      continue;
     }
   }
 
   return messages.filter(
-    (m) => m.content.length > 0 || (m.parts && m.parts.length > 0),
+    (m) => m.content.length > 0 || (m.parts && m.parts.length > 0) || m.interrupted,
   );
 };
 

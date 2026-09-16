@@ -90,6 +90,7 @@ export type HistoryMessage = {
   content: string;
   parts?: HistoryPart[];
   timestamp: string;
+  interrupted?: boolean;
 };
 
 export const getProjectHistory = (id: string) =>

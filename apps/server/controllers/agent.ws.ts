@@ -35,6 +35,7 @@ type AgentIncoming =
       systemPrompt?: string;
       usePlan?: boolean;
       plannerMaxSteps?: number;
+      persistPrompt?: boolean;
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
@@ -160,7 +161,7 @@ export const agentController = (app: Elysia) =>
           turnId,
         });
 
-        if (sessionId) {
+        if (sessionId && msg.persistPrompt !== false) {
           await recordAgentAction(sessionId, "user_prompt", {
             summary: msg.prompt.slice(0, 200),
             payload: { prompt: msg.prompt },

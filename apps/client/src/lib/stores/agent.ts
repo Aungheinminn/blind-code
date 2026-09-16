@@ -141,6 +141,7 @@ export const loadHistory = async (projectId: string): Promise<void> => {
           content: m.content,
           parts: m.role === "agent" ? parts : undefined,
           timestamp: new Date(m.timestamp),
+          ...(m.interrupted ? { interrupted: true } : {}),
         };
       }),
     );
@@ -487,6 +488,7 @@ export const sendPrompt = async (
         prompt: prompt.trim(),
         history,
         usePlan: true,
+        persistPrompt: !opts.skipUserAppend,
       }),
     );
   } catch (e) {
