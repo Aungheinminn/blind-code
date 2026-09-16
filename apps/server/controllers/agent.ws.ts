@@ -208,6 +208,8 @@ export const agentController = (app: Elysia) =>
           } catch {}
         };
 
+        const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
+
         let plan: Plan | null = null;
         if (msg.usePlan) {
           try {
@@ -222,7 +224,7 @@ export const agentController = (app: Elysia) =>
               prompt: msg.prompt,
               history: msg.history,
               maxSteps: msg.plannerMaxSteps,
-              signal: (ws.data as any).abort?.signal,
+              signal: runSignal,
             });
             await publish({ type: "plan", plan });
             if (sessionId) {
@@ -342,7 +344,7 @@ export const agentController = (app: Elysia) =>
             maxSteps: msg.maxSteps,
             systemPrompt: msg.systemPrompt,
             plan,
-            signal: (ws.data as any).abort?.signal,
+            signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});
               if (event.type === "error") {
@@ -351,12 +353,12 @@ export const agentController = (app: Elysia) =>
               }
             },
           });
-          if ((ws.data as any).abort?.signal?.aborted) {
+          if (runSignal?.aborted) {
             terminalStatus = "cancelled";
           }
         } catch (err) {
-          terminalStatus = "failed";
-          terminalError = extractErrorMessage(err);
+          terminalStatus = runSignal?.aborted ? "cancelled" : "failed";
+          if (terminalStatus === "failed") terminalError = extractErrorMessage(err);
         }
 
         await flushAllBlocks();

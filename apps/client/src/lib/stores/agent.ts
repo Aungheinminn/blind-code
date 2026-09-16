@@ -342,6 +342,14 @@ const handleEvent = (raw: unknown) => {
     return;
   }
 
+  if (
+    event.type !== "started" &&
+    typeof event.turnId === "string" &&
+    event.turnId !== activeTurnId
+  ) {
+    return;
+  }
+
   if (typeof event.ordinal === "number" && event.ordinal > lastOrdinal) {
     lastOrdinal = event.ordinal;
     if (activeProjectId && activeTurnId) {
@@ -490,6 +498,7 @@ export const cancelAgent = () => {
   isRunning.set(false);
   clearSavedTurn(activeProjectId);
   activeTurnId = null;
+  currentAgentMessageId = null;
   lastOrdinal = -1;
   resetPlan();
 };
