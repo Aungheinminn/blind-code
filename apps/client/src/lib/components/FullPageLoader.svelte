@@ -1,10 +1,11 @@
 <script lang="ts">
   export let title: string = "Loading…";
   export let subtitle: string = "";
+  export let scoped: boolean = false;
 </script>
 
 <div
-  class="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-4 loading-overlay"
+  class="{scoped ? 'absolute z-10' : 'fixed z-[60]'} inset-0 flex flex-col items-center justify-center gap-4 loading-overlay"
   aria-live="polite"
   role="status"
 >

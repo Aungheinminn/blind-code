@@ -7,10 +7,12 @@
     type SandpackTemplate,
   } from "@codesandbox/sandpack-client";
   import { currentWidth, orientation, selectedDevice } from "$lib/stores/preview";
+  import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
   export let template: SandpackTemplate = "create-react-app-typescript";
   export let framed: boolean = true;
+  export let loading: boolean = false;
 
   let iframe: HTMLIFrameElement;
   let client: SandpackClient | null = null;
@@ -143,7 +145,7 @@ button {
 </script>
 
 <div
-  class="h-full w-full flex justify-center preview-canvas"
+  class="relative h-full w-full flex justify-center preview-canvas"
   class:framed
   style="background-color: var(--bg-primary);"
 >
@@ -160,6 +162,13 @@ button {
       sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
     ></iframe>
   </div>
+  {#if loading}
+    <FullPageLoader
+      scoped
+      title="Working…"
+      subtitle="Waiting for the agent to finish."
+    />
+  {/if}
 </div>
 
 <style>

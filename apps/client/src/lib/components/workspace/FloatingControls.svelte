@@ -3,11 +3,15 @@
   import { theme, toggleTheme } from "$lib/stores/theme";
   import DeviceWidthToolbar from "./DeviceWidthToolbar.svelte";
 
+  export let panelOpen = false;
+
   const dispatch = createEventDispatcher<{ restart: void }>();
 </script>
 
 <div class="absolute bottom-[19px] right-[19px] z-30 flex items-center gap-2">
-  <DeviceWidthToolbar />
+  {#if !panelOpen}
+    <DeviceWidthToolbar />
+  {/if}
   <button
     type="button"
     class="chrome-button"

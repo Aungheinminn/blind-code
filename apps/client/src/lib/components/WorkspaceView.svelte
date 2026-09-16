@@ -20,6 +20,7 @@
     todoStatuses,
     planError,
     assembledFiles,
+    projectFiles,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
@@ -39,6 +40,10 @@
   $: statusText = $isRunning ? "working…" : "idle";
   $: currentProvider = $providers.find((p) => p.name === $selectedProvider);
   $: modelPlaceholder = currentProvider?.defaultModel ?? "";
+  $: hasUserApp = Object.keys($projectFiles).some((p) =>
+    /^\/?App\.(tsx|jsx|ts|js)$/.test(p),
+  );
+  $: previewLoading = $isRunning && !hasUserApp;
 
   onMount(() => {
     loadProviders();
@@ -106,8 +111,13 @@
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell"
     style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
   >
-    <SandpackPreview bind:this={sandpack} files={$assembledFiles} framed={panelOpen} />
-    <FloatingControls on:restart={() => sandpack?.refresh()} />
+    <SandpackPreview
+      bind:this={sandpack}
+      files={$assembledFiles}
+      framed={panelOpen}
+      loading={previewLoading}
+    />
+    <FloatingControls {panelOpen} on:restart={() => sandpack?.refresh()} />
   </div>
 
   <AgentPanel

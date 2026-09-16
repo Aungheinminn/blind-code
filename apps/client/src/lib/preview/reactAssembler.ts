@@ -60,12 +60,7 @@ const normalizePath = (raw: string): string => {
 };
 
 const DEFAULT_APP = `export default function App() {
-  return (
-    <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1>Preview</h1>
-      <p>Waiting for the agent to write App.tsx…</p>
-    </main>
-  );
+  return null;
 }
 `;
 
