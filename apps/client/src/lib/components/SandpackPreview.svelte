@@ -6,6 +6,7 @@
     type SandpackBundlerFiles,
     type SandpackTemplate,
   } from "@codesandbox/sandpack-client";
+  import { currentWidth, orientation, selectedDevice } from "$lib/stores/preview";
 
   export let files: Record<string, string> = {};
   export let template: SandpackTemplate = "create-react-app-typescript";
@@ -14,6 +15,9 @@
   let iframe: HTMLIFrameElement;
   let client: SandpackClient | null = null;
   let ready = false;
+
+  $: presetWidth = currentWidth($selectedDevice, $orientation);
+  $: frameMaxWidth = presetWidth === null ? "none" : `${presetWidth}px`;
 
   const STARTER_FILES: Record<string, string> = {
     "/public/index.html": `<!DOCTYPE html>
@@ -139,14 +143,14 @@ button {
 </script>
 
 <div
-  class="h-full w-full flex preview-canvas"
+  class="h-full w-full flex justify-center preview-canvas"
   class:framed
   style="background-color: var(--bg-primary);"
 >
   <div
     class="flex-1 min-w-0 min-h-0 overflow-hidden preview-frame"
     class:framed
-    style="background-color: #ffffff;"
+    style="background-color: #ffffff; max-width: {frameMaxWidth};"
   >
     <iframe
       bind:this={iframe}
@@ -161,6 +165,9 @@ button {
 <style>
   .preview-canvas.framed {
     padding: 16px;
+  }
+  .preview-frame {
+    transition: max-width 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
   }
   .preview-frame.framed {
     border: 1px solid var(--border);

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { theme, toggleTheme } from "$lib/stores/theme";
+  import DeviceWidthToolbar from "./DeviceWidthToolbar.svelte";
 
   const dispatch = createEventDispatcher<{ restart: void }>();
 </script>
 
-<div class="absolute bottom-[19px] right-[19px] z-30 flex gap-2">
+<div class="absolute bottom-[19px] right-[19px] z-30 flex items-center gap-2">
+  <DeviceWidthToolbar />
   <button
     type="button"
     class="chrome-button"
