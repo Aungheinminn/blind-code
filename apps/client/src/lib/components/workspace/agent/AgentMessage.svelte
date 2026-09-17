@@ -38,7 +38,14 @@
   $: parts = (message.parts ?? []) as MessagePart[];
   $: groups = groupParts(parts);
   $: toolCount = parts.filter((p) => p.kind === "tool").length;
-  $: isEmpty = parts.length === 0 && !message.content;
+  $: isEmpty =
+    !message.content &&
+    !parts.some(
+      (p) =>
+        (p.kind === "text" && p.text.length > 0) ||
+        (p.kind === "reasoning" && p.text.length > 0) ||
+        p.kind === "tool",
+    );
   $: meta = toolCount > 0 ? `ran ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
 
   // Reasoning collapse state, keyed by part index. A reasoning part is
@@ -93,7 +100,7 @@
           {group.text}
         </div>
       {/if}
-    {:else if group.kind === "reasoning"}
+    {:else if group.kind === "reasoning" && group.text}
       {@const partIndex = group.lastIndex}
       {@const expanded = partIndex in manualExpanded ? manualExpanded[partIndex] : isLastGroup}
       <button
