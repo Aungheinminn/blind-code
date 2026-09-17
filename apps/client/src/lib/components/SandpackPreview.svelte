@@ -18,8 +18,7 @@
   let client: SandpackClient | null = null;
   let ready = false;
 
-  $: presetWidth = currentWidth($selectedDevice, $orientation);
-  $: frameMaxWidth = presetWidth === null ? "none" : `${presetWidth}px`;
+  $: frameMaxWidth = `${currentWidth($selectedDevice, $orientation)}px`;
 
   const STARTER_FILES: Record<string, string> = {
     "/public/index.html": `<!DOCTYPE html>

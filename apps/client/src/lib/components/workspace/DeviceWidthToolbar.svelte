@@ -11,7 +11,6 @@
   type Item = { key: DeviceKey; title: string };
 
   const items: Item[] = [
-    { key: "full", title: "Full width" },
     { key: "mobile", title: "Mobile — 390 × 844" },
     { key: "tablet", title: "Tablet — 834 × 1112" },
     { key: "laptop", title: "Laptop — 1440 × 900" },
@@ -25,9 +24,8 @@
 
   $: w = currentWidth($selectedDevice, $orientation);
   $: h = currentHeight($selectedDevice, $orientation);
-  $: label = w === null ? "Full" : `${w} × ${h}`;
+  $: label = `${w} × ${h}`;
   $: canRotate = $selectedDevice === "mobile" || $selectedDevice === "tablet";
-  $: chipDevice = $selectedDevice === "full" ? "mobile" : $selectedDevice;
 </script>
 
 <div
@@ -47,14 +45,7 @@
       aria-pressed={active}
       on:click={() => pick(item.key)}
     >
-      {#if item.key === "full"}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="9 4 4 4 4 9" />
-          <polyline points="15 4 20 4 20 9" />
-          <polyline points="9 20 4 20 4 15" />
-          <polyline points="15 20 20 20 20 15" />
-        </svg>
-      {:else if item.key === "mobile"}
+      {#if item.key === "mobile"}
         <svg width="11" height="17" viewBox="0 0 11 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="1" y="1" width="9" height="15" rx="1.8" />
           <line x1="4.5" y1="13.5" x2="6.5" y2="13.5" />
@@ -86,12 +77,12 @@
     on:click={rotate}
   >
     <span class="rot-icon" aria-hidden="true">
-      {#if chipDevice === "mobile"}
+      {#if $selectedDevice === "mobile"}
         <svg width="12" height="16" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <rect x="1" y="1" width="10" height="14" rx="1.8" />
           <line x1="5" y1="12.5" x2="7" y2="12.5" />
         </svg>
-      {:else if chipDevice === "tablet"}
+      {:else if $selectedDevice === "tablet"}
         <svg width="15" height="17" viewBox="0 0 15 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <rect x="1" y="1" width="13" height="15" rx="1.8" />
           <line x1="6.5" y1="13.5" x2="8.5" y2="13.5" />

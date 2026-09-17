@@ -24,7 +24,7 @@
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
-  import FloatingControls from "$lib/components/workspace/FloatingControls.svelte";
+  import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import { getProject } from "$lib/api/projects";
 
@@ -33,6 +33,7 @@
   export let projectId: string = "default";
 
   let panelOpen = true;
+  let launcherHidden = false;
   let activeProjectId: string | null = null;
   let sandpack: SandpackPreview | undefined;
   let projectName = "";
@@ -108,16 +109,23 @@
   style="height: 100vh; background-color: var(--bg-primary); color: var(--text-primary);"
 >
   <div
-    class="absolute inset-y-0 right-0 overflow-hidden preview-shell"
+    class="absolute inset-y-0 right-0 overflow-hidden preview-shell flex flex-col"
     style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
   >
-    <SandpackPreview
-      bind:this={sandpack}
-      files={$assembledFiles}
-      framed={panelOpen}
-      loading={previewLoading}
+    <PreviewHeader
+      {panelOpen}
+      {launcherHidden}
+      on:restart={() => sandpack?.refresh()}
+      on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
     />
-    <FloatingControls {panelOpen} on:restart={() => sandpack?.refresh()} />
+    <div class="flex-1 min-h-0 relative">
+      <SandpackPreview
+        bind:this={sandpack}
+        files={$assembledFiles}
+        framed={panelOpen}
+        loading={previewLoading}
+      />
+    </div>
   </div>
 
   <AgentPanel
@@ -142,7 +150,7 @@
   />
 
   <AgentLauncher
-    hidden={panelOpen}
+    hidden={panelOpen || launcherHidden}
     isRunning={$isRunning}
     plan={$activePlan}
     statuses={$todoStatuses}
