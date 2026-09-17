@@ -146,7 +146,7 @@ button {
 <div
   class="relative h-full w-full flex justify-center preview-canvas"
   class:framed
-  style="background-color: var(--bg-primary);"
+  style="background-color: var(--bg-tertiary);"
 >
   <div
     class="flex-1 min-w-0 min-h-0 overflow-hidden preview-frame"
