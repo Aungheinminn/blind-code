@@ -6,7 +6,7 @@
     type SandpackBundlerFiles,
     type SandpackTemplate,
   } from "@codesandbox/sandpack-client";
-  import { currentWidth, orientation, selectedDevice } from "$lib/stores/preview";
+  import { currentHeight, currentWidth, orientation, selectedDevice } from "$lib/stores/preview";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
@@ -19,6 +19,7 @@
   let ready = false;
 
   $: frameMaxWidth = `${currentWidth($selectedDevice, $orientation)}px`;
+  $: frameMaxHeight = `${currentHeight($selectedDevice, $orientation)}px`;
 
   const STARTER_FILES: Record<string, string> = {
     "/public/index.html": `<!DOCTYPE html>
@@ -144,14 +145,14 @@ button {
 </script>
 
 <div
-  class="relative h-full w-full flex justify-center preview-canvas"
+  class="relative h-full w-full flex items-center justify-center preview-canvas"
   class:framed
   style="background-color: var(--bg-tertiary);"
 >
   <div
-    class="flex-1 min-w-0 min-h-0 overflow-hidden preview-frame"
+    class="flex-1 self-stretch min-w-0 min-h-0 overflow-hidden preview-frame"
     class:framed
-    style="background-color: #ffffff; max-width: {frameMaxWidth};"
+    style="background-color: #ffffff; max-width: {frameMaxWidth}; max-height: {frameMaxHeight};"
   >
     <iframe
       bind:this={iframe}
@@ -175,7 +176,9 @@ button {
     padding: 16px;
   }
   .preview-frame {
-    transition: max-width 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
+    transition:
+      max-width 250ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      max-height 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
   }
   .preview-frame.framed {
     border: 1px solid var(--border);

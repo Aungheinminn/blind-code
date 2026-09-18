@@ -27,6 +27,13 @@
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import { getProject } from "$lib/api/projects";
+  import { orientation, selectedDevice } from "$lib/stores/preview";
+
+  const openAgentPanel = () => {
+    panelOpen = true;
+    selectedDevice.set("laptop");
+    orientation.set("portrait");
+  };
 
   const PENDING_PROMPT_PREFIX = "vibe-pending-prompt:";
 
@@ -155,7 +162,7 @@
     plan={$activePlan}
     statuses={$todoStatuses}
     planError={$planError}
-    on:open={() => (panelOpen = true)}
+    on:open={openAgentPanel}
   />
 </div>
 
