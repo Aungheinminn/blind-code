@@ -1,10 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import ProviderChip from "./ProviderChip.svelte";
+  import PromptBox from "$lib/components/ui/PromptBox.svelte";
 
   export let prompt = "";
   export let busy = false;
   export let error = "";
+
+  let box: PromptBox | undefined;
 
   const dispatch = createEventDispatcher<{ create: string }>();
 
@@ -35,6 +38,7 @@
 
   const applySuggestion = (s: { name: string; prompt: string }) => {
     prompt = s.prompt;
+    box?.autoGrow();
   };
 
   const onCreate = () => {
@@ -44,50 +48,45 @@
 </script>
 
 <section class="flex flex-col gap-4">
-  <div
-    class="rounded-2xl border p-4 flex flex-col gap-3"
-    style="border-color: var(--border); background-color: var(--bg-panel); box-shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.9);"
+  <PromptBox
+    bind:this={box}
+    bind:value={prompt}
+    placeholder="Describe the app you want to build…"
+    minHeight={96}
+    maxHeight={320}
+    size="md"
   >
-    <textarea
-      rows="4"
-      bind:value={prompt}
-      placeholder="Describe the app you want to build…"
-      class="w-full resize-y min-h-24 bg-transparent border-0 outline-none text-base leading-[1.55] px-1 pt-1"
-      style="color: var(--text-primary);"
-    ></textarea>
+    <svelte:fragment slot="left">
+      <ProviderChip />
+      {#if hintText}
+        <span
+          class="text-[12.5px] truncate"
+          style="color: {error ? '#ef4444' : 'var(--text-tertiary)'};"
+        >
+          {hintText}
+        </span>
+      {/if}
+    </svelte:fragment>
 
-    <div class="flex items-center justify-between gap-3 flex-wrap">
-      <div class="flex items-center gap-3 flex-wrap min-w-0">
-        <ProviderChip />
-        {#if hintText}
-          <span
-            class="text-[12.5px] truncate"
-            style="color: {error ? '#ef4444' : 'var(--text-tertiary)'};"
-          >
-            {hintText}
-          </span>
-        {/if}
-      </div>
-      <div class="flex items-center gap-2.5">
-        <a
-          href="/projects"
-          class="px-[18px] py-2.5 rounded-[10px] border no-underline text-[14.5px] font-medium view-projects-btn"
-          style="border-color: var(--border); color: var(--text-secondary);"
-        >
-          View Projects
-        </a>
-        <button
-          type="button"
-          on:click={onCreate}
-          disabled={!canCreate}
-          class="px-[22px] py-[11px] rounded-[10px] border-0 text-[14.5px] font-semibold text-white create-btn"
-          style="background-color: {canCreate ? 'var(--accent)' : 'var(--bg-tertiary)'}; color: {canCreate ? '#ffffff' : 'var(--text-tertiary)'}; cursor: {canCreate ? 'pointer' : 'not-allowed'};"
-        >
-          Create
-        </button>
-      </div>
-    </div>
-  </div>
+    <svelte:fragment slot="right">
+      <a
+        href="/projects"
+        class="px-[18px] py-2.5 rounded-[10px] border no-underline text-[14.5px] font-medium view-projects-btn"
+        style="border-color: var(--border); color: var(--text-secondary);"
+      >
+        View Projects
+      </a>
+      <button
+        type="button"
+        on:click={onCreate}
+        disabled={!canCreate}
+        class="px-[22px] py-[11px] rounded-[10px] border-0 text-[14.5px] font-semibold text-white create-btn"
+        style="background-color: {canCreate ? 'var(--accent)' : 'var(--bg-tertiary)'}; color: {canCreate ? '#ffffff' : 'var(--text-tertiary)'}; cursor: {canCreate ? 'pointer' : 'not-allowed'};"
+      >
+        Create
+      </button>
+    </svelte:fragment>
+  </PromptBox>
 
   <div class="flex gap-2 flex-wrap justify-center">
     {#each suggestions as s}
