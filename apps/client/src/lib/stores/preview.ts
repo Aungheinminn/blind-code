@@ -2,6 +2,7 @@ import { writable } from "svelte/store";
 
 export type DeviceKey = "mobile" | "tablet" | "laptop";
 export type Orientation = "portrait" | "landscape";
+export type ViewMode = "device" | "fluid";
 
 export const DEVICE_PRESETS: Record<DeviceKey, { w: number; h: number }> = {
   mobile: { w: 393, h: 852 },
@@ -11,6 +12,7 @@ export const DEVICE_PRESETS: Record<DeviceKey, { w: number; h: number }> = {
 
 const DEVICE_KEY = "workspace:preview:device";
 const ORIENT_KEY = "workspace:preview:orientation";
+const VIEW_MODE_KEY = "workspace:preview:viewMode";
 
 const readDevice = (): DeviceKey => {
   if (typeof window === "undefined") return "laptop";
@@ -30,8 +32,19 @@ const readOrientation = (): Orientation => {
   return "portrait";
 };
 
+const readViewMode = (): ViewMode => {
+  if (typeof window === "undefined") return "fluid";
+  try {
+    const value = window.localStorage.getItem(VIEW_MODE_KEY);
+    if (value === "device") return "device";
+  } catch {}
+  return "fluid";
+};
+
 export const selectedDevice = writable<DeviceKey>(readDevice());
 export const orientation = writable<Orientation>(readOrientation());
+export const viewMode = writable<ViewMode>(readViewMode());
+export const previewScale = writable<number>(1);
 
 selectedDevice.subscribe((value) => {
   if (typeof window === "undefined") return;
@@ -44,6 +57,13 @@ orientation.subscribe((value) => {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(ORIENT_KEY, value);
+  } catch {}
+});
+
+viewMode.subscribe((value) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(VIEW_MODE_KEY, value);
   } catch {}
 });
 

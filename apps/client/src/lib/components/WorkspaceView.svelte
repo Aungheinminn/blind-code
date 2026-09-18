@@ -27,11 +27,11 @@
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import { getProject } from "$lib/api/projects";
-  import { orientation, selectedDevice } from "$lib/stores/preview";
+  import { orientation, viewMode } from "$lib/stores/preview";
 
   const openAgentPanel = () => {
     panelOpen = true;
-    selectedDevice.set("laptop");
+    viewMode.set("fluid");
     orientation.set("portrait");
   };
 

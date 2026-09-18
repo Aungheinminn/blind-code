@@ -3,7 +3,9 @@
     currentHeight,
     currentWidth,
     orientation,
+    previewScale,
     selectedDevice,
+    viewMode,
     type DeviceKey,
     type Orientation,
   } from "$lib/stores/preview";
@@ -16,16 +18,24 @@
     { key: "laptop", title: "Laptop — 1440 × 900" },
   ];
 
-  const pick = (key: DeviceKey) => selectedDevice.set(key);
+  const pick = (key: DeviceKey) => {
+    selectedDevice.set(key);
+    viewMode.set("device");
+  };
+  const toggleFluid = () => viewMode.set("fluid");
   const rotate = () =>
     orientation.update((v: Orientation): Orientation =>
       v === "portrait" ? "landscape" : "portrait",
     );
 
+  $: isFluid = $viewMode === "fluid";
   $: w = currentWidth($selectedDevice, $orientation);
   $: h = currentHeight($selectedDevice, $orientation);
-  $: label = `${w} × ${h}`;
-  $: canRotate = $selectedDevice === "mobile" || $selectedDevice === "tablet";
+  $: label = isFluid ? "Fluid" : `${w} × ${h}`;
+  $: canRotate =
+    !isFluid && ($selectedDevice === "mobile" || $selectedDevice === "tablet");
+  $: scalePct = Math.round($previewScale * 100);
+  $: scaled = !isFluid && scalePct < 100;
 </script>
 
 <div
@@ -35,7 +45,7 @@
   style="padding: 3px; background-color: var(--chrome); border: 1px solid var(--chrome-border); border-radius: 10px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);"
 >
   {#each items as item (item.key)}
-    {@const active = $selectedDevice === item.key}
+    {@const active = !isFluid && $selectedDevice === item.key}
     <button
       type="button"
       class="device-btn"
@@ -63,6 +73,33 @@
       {/if}
     </button>
   {/each}
+
+  <button
+    type="button"
+    class="device-btn"
+    class:active={isFluid}
+    title="Fluid — fill the canvas"
+    aria-label="Fluid — fill the canvas"
+    aria-pressed={isFluid}
+    on:click={toggleFluid}
+  >
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 2 2 2 2 6" />
+      <polyline points="10 2 14 2 14 6" />
+      <polyline points="14 10 14 14 10 14" />
+      <polyline points="2 10 2 14 6 14" />
+    </svg>
+  </button>
 
   <span class="separator" aria-hidden="true"></span>
 
@@ -96,6 +133,16 @@
     </span>
     <span class="dims">{label}</span>
   </button>
+
+  {#if scaled}
+    <span
+      class="scale-chip"
+      title="Preview is scaled down to fit the canvas"
+      aria-label="Preview scale {scalePct}%"
+    >
+      {scalePct}%
+    </span>
+  {/if}
 </div>
 
 <style>
@@ -181,5 +228,18 @@
     font-size: 10.5px;
     letter-spacing: 0.01em;
     font-variant-numeric: tabular-nums;
+  }
+  .scale-chip {
+    margin-left: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--text-tertiary) 18%, transparent);
+    color: var(--text-secondary);
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
   }
 </style>

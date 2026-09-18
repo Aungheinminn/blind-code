@@ -6,7 +6,14 @@
     type SandpackBundlerFiles,
     type SandpackTemplate,
   } from "@codesandbox/sandpack-client";
-  import { currentHeight, currentWidth, orientation, selectedDevice } from "$lib/stores/preview";
+  import {
+    currentHeight,
+    currentWidth,
+    orientation,
+    previewScale,
+    selectedDevice,
+    viewMode,
+  } from "$lib/stores/preview";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
@@ -18,8 +25,21 @@
   let client: SandpackClient | null = null;
   let ready = false;
 
-  $: frameMaxWidth = `${currentWidth($selectedDevice, $orientation)}px`;
-  $: frameMaxHeight = `${currentHeight($selectedDevice, $orientation)}px`;
+  let canvasW = 0;
+  let canvasH = 0;
+
+  $: fillCanvas = $viewMode === "fluid";
+  $: deviceW = currentWidth($selectedDevice, $orientation);
+  $: deviceH = currentHeight($selectedDevice, $orientation);
+  $: scale =
+    fillCanvas
+      ? 1
+      : canvasW > 0 && canvasH > 0
+        ? Math.min(1, canvasW / deviceW, canvasH / deviceH)
+        : 1;
+  $: wrapW = deviceW * scale;
+  $: wrapH = deviceH * scale;
+  $: previewScale.set(scale);
 
   const STARTER_FILES: Record<string, string> = {
     "/public/index.html": `<!DOCTYPE html>
@@ -137,6 +157,7 @@ button {
   onDestroy(() => {
     client?.destroy();
     client = null;
+    previewScale.set(1);
   });
 
   $: if (ready && client) {
@@ -145,22 +166,37 @@ button {
 </script>
 
 <div
-  class="relative h-full w-full flex items-center justify-center preview-canvas"
+  class="relative h-full w-full overflow-hidden preview-canvas"
   class:framed
   style="background-color: var(--bg-tertiary);"
 >
   <div
-    class="flex-1 self-stretch min-w-0 min-h-0 overflow-hidden preview-frame"
-    class:framed
-    style="background-color: #ffffff; max-width: {frameMaxWidth}; max-height: {frameMaxHeight};"
+    bind:clientWidth={canvasW}
+    bind:clientHeight={canvasH}
+    class="h-full w-full flex items-center justify-center"
   >
-    <iframe
-      bind:this={iframe}
-      class="h-full w-full border-0 block"
-      title="Preview"
-      allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
-      sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
-    ></iframe>
+    <div
+      class="scale-wrap"
+      style={fillCanvas
+        ? "width: 100%; height: 100%;"
+        : `width: ${wrapW}px; height: ${wrapH}px;`}
+    >
+      <div
+        class="preview-frame overflow-hidden"
+        class:framed
+        style={fillCanvas
+          ? "background-color: #ffffff; width: 100%; height: 100%;"
+          : `background-color: #ffffff; width: ${deviceW}px; height: ${deviceH}px; transform: scale(${scale}); transform-origin: top left;`}
+      >
+        <iframe
+          bind:this={iframe}
+          class="h-full w-full border-0 block"
+          title="Preview"
+          allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
+          sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
+        ></iframe>
+      </div>
+    </div>
   </div>
   {#if loading}
     <FullPageLoader
@@ -177,8 +213,14 @@ button {
   }
   .preview-frame {
     transition:
-      max-width 250ms cubic-bezier(0.22, 0.8, 0.28, 1),
-      max-height 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
+      width 250ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      height 250ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      transform 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
+  }
+  .scale-wrap {
+    transition:
+      width 250ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      height 250ms cubic-bezier(0.22, 0.8, 0.28, 1);
   }
   .preview-frame.framed {
     border: 1px solid var(--border);
