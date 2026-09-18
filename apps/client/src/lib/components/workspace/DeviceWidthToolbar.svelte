@@ -11,7 +11,7 @@
   type Item = { key: DeviceKey; title: string };
 
   const items: Item[] = [
-    { key: "mobile", title: "Mobile — 440 × 956" },
+    { key: "mobile", title: "Mobile — 393 × 852" },
     { key: "tablet", title: "Tablet — 768 × 1024" },
     { key: "laptop", title: "Laptop — 1440 × 900" },
   ];

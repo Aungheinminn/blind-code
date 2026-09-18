@@ -4,7 +4,7 @@ export type DeviceKey = "mobile" | "tablet" | "laptop";
 export type Orientation = "portrait" | "landscape";
 
 export const DEVICE_PRESETS: Record<DeviceKey, { w: number; h: number }> = {
-  mobile: { w: 440, h: 956 },
+  mobile: { w: 393, h: 852 },
   tablet: { w: 768, h: 1024 },
   laptop: { w: 1440, h: 900 },
 };
