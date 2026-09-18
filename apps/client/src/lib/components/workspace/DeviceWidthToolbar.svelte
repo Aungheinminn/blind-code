@@ -21,8 +21,12 @@
   const pick = (key: DeviceKey) => {
     selectedDevice.set(key);
     viewMode.set("device");
+    if (key === "laptop") orientation.set("portrait");
   };
-  const toggleFluid = () => viewMode.set("fluid");
+  const toggleFluid = () => {
+    viewMode.set("fluid");
+    orientation.set("portrait");
+  };
   const rotate = () =>
     orientation.update((v: Orientation): Orientation =>
       v === "portrait" ? "landscape" : "portrait",
