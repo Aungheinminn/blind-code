@@ -1,6 +1,11 @@
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
-import type { ProjectIntegrations, SupabaseIntegration } from "@vibe/shared";
+import type {
+  ProjectIntegrations,
+  SupabaseAccountIntegration,
+  SupabaseIntegration,
+  UserIntegrations,
+} from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
 
 const projectIdFor = (idOrName: string, ownerId: string): string =>
@@ -27,6 +32,52 @@ export const createUser = async (
     .values({ email, displayName, passwordHash })
     .returning();
   return row;
+};
+
+export const getUserById = async (id: string) => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+};
+
+export const setUserSupabaseIntegration = async (
+  userId: string,
+  integration: SupabaseAccountIntegration,
+) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const nextIntegrations: UserIntegrations = {
+    ...(existing.integrations ?? {}),
+    supabase: integration,
+  };
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return updated ?? null;
+};
+
+export const clearUserSupabaseIntegration = async (userId: string) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const current = existing.integrations ?? {};
+  const { supabase: _drop, ...rest } = current;
+  const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return updated ?? null;
 };
 
 export const ensureProject = async (

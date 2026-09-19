@@ -5,6 +5,7 @@ import { projectController } from "./controllers/project.controller";
 import { agentController } from "./controllers/agent.ws";
 import { authController } from "./controllers/auth.controller";
 import { connectController } from "./controllers/connect.controller";
+import { accountController } from "./controllers/account.controller";
 import { sampleBuildsController } from "./controllers/sampleBuilds.controller";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
@@ -28,6 +29,7 @@ sampleBuildsController(app);
 runtimeWsController(app, orchestrator);
 agentController(app);
 connectController(app);
+accountController(app);
 
 app.get("/health", () => ({ status: "ok" }));
 
