@@ -8,6 +8,8 @@ import {
 } from "../db/repo";
 import {
   listSupabaseProjects,
+  listSupabaseOrganizations,
+  createSupabaseProject,
   validatePat,
   SupabaseManagementError,
 } from "../services/supabaseManagement";
@@ -84,6 +86,73 @@ export const accountController = (app: Elysia) =>
       try {
         const projects = await listSupabaseProjects(pat);
         return { data: projects };
+      } catch (err) {
+        if (err instanceof SupabaseManagementError) {
+          set.status = err.status === 401 ? 401 : 502;
+          return { error: err.message };
+        }
+        set.status = 502;
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    })
+    .post("/account/integrations/supabase/projects", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const row = await getUserById(user.id);
+      const pat = row?.integrations?.supabase?.accessToken;
+      if (!pat) return notConnected(set);
+
+      const b = (body as Record<string, unknown>) ?? {};
+      const name = typeof b.name === "string" ? b.name.trim() : "";
+      const organizationSlug =
+        typeof b.organizationSlug === "string" ? b.organizationSlug.trim() : "";
+      const regionCode =
+        typeof b.regionCode === "string" ? b.regionCode.trim() : "";
+      const dbPass = typeof b.dbPass === "string" ? b.dbPass : "";
+      if (!name) {
+        set.status = 400;
+        return { error: "name required" };
+      }
+      if (!organizationSlug) {
+        set.status = 400;
+        return { error: "organizationSlug required" };
+      }
+      if (!regionCode) {
+        set.status = 400;
+        return { error: "regionCode required" };
+      }
+      if (!dbPass || dbPass.length < 8) {
+        set.status = 400;
+        return { error: "dbPass required (min 8 chars)" };
+      }
+      try {
+        const created = await createSupabaseProject(pat, {
+          name,
+          organizationSlug,
+          dbPass,
+          regionCode,
+        });
+        return { data: created };
+      } catch (err) {
+        if (err instanceof SupabaseManagementError) {
+          set.status = err.status === 401 ? 401 : err.status === 402 ? 402 : 502;
+          return { error: err.message };
+        }
+        set.status = 502;
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
+    })
+    .get("/account/integrations/supabase/organizations", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const row = await getUserById(user.id);
+      const pat = row?.integrations?.supabase?.accessToken;
+      if (!pat) return notConnected(set);
+      try {
+        const orgs = await listSupabaseOrganizations(pat);
+        return { data: orgs };
       } catch (err) {
         if (err instanceof SupabaseManagementError) {
           set.status = err.status === 401 ? 401 : 502;

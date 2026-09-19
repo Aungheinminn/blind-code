@@ -14,6 +14,28 @@ export type SupabaseApiKey = {
   api_key: string;
 };
 
+export type SupabaseOrganization = {
+  id: string;
+  name: string;
+  slug?: string;
+};
+
+export type CreateSupabaseProjectInput = {
+  name: string;
+  organizationSlug: string;
+  dbPass: string;
+  regionCode: string;
+};
+
+export type CreatedSupabaseProject = {
+  id: string;
+  name: string;
+  organization_id: string;
+  region: string;
+  status?: string;
+  created_at: string;
+};
+
 export class SupabaseManagementError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -65,6 +87,24 @@ export const getSupabaseApiKeys = (pat: string, ref: string) =>
     pat,
     `/v1/projects/${encodeURIComponent(ref)}/api-keys?reveal=true`,
   );
+
+export const listSupabaseOrganizations = (pat: string) =>
+  managementFetch<SupabaseOrganization[]>(pat, "/v1/organizations");
+
+export const createSupabaseProject = (
+  pat: string,
+  input: CreateSupabaseProjectInput,
+) =>
+  managementFetch<CreatedSupabaseProject>(pat, "/v1/projects", {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      organization_slug: input.organizationSlug,
+      db_pass: input.dbPass,
+      region_selection: { type: "smartGroup", code: input.regionCode },
+      desired_instance_size: "micro",
+    }),
+  });
 
 export const runSupabaseManagementQuery = (
   pat: string,

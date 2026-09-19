@@ -33,3 +33,41 @@ export const disconnectSupabaseAccount = () =>
 
 export const listAccountSupabaseProjects = () =>
   fetchJson<SupabaseAccountProject[]>("/account/integrations/supabase/projects");
+
+export type SupabaseAccountOrganization = {
+  id: string;
+  name: string;
+  slug?: string;
+};
+
+export const listAccountSupabaseOrganizations = () =>
+  fetchJson<SupabaseAccountOrganization[]>(
+    "/account/integrations/supabase/organizations",
+  );
+
+export type CreateAccountSupabaseProjectInput = {
+  name: string;
+  organizationSlug: string;
+  regionCode: string;
+  dbPass: string;
+};
+
+export type CreatedAccountSupabaseProject = {
+  id: string;
+  name: string;
+  organization_id: string;
+  region: string;
+  status?: string;
+  created_at: string;
+};
+
+export const createAccountSupabaseProject = (
+  input: CreateAccountSupabaseProjectInput,
+) =>
+  fetchJson<CreatedAccountSupabaseProject>(
+    "/account/integrations/supabase/projects",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );

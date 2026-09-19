@@ -10,6 +10,7 @@
   import AccountConnectCard from "$lib/components/supabase/AccountConnectCard.svelte";
   import SupabaseProjectCard from "$lib/components/supabase/SupabaseProjectCard.svelte";
   import AttachProjectModal from "$lib/components/supabase/AttachProjectModal.svelte";
+  import CreateProjectModal from "$lib/components/supabase/CreateProjectModal.svelte";
 
   let account: PublicSupabaseAccountIntegration | null = null;
   let accountLoading = true;
@@ -18,6 +19,7 @@
   let projectsError = "";
   let bcProjects: Project[] = [];
   let attaching: SupabaseAccountProject | null = null;
+  let creating = false;
 
   $: attachmentByRef = new Map<string, { id: string; name: string }>(
     bcProjects
@@ -84,18 +86,36 @@
     // Refresh so the attached badge shows up immediately.
     await loadProjects();
   };
+
+  const onCreated = async () => {
+    creating = false;
+    // Refresh grid — new project appears with COMING_UP status.
+    await loadProjects();
+  };
 </script>
 
 <div class="mx-auto max-w-5xl px-6 py-8">
-  <div class="mb-6">
-    <h1 class="text-xl font-semibold">Supabase</h1>
-    <p class="text-xs mt-1" style="color: var(--text-secondary);">
-      {#if account}
-        Your Supabase projects. Click one to attach it to a Blind Code project or manage its current attachment.
-      {:else}
-        Connect your Supabase account once, then attach any of your Supabase projects to a Blind Code project.
-      {/if}
-    </p>
+  <div class="mb-6 flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-semibold">Supabase</h1>
+      <p class="text-xs mt-1" style="color: var(--text-secondary);">
+        {#if account}
+          Your Supabase projects. Click one to attach it to a Blind Code project or manage its current attachment.
+        {:else}
+          Connect your Supabase account once, then attach any of your Supabase projects to a Blind Code project.
+        {/if}
+      </p>
+    </div>
+    {#if account}
+      <button
+        type="button"
+        class="shrink-0 px-3 py-2 rounded-md text-sm font-medium text-white cursor-pointer"
+        style="background-color: var(--accent);"
+        on:click={() => (creating = true)}
+      >
+        New project
+      </button>
+    {/if}
   </div>
 
   {#if !accountLoading}
@@ -148,5 +168,13 @@
     bcProjects={bcProjects}
     on:close={() => (attaching = null)}
     on:attached={onAttached}
+  />
+{/if}
+
+{#if creating}
+  <CreateProjectModal
+    existingProjectCount={supabaseProjects.length}
+    on:close={() => (creating = false)}
+    on:created={onCreated}
   />
 {/if}
