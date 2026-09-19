@@ -22,6 +22,18 @@ if (hasDb) {
 const app = new Elysia();
 const orchestrator = new Orchestrator();
 
+app.onError(({ error, code, set }) => {
+  if (code === "VALIDATION") return;
+  if (code === "NOT_FOUND") {
+    set.status = 404;
+    return { error: "not found" };
+  }
+  if (set.status == null || set.status === 200) set.status = 500;
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[error] ${code} ${set.status}: ${message}`);
+  return { error: message };
+});
+
 withCors(app);
 authController(app);
 projectController(app);
