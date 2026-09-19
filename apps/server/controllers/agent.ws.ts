@@ -19,6 +19,7 @@ import {
   recordAgentAction,
   listProjectFiles,
   getProjectForOwner,
+  getUserById,
   hasDb,
 } from "../db/repo";
 
@@ -144,12 +145,18 @@ export const agentController = (app: Elysia) =>
 
         await hydrateSandbox(msg.projectId, dbProjectId);
 
-        const projectRow = dbProjectId
-          ? await getProjectForOwner(dbProjectId, userId)
-          : null;
+        const [projectRow, userRow] = await Promise.all([
+          dbProjectId ? getProjectForOwner(dbProjectId, userId) : Promise.resolve(null),
+          getUserById(userId),
+        ]);
         const supabase = projectRow?.integrations?.supabase ?? null;
         const supabaseConnected = Boolean(supabase);
         const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
+        const supabaseProjectRef = supabase?.projectRef ?? null;
+        const supabasePat = userRow?.integrations?.supabase?.accessToken ?? null;
+        const supabaseCanRunSqlViaMgmt = Boolean(supabasePat && supabaseProjectRef);
+        const supabaseCanRunSql =
+          supabaseCanRunSqlViaMgmt || Boolean(supabaseDatabaseUrl);
 
         const resolvedModelId =
           msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
@@ -353,6 +360,8 @@ export const agentController = (app: Elysia) =>
               dbProjectId,
               sessionId,
               databaseUrl: supabaseDatabaseUrl,
+              supabasePat,
+              supabaseProjectRef,
             },
             prompt: msg.prompt,
             history: msg.history,
@@ -360,7 +369,7 @@ export const agentController = (app: Elysia) =>
             systemPrompt: msg.systemPrompt,
             plan,
             supabaseConnected,
-            supabaseCanRunSql: Boolean(supabaseDatabaseUrl),
+            supabaseCanRunSql,
             signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});

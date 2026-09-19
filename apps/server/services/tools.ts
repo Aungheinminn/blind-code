@@ -10,6 +10,10 @@ import {
   getCachedToolResult,
   putCachedToolResult,
 } from "../db/repo";
+import {
+  runSupabaseManagementQuery,
+  SupabaseManagementError,
+} from "./supabaseManagement";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
@@ -30,6 +34,8 @@ export type ToolContext = {
   dbProjectId: string | null;
   sessionId?: string | null;
   databaseUrl?: string | null;
+  supabasePat?: string | null;
+  supabaseProjectRef?: string | null;
 };
 
 const hashInput = (toolName: string, input: unknown): string =>
@@ -119,7 +125,14 @@ export const buildReadOnlyTools = (ctx: ToolContext) => {
 };
 
 export const buildWriteTools = (ctx: ToolContext) => {
-  const { sandboxProjectId, dbProjectId, sessionId, databaseUrl } = ctx;
+  const {
+    sandboxProjectId,
+    dbProjectId,
+    sessionId,
+    databaseUrl,
+    supabasePat,
+    supabaseProjectRef,
+  } = ctx;
   const idem = <I, O>(name: string, fn: (input: I) => Promise<O>) =>
     withIdempotency(sessionId, name, fn);
 
@@ -167,18 +180,46 @@ export const buildWriteTools = (ctx: ToolContext) => {
           ),
       }),
       execute: idem("run_sql", async ({ sql: query }: { sql: string }) => {
+        if (query.length > 20000) {
+          return {
+            ok: false,
+            error: "SQL is too large (>20KB). Split it into smaller statements.",
+          };
+        }
+
+        if (supabasePat && supabaseProjectRef) {
+          try {
+            const result = await runSupabaseManagementQuery(
+              supabasePat,
+              supabaseProjectRef,
+              query,
+            );
+            const rows = Array.isArray(result) ? result : [];
+            const preview = rows.slice(0, 50);
+            return {
+              ok: true,
+              via: "management-api" as const,
+              rowCount: rows.length,
+              truncated: rows.length > 50,
+              rows: preview,
+            };
+          } catch (err) {
+            const message =
+              err instanceof SupabaseManagementError
+                ? err.message
+                : err instanceof Error
+                  ? err.message
+                  : String(err);
+            return { ok: false, via: "management-api" as const, error: message };
+          }
+        }
+
         const url = databaseUrl?.trim();
         if (!url) {
           return {
             ok: false,
             error:
-              "No database URL configured for this project. Ask the user to open the Supabase modal (database icon in the preview header) and add their Postgres connection string.",
-          };
-        }
-        if (query.length > 20000) {
-          return {
-            ok: false,
-            error: "SQL is too large (>20KB). Split it into smaller statements.",
+              "No SQL path available for this project. Either attach a Supabase project on the /supabase page (recommended) or add a Postgres connection URL in the workspace's Supabase modal.",
           };
         }
         const client = postgres(url, {
@@ -193,6 +234,7 @@ export const buildWriteTools = (ctx: ToolContext) => {
           const preview = rows.slice(0, 50);
           return {
             ok: true,
+            via: "direct-postgres" as const,
             rowCount: rows.length,
             truncated: rows.length > 50,
             rows: preview,
@@ -200,6 +242,7 @@ export const buildWriteTools = (ctx: ToolContext) => {
         } catch (err) {
           return {
             ok: false,
+            via: "direct-postgres" as const,
             error: err instanceof Error ? err.message : String(err),
           };
         } finally {
