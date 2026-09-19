@@ -17,7 +17,7 @@
       isActive: (p) => p === "/projects" || /^\/projects\//.test(p),
     },
     {
-      label: "Supabases",
+      label: "Bases",
       href: "/supabase",
       icon: "supabase",
       isActive: (p) => p === "/supabase" || p.startsWith("/supabase/"),
