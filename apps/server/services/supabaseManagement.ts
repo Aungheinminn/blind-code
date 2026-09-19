@@ -102,7 +102,6 @@ export const createSupabaseProject = (
       organization_slug: input.organizationSlug,
       db_pass: input.dbPass,
       region_selection: { type: "smartGroup", code: input.regionCode },
-      desired_instance_size: "micro",
     }),
   });
 
