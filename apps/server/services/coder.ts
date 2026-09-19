@@ -2,6 +2,7 @@ import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
+import { buildSupabaseCoderAppendix } from "./systemAppendix";
 
 export type CoderEvent =
   | { type: "text-start"; id: string }
@@ -46,6 +47,7 @@ export type RunCoderOptions = {
   maxSteps?: number;
   systemPrompt?: string;
   plan?: Plan | null;
+  supabaseConnected?: boolean;
   onEvent: (event: CoderEvent) => void;
   signal?: AbortSignal;
 };
@@ -103,7 +105,10 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   ];
 
   const baseSystem = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
-  const system = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
+  const withPlan = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
+  const system = opts.supabaseConnected
+    ? withPlan + buildSupabaseCoderAppendix()
+    : withPlan;
 
   try {
     const result = streamText({

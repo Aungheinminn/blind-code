@@ -18,6 +18,7 @@ import {
   endAgentSession,
   recordAgentAction,
   listProjectFiles,
+  getProjectForOwner,
   hasDb,
 } from "../db/repo";
 
@@ -143,6 +144,11 @@ export const agentController = (app: Elysia) =>
 
         await hydrateSandbox(msg.projectId, dbProjectId);
 
+        const projectRow = dbProjectId
+          ? await getProjectForOwner(dbProjectId, userId)
+          : null;
+        const supabaseConnected = Boolean(projectRow?.integrations?.supabase);
+
         const resolvedModelId =
           msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
         const sessionId = dbProjectId
@@ -225,6 +231,7 @@ export const agentController = (app: Elysia) =>
               prompt: msg.prompt,
               history: msg.history,
               maxSteps: msg.plannerMaxSteps,
+              supabaseConnected,
               signal: runSignal,
             });
             await publish({ type: "plan", plan });
@@ -345,6 +352,7 @@ export const agentController = (app: Elysia) =>
             maxSteps: msg.maxSteps,
             systemPrompt: msg.systemPrompt,
             plan,
+            supabaseConnected,
             signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});
