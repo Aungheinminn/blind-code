@@ -1,12 +1,19 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listProjects, type Project } from "$lib/api/projects";
+  import {
+    getAccountIntegrations,
+    type PublicSupabaseAccountIntegration,
+  } from "$lib/api/account";
+  import AccountConnectCard from "$lib/components/supabase/AccountConnectCard.svelte";
 
   let items: Project[] = [];
   let loading = true;
   let error = "";
+  let account: PublicSupabaseAccountIntegration | null = null;
+  let accountLoading = true;
 
-  const load = async () => {
+  const loadProjects = async () => {
     loading = true;
     error = "";
     try {
@@ -19,7 +26,22 @@
     }
   };
 
-  onMount(load);
+  const loadAccount = async () => {
+    accountLoading = true;
+    try {
+      const data = await getAccountIntegrations();
+      account = data?.supabase ?? null;
+    } catch {
+      account = null;
+    } finally {
+      accountLoading = false;
+    }
+  };
+
+  onMount(() => {
+    loadProjects();
+    loadAccount();
+  });
 
   const formatDate = (iso: string) => {
     try {
@@ -35,10 +57,18 @@
     <div>
       <h1 class="text-xl font-semibold">Supabase</h1>
       <p class="text-xs mt-1" style="color: var(--text-secondary);">
-        One Supabase connection per project. Click a project to connect, view, or update its integration.
+        Connect your Supabase account once, then attach any of your Supabase projects to a Blind Code project.
       </p>
     </div>
   </div>
+
+  {#if !accountLoading}
+    <div class="mb-6">
+      <AccountConnectCard integration={account} on:changed={(e) => (account = e.detail)} />
+    </div>
+  {/if}
+
+  <h2 class="text-sm font-semibold mb-3">Blind Code projects</h2>
 
   {#if loading}
     <div class="text-xs" style="color: var(--text-secondary);">Loading projects…</div>
