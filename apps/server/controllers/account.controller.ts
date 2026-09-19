@@ -5,11 +5,13 @@ import {
   getUserById,
   setUserSupabaseIntegration,
   clearUserSupabaseIntegration,
+  clearSupabaseIntegrationsByRefForOwner,
 } from "../db/repo";
 import {
   listSupabaseProjects,
   listSupabaseOrganizations,
   createSupabaseProject,
+  deleteSupabaseProject,
   validatePat,
   SupabaseManagementError,
 } from "../services/supabaseManagement";
@@ -143,6 +145,34 @@ export const accountController = (app: Elysia) =>
         return { error: err instanceof Error ? err.message : String(err) };
       }
     })
+    .delete(
+      "/account/integrations/supabase/projects/:ref",
+      async ({ params, request, set }) => {
+        if (!hasDb) return dbUnavailable(set);
+        const user = await getUserFromRequest(request);
+        if (!user) return unauthorized(set);
+        const row = await getUserById(user.id);
+        const pat = row?.integrations?.supabase?.accessToken;
+        if (!pat) return notConnected(set);
+        const ref = params.ref;
+        if (!ref) {
+          set.status = 400;
+          return { error: "project ref required" };
+        }
+        try {
+          await deleteSupabaseProject(pat, ref);
+        } catch (err) {
+          if (err instanceof SupabaseManagementError) {
+            set.status = err.status === 401 ? 401 : err.status === 404 ? 404 : 502;
+            return { error: err.message };
+          }
+          set.status = 502;
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
+        const detached = await clearSupabaseIntegrationsByRefForOwner(user.id, ref);
+        return { data: { ref, deleted: true, detachedBcProjects: detached } };
+      },
+    )
     .get("/account/integrations/supabase/organizations", async ({ request, set }) => {
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);

@@ -118,3 +118,8 @@ export const runSupabaseManagementQuery = (
       body: JSON.stringify({ query: sql }),
     },
   );
+
+export const deleteSupabaseProject = (pat: string, ref: string) =>
+  managementFetch<unknown>(pat, `/v1/projects/${encodeURIComponent(ref)}`, {
+    method: "DELETE",
+  });

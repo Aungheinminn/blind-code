@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import type { SupabaseAccountProject } from "$lib/api/account";
 
@@ -8,7 +8,36 @@
 
   const dispatch = createEventDispatcher<{
     attach: SupabaseAccountProject;
+    delete: SupabaseAccountProject;
   }>();
+
+  let menuOpen = false;
+  let menuAnchor: HTMLDivElement | null = null;
+  const closeMenu = () => (menuOpen = false);
+
+  const toggleMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuOpen = !menuOpen;
+  };
+
+  const handleWindowClick = (e: MouseEvent) => {
+    if (!menuOpen || !menuAnchor) return;
+    if (!menuAnchor.contains(e.target as Node)) menuOpen = false;
+  };
+
+  const handleGlobalKeydown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") menuOpen = false;
+  };
+
+  const onDeleteClick = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuOpen = false;
+    dispatch("delete", supabaseProject);
+  };
+
+  onDestroy(closeMenu);
 
   const formatDate = (iso: string) => {
     try {
@@ -38,15 +67,17 @@
   };
 </script>
 
+<svelte:window on:click={handleWindowClick} on:keydown={handleGlobalKeydown} />
+
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   role="button"
   tabindex="0"
-  class="card"
+  class="card relative"
   on:click={handleClick}
   on:keydown={handleKeydown}
 >
-  <div class="flex items-start justify-between gap-2">
+  <div class="flex items-start justify-between gap-2 pr-8">
     <div class="min-w-0 flex-1">
       <div class="text-sm font-medium truncate">{supabaseProject.name}</div>
       <div class="mt-1 text-[11px] font-mono truncate" style="color: var(--text-tertiary);">
@@ -61,6 +92,49 @@
       >
         {supabaseProject.status.replace(/^ACTIVE_/, "").replace(/_/g, " ").toLowerCase()}
       </span>
+    {/if}
+  </div>
+
+  <div class="absolute top-2 right-2" bind:this={menuAnchor}>
+    <button
+      type="button"
+      on:click={toggleMenu}
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      aria-label="Supabase project actions"
+      title="More"
+      class="w-7 h-7 grid place-items-center rounded-md cursor-pointer kebab"
+      style="color: var(--text-tertiary);"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="12" cy="5" r="1.6" />
+        <circle cx="12" cy="12" r="1.6" />
+        <circle cx="12" cy="19" r="1.6" />
+      </svg>
+    </button>
+
+    {#if menuOpen}
+      <div
+        role="menu"
+        class="absolute right-0 mt-1 w-36 rounded-lg border shadow-lg py-1 z-10"
+        style="border-color: var(--border); background-color: var(--bg-panel);"
+      >
+        <button
+          type="button"
+          role="menuitem"
+          on:click={onDeleteClick}
+          class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
+          style="color: #ef4444; background-color: transparent;"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" />
+            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+          </svg>
+          <span>Delete</span>
+        </button>
+      </div>
     {/if}
   </div>
 
@@ -126,5 +200,12 @@
     height: 6px;
     border-radius: 50%;
     background-color: #22c55e;
+  }
+  .kebab:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .menu-item:hover {
+    background-color: var(--bg-tertiary);
   }
 </style>

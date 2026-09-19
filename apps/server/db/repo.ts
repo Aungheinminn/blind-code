@@ -190,6 +190,32 @@ export const setSupabaseIntegrationForOwner = async (
   return updated ?? null;
 };
 
+export const clearSupabaseIntegrationsByRefForOwner = async (
+  ownerId: string,
+  projectRef: string,
+): Promise<number> => {
+  if (!db) return 0;
+  const rows = await db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.ownerId, ownerId));
+  let cleared = 0;
+  for (const row of rows) {
+    if (row.integrations?.supabase?.projectRef !== projectRef) continue;
+    const current = row.integrations ?? {};
+    const { supabase: _drop, ...rest } = current;
+    const nextIntegrations: ProjectIntegrations | null = Object.keys(rest).length
+      ? rest
+      : null;
+    await db
+      .update(schema.projects)
+      .set({ integrations: nextIntegrations, updatedAt: new Date() })
+      .where(and(eq(schema.projects.id, row.id), eq(schema.projects.ownerId, ownerId)));
+    cleared++;
+  }
+  return cleared;
+};
+
 export const clearSupabaseIntegrationForOwner = async (
   idOrName: string,
   ownerId: string,

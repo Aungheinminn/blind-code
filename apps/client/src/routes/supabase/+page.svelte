@@ -11,6 +11,7 @@
   import SupabaseProjectCard from "$lib/components/supabase/SupabaseProjectCard.svelte";
   import AttachProjectModal from "$lib/components/supabase/AttachProjectModal.svelte";
   import CreateProjectModal from "$lib/components/supabase/CreateProjectModal.svelte";
+  import DeleteProjectModal from "$lib/components/supabase/DeleteProjectModal.svelte";
 
   let account: PublicSupabaseAccountIntegration | null = null;
   let accountLoading = true;
@@ -19,6 +20,7 @@
   let projectsError = "";
   let bcProjects: Project[] = [];
   let attaching: SupabaseAccountProject | null = null;
+  let deleting: SupabaseAccountProject | null = null;
   let creating = false;
 
   $: attachmentByRef = new Map<string, { id: string; name: string }>(
@@ -92,6 +94,11 @@
     // Refresh grid — new project appears with COMING_UP status.
     await loadProjects();
   };
+
+  const onDeleted = async () => {
+    deleting = null;
+    await loadProjects();
+  };
 </script>
 
 <div class="mx-auto max-w-5xl px-6 py-8">
@@ -155,6 +162,7 @@
             supabaseProject={sp}
             attachedBcProject={attachmentByRef.get(sp.id) ?? null}
             on:attach={(e) => (attaching = e.detail)}
+            on:delete={(e) => (deleting = e.detail)}
           />
         {/each}
       </div>
@@ -176,5 +184,14 @@
     existingProjectCount={supabaseProjects.length}
     on:close={() => (creating = false)}
     on:created={onCreated}
+  />
+{/if}
+
+{#if deleting}
+  <DeleteProjectModal
+    supabaseProject={deleting}
+    attachedBcProjectName={attachmentByRef.get(deleting.id)?.name ?? null}
+    on:close={() => (deleting = null)}
+    on:deleted={onDeleted}
   />
 {/if}

@@ -71,3 +71,15 @@ export const createAccountSupabaseProject = (
       body: JSON.stringify(input),
     },
   );
+
+export type DeletedAccountSupabaseProject = {
+  ref: string;
+  deleted: boolean;
+  detachedBcProjects: number;
+};
+
+export const deleteAccountSupabaseProject = (ref: string) =>
+  fetchJson<DeletedAccountSupabaseProject>(
+    `/account/integrations/supabase/projects/${encodeURIComponent(ref)}`,
+    { method: "DELETE" },
+  );
