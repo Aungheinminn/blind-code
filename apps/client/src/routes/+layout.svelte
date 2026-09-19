@@ -5,6 +5,7 @@
   import { initTheme, theme, toggleTheme } from "$lib/stores/theme";
   import { auth, clearAuth, loadCurrentUser } from "$lib/stores/auth";
   import { logout } from "$lib/api/auth";
+  import Sidebar from "$lib/components/Sidebar.svelte";
   import "../app.css";
 
   const PUBLIC_ROUTES = ["/", "/login", "/signup"];
@@ -29,6 +30,9 @@
       goto(`/login`);
     }
   }
+
+  $: showSidebar =
+    $auth.status === "authed" && !isFullscreen($page.url.pathname);
 
   const signOut = async () => {
     menuOpen = false;
@@ -67,7 +71,14 @@
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
-<div class="min-h-screen" style="background-color: var(--bg-primary); color: var(--text-primary);">
+<div
+  class="min-h-screen flex"
+  style="background-color: var(--bg-primary); color: var(--text-primary);"
+>
+  {#if showSidebar}
+    <Sidebar />
+  {/if}
+  <div class="flex-1 flex flex-col min-w-0">
   {#if !isFullscreen($page.url.pathname)}
     <header
       class="sticky top-0 z-40 h-14 flex items-center justify-between px-6 border-b"
@@ -210,6 +221,7 @@
   {/if}
 
   <slot />
+  </div>
 </div>
 
 <style>
