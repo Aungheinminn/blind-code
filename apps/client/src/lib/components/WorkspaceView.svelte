@@ -21,13 +21,14 @@
     planError,
     assembledFiles,
     projectFiles,
+    projectIntegration,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
-  import { getProject, type PublicSupabaseIntegration } from "$lib/api/projects";
+  import { getProject } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
 
   const openAgentPanel = () => {
@@ -45,7 +46,6 @@
   let activeProjectId: string | null = null;
   let sandpack: SandpackPreview | undefined;
   let projectName = "";
-  let supabaseIntegration: PublicSupabaseIntegration | null = null;
   let supabaseModalOpen = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
@@ -94,7 +94,6 @@
   $: if (projectId && projectId !== activeProjectId) {
     activeProjectId = projectId;
     projectName = "";
-    supabaseIntegration = null;
     resetWorkspace();
     const pending = readPendingPrompt(projectId);
     bootstrapProject(projectId, pending);
@@ -102,7 +101,7 @@
       .then((p) => {
         if (!p || activeProjectId !== projectId) return;
         projectName = p.name;
-        supabaseIntegration = p.integrations?.supabase ?? null;
+        projectIntegration.set(p.integrations?.supabase ?? null);
       })
       .catch(() => {});
   }
@@ -128,7 +127,7 @@
     <PreviewHeader
       {panelOpen}
       {launcherHidden}
-      supabaseConnected={supabaseIntegration !== null}
+      supabaseConnected={$projectIntegration !== null}
       on:restart={() => sandpack?.refresh()}
       on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
       on:open-supabase={() => (supabaseModalOpen = true)}
@@ -176,9 +175,9 @@
   {#if supabaseModalOpen}
     <SupabaseConnectModal
       {projectId}
-      integration={supabaseIntegration}
+      integration={$projectIntegration}
       on:close={() => (supabaseModalOpen = false)}
-      on:changed={(e) => (supabaseIntegration = e.detail)}
+      on:changed={(e) => projectIntegration.set(e.detail)}
     />
   {/if}
 </div>
