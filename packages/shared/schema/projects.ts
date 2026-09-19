@@ -5,6 +5,7 @@ export type SupabaseIntegration = {
   anonKey: string;
   serviceRoleKey?: string;
   databaseUrl?: string;
+  projectRef?: string;
   connectedAt: string;
 };
 
