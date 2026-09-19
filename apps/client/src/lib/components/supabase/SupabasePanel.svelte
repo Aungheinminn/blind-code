@@ -1,13 +1,16 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from "svelte";
   import {
+    attachSupabaseProject,
     connectSupabase,
     disconnectSupabase,
     type PublicSupabaseIntegration,
   } from "$lib/api/projects";
+  import type { SupabaseAccountProject } from "$lib/api/account";
 
   export let projectId: string;
   export let integration: PublicSupabaseIntegration | null = null;
+  export let accountProjects: SupabaseAccountProject[] | null = null;
   export let showClose = false;
 
   const dispatch = createEventDispatcher<{
@@ -15,11 +18,19 @@
     changed: PublicSupabaseIntegration | null;
   }>();
 
-  let mode: "view" | "edit" = integration ? "view" : "edit";
+  type Mode = "view" | "edit" | "select";
+  const initialMode = (): Mode => {
+    if (integration) return "view";
+    if (accountProjects && accountProjects.length > 0) return "select";
+    return "edit";
+  };
+
+  let mode: Mode = initialMode();
   let url = "";
   let anonKey = "";
   let serviceRoleKey = "";
   let databaseUrl = "";
+  let selectedRef = "";
   let busy = false;
   let error = "";
   let urlInput: HTMLInputElement | undefined;
@@ -35,12 +46,42 @@
     urlInput?.focus();
   };
 
+  const openSelect = () => {
+    mode = "select";
+    error = "";
+  };
+
   const cancel = () => {
     if (integration) {
       mode = "view";
       error = "";
+    } else if (accountProjects && accountProjects.length > 0 && mode !== "select") {
+      mode = "select";
+      error = "";
     } else {
       dispatch("close");
+    }
+  };
+
+  const attach = async () => {
+    if (!selectedRef) {
+      error = "Pick a Supabase project.";
+      return;
+    }
+    busy = true;
+    error = "";
+    try {
+      const updated = await attachSupabaseProject(projectId, selectedRef);
+      const next = updated?.integrations?.supabase ?? null;
+      dispatch("changed", next);
+      if (next) {
+        integration = next;
+        mode = "view";
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Could not attach project.";
+    } finally {
+      busy = false;
     }
   };
 
@@ -113,11 +154,21 @@
 
 <div class="px-5 pt-5 pb-4">
   <h2 class="text-base font-semibold">
-    {mode === "view" ? "Supabase connected" : integration ? "Reconnect Supabase" : "Connect Supabase"}
+    {#if mode === "view"}
+      Supabase connected
+    {:else if mode === "select"}
+      Pick a Supabase project
+    {:else if integration}
+      Reconnect Supabase
+    {:else}
+      Connect Supabase
+    {/if}
   </h2>
   <p class="mt-1 text-xs" style="color: var(--text-secondary);">
     {#if mode === "view"}
       This project's generated app talks to your Supabase database.
+    {:else if mode === "select"}
+      Choose one of your Supabase projects. Blind Code will fetch the API keys automatically.
     {:else}
       Paste the values from
       <a
@@ -130,7 +181,53 @@
   </p>
 </div>
 
-{#if mode === "view" && integration}
+{#if mode === "select"}
+  <div class="px-5 pb-4 space-y-3">
+    {#if accountProjects && accountProjects.length > 0}
+      <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+        Supabase project
+        <select
+          bind:value={selectedRef}
+          class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
+          style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+        >
+          <option value="">— select —</option>
+          {#each accountProjects as p}
+            <option value={p.id}>{p.name} ({p.region})</option>
+          {/each}
+        </select>
+      </label>
+    {:else}
+      <div class="text-xs" style="color: var(--text-secondary);">
+        No Supabase projects found on your account. Create one at
+        <a
+          href="https://supabase.com/dashboard/new"
+          target="_blank"
+          rel="noopener"
+          style="color: var(--accent);"
+        >supabase.com/dashboard/new</a>, then refresh this page.
+      </div>
+    {/if}
+
+    <button
+      type="button"
+      class="text-xs underline cursor-pointer"
+      style="color: var(--text-secondary); background: none; border: 0; padding: 0;"
+      on:click={openEdit}
+    >
+      Or paste credentials manually →
+    </button>
+
+    {#if error}
+      <div
+        class="rounded-md border px-3 py-2 text-xs"
+        style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
+      >
+        {error}
+      </div>
+    {/if}
+  </div>
+{:else if mode === "view" && integration}
   <div class="px-5 pb-4 space-y-3 text-xs" style="color: var(--text-secondary);">
     <div>
       <div class="font-medium" style="color: var(--text-primary);">Project URL</div>
@@ -254,6 +351,25 @@
         Reconnect
       </button>
     </div>
+  {:else if mode === "select"}
+    <button
+      type="button"
+      class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
+      style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-panel);"
+      disabled={busy}
+      on:click={() => dispatch("close")}
+    >
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="px-3 py-2 rounded-md text-sm font-medium text-white cursor-pointer disabled:opacity-50"
+      style="background-color: var(--accent);"
+      disabled={busy || !selectedRef}
+      on:click={attach}
+    >
+      {busy ? "Attaching…" : "Attach"}
+    </button>
   {:else}
     <button
       type="button"

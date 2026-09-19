@@ -1,7 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import SupabasePanel from "$lib/components/supabase/SupabasePanel.svelte";
   import type { PublicSupabaseIntegration } from "$lib/api/projects";
+  import {
+    getAccountIntegrations,
+    listAccountSupabaseProjects,
+    type SupabaseAccountProject,
+  } from "$lib/api/account";
 
   export let projectId: string;
   export let integration: PublicSupabaseIntegration | null = null;
@@ -12,6 +17,16 @@
   }>();
 
   let busy = false;
+  let accountProjects: SupabaseAccountProject[] | null = null;
+
+  onMount(async () => {
+    try {
+      const acct = await getAccountIntegrations();
+      if (acct?.supabase) accountProjects = await listAccountSupabaseProjects();
+    } catch {
+      accountProjects = null;
+    }
+  });
 
   const onBackdropClick = () => {
     if (busy) return;
@@ -42,6 +57,7 @@
     <SupabasePanel
       {projectId}
       {integration}
+      {accountProjects}
       showClose
       on:changed={onChanged}
       on:close={() => dispatch("close")}

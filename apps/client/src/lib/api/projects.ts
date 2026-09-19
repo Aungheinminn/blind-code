@@ -129,3 +129,9 @@ export const disconnectSupabase = (id: string) =>
   fetchJson<Project>(`/projects/${id}/integrations/supabase`, {
     method: "DELETE",
   });
+
+export const attachSupabaseProject = (id: string, projectRef: string) =>
+  fetchJson<Project>(`/projects/${id}/integrations/supabase/attach`, {
+    method: "POST",
+    body: JSON.stringify({ projectRef }),
+  });

@@ -10,10 +10,15 @@ import {
   listProjectFiles,
   setSupabaseIntegrationForOwner,
   clearSupabaseIntegrationForOwner,
+  getUserById,
 } from "../db/repo";
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
 import { generateProjectTitle } from "../services/titler";
+import {
+  getSupabaseApiKeys,
+  SupabaseManagementError,
+} from "../services/supabaseManagement";
 import {
   toPublicIntegrations,
   type ProjectIntegrations,
@@ -180,6 +185,64 @@ export const projectController = (app: Elysia) =>
       }
       return { data: toPublicProject(updated) };
     })
+    .post(
+      "/projects/:id/integrations/supabase/attach",
+      async ({ params, body, request, set }) => {
+        if (!hasDb) return dbUnavailable(set);
+        const user = await getUserFromRequest(request);
+        if (!user) return unauthorized(set);
+        const b = (body as Record<string, unknown>) ?? {};
+        const projectRef =
+          typeof b.projectRef === "string" ? b.projectRef.trim() : "";
+        if (!projectRef) {
+          set.status = 400;
+          return { error: "projectRef required" };
+        }
+        const userRow = await getUserById(user.id);
+        const pat = userRow?.integrations?.supabase?.accessToken;
+        if (!pat) {
+          set.status = 400;
+          return {
+            error:
+              "Supabase account not connected. Add a Personal Access Token on the Supabase page first.",
+          };
+        }
+        let apiKeys;
+        try {
+          apiKeys = await getSupabaseApiKeys(pat, projectRef);
+        } catch (err) {
+          if (err instanceof SupabaseManagementError) {
+            set.status = err.status === 401 ? 401 : 502;
+            return { error: err.message };
+          }
+          set.status = 502;
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
+        const anon = apiKeys.find((k) => k.name === "anon")?.api_key;
+        const serviceRole = apiKeys.find((k) => k.name === "service_role")?.api_key;
+        if (!anon) {
+          set.status = 502;
+          return { error: "Supabase did not return an anon key for this project" };
+        }
+        const integration: SupabaseIntegration = {
+          url: `https://${projectRef}.supabase.co`,
+          anonKey: anon,
+          serviceRoleKey: serviceRole || undefined,
+          projectRef,
+          connectedAt: new Date().toISOString(),
+        };
+        const updated = await setSupabaseIntegrationForOwner(
+          params.id,
+          user.id,
+          integration,
+        );
+        if (!updated) {
+          set.status = 404;
+          return { error: "not found" };
+        }
+        return { data: toPublicProject(updated) };
+      },
+    )
     .delete("/projects/:id/integrations/supabase", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);
