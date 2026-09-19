@@ -1,5 +1,16 @@
 import { fetchJson } from "./http";
 
+export type PublicSupabaseIntegration = {
+  url: string;
+  anonKey: string;
+  hasServiceRoleKey: boolean;
+  connectedAt: string;
+};
+
+export type PublicProjectIntegrations = {
+  supabase?: PublicSupabaseIntegration;
+};
+
 export type Project = {
   id: string;
   ownerId: string;
@@ -8,6 +19,7 @@ export type Project = {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  integrations?: PublicProjectIntegrations | null;
 };
 
 export type ProjectPatch = Partial<{
@@ -98,3 +110,20 @@ export const getProjectHistory = (id: string) =>
 
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);
+
+export type ConnectSupabaseInput = {
+  url: string;
+  anonKey: string;
+  serviceRoleKey?: string;
+};
+
+export const connectSupabase = (id: string, input: ConnectSupabaseInput) =>
+  fetchJson<Project>(`/projects/${id}/integrations/supabase`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+
+export const disconnectSupabase = (id: string) =>
+  fetchJson<Project>(`/projects/${id}/integrations/supabase`, {
+    method: "DELETE",
+  });

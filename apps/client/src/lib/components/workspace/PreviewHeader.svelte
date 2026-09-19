@@ -5,10 +5,12 @@
 
   export let panelOpen = false;
   export let launcherHidden = false;
+  export let supabaseConnected = false;
 
   const dispatch = createEventDispatcher<{
     restart: void;
     "toggle-launcher": void;
+    "open-supabase": void;
   }>();
 </script>
 
@@ -23,6 +25,31 @@
   </div>
 
   <div class="flex items-center gap-2">
+    <button
+      type="button"
+      class="chrome-button relative"
+      on:click={() => dispatch("open-supabase")}
+      title={supabaseConnected ? "Supabase connected" : "Connect Supabase"}
+      aria-label={supabaseConnected ? "Supabase connected" : "Connect Supabase"}
+    >
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+        <path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6" />
+      </svg>
+      {#if supabaseConnected}
+        <span class="connected-dot" aria-hidden="true"></span>
+      {/if}
+    </button>
     <button
       type="button"
       class="chrome-button"
@@ -178,5 +205,15 @@
     background: var(--accent);
     border-color: var(--accent);
     color: #ffffff;
+  }
+  .connected-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 2px var(--chrome);
   }
 </style>
