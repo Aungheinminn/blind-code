@@ -16,8 +16,8 @@
 
   const REGIONS: Array<{ code: string; label: string }> = [
     { code: "americas", label: "Americas (smart)" },
-    { code: "europe", label: "Europe (smart)" },
-    { code: "asia", label: "Asia Pacific (smart)" },
+    { code: "emea", label: "Europe, Middle East & Africa (smart)" },
+    { code: "apac", label: "Asia Pacific (smart)" },
   ];
 
   let orgs: SupabaseAccountOrganization[] = [];
@@ -222,7 +222,8 @@
           </button>
         </div>
         <div class="mt-1" style="color: var(--text-tertiary);">
-          Auto-generated. Supabase never shows it again — copy if you'll need it outside Blind Code.
+          Not needed for AI table creation — that runs through your PAT. Save this only if you plan to
+          connect Postgres from outside Blind Code (psql, pgAdmin, migrations). Supabase never shows it again.
         </div>
       </div>
 

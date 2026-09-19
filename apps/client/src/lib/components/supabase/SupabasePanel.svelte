@@ -244,9 +244,15 @@
       </div>
     </div>
     <div>
-      <div class="font-medium" style="color: var(--text-primary);">Database URL</div>
+      <div class="font-medium" style="color: var(--text-primary);">Table creation (run_sql)</div>
       <div class="mt-0.5">
-        {integration.hasDatabaseUrl ? "Configured — AI can create tables" : "Not configured — AI cannot create tables"}
+        {#if integration.projectRef}
+          Enabled — routed through the Supabase Management API using your account PAT. No database URL needed.
+        {:else if integration.hasDatabaseUrl}
+          Enabled — routed through the direct Postgres connection you provided.
+        {:else}
+          Not enabled. Attach this project via the /supabase page (recommended) or reconnect and paste a Postgres connection URL.
+        {/if}
       </div>
     </div>
     <div>
