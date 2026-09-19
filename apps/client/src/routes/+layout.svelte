@@ -98,9 +98,6 @@
             </svg>
           </button>
         {/if}
-        <a href="/" class="text-sm font-semibold no-underline" style="color: var(--text-primary);">
-          Blind Code
-        </a>
       </div>
 
       <div class="flex items-center gap-3 text-xs">
