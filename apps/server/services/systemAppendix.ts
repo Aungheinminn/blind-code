@@ -1,4 +1,21 @@
-export const buildSupabaseCoderAppendix = (): string => `
+export const buildSupabaseCoderAppendix = (
+  opts: { canRunSql?: boolean } = {},
+): string => {
+  const schemaSection = opts.canRunSql
+    ? `- Schema: you have a run_sql tool. Before writing UI that depends on a table, call run_sql with idempotent DDL:
+    CREATE TABLE IF NOT EXISTS todos (
+      id uuid primary key default gen_random_uuid(),
+      text text not null,
+      done boolean not null default false,
+      created_at timestamptz not null default now()
+    );
+    ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY IF NOT EXISTS "todos_read_all" ON todos FOR SELECT USING (true);
+    CREATE POLICY IF NOT EXISTS "todos_insert_all" ON todos FOR INSERT WITH CHECK (true);
+  Only call run_sql for schema work the user's app requires. Never DROP, TRUNCATE, or delete data unless the user explicitly asked for it.`
+    : `- Schema: you do NOT have a way to create tables. Assume required tables exist. If a query returns an error about a missing table or column, render a small inline message telling the user to add "database URL" in the Supabase modal (database icon in the preview header) so you can create tables for them.`;
+
+  return `
 
 Persistence — a Supabase database is connected to this project:
 - A pre-configured client is at src/lib/supabase.ts. Import and use it directly. Do NOT write, modify, or read that file — it is auto-generated and holds the URL and anon key.
@@ -13,9 +30,10 @@ Persistence — a Supabase database is connected to this project:
     await supabase.auth.signUp({ email, password });
     await supabase.auth.signInWithPassword({ email, password });
     const { data: { user } } = await supabase.auth.getUser();
-- Assume the required tables exist. If a query returns an error about a missing table or column, show a small inline message telling the user to create the table in their Supabase dashboard. Do NOT try to create tables yourself from the client — the anon key can't do that.
+${schemaSection}
 - @supabase/supabase-js is auto-installed; do not import it anywhere except transitively through ./src/lib/supabase (or ../lib/supabase from deeper files).
 `;
+};
 
 export const buildSupabasePlannerAppendix = (): string => `
 

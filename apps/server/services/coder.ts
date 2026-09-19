@@ -48,6 +48,7 @@ export type RunCoderOptions = {
   systemPrompt?: string;
   plan?: Plan | null;
   supabaseConnected?: boolean;
+  supabaseCanRunSql?: boolean;
   onEvent: (event: CoderEvent) => void;
   signal?: AbortSignal;
 };
@@ -107,7 +108,7 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const baseSystem = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
   const withPlan = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
   const system = opts.supabaseConnected
-    ? withPlan + buildSupabaseCoderAppendix()
+    ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
     : withPlan;
 
   try {

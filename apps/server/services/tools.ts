@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { join, resolve, relative, dirname } from "path";
 import { mkdir, readFile, writeFile, readdir, stat, rm } from "fs/promises";
+import postgres from "postgres";
 import {
   upsertProjectFile,
   deleteProjectFile,
@@ -28,6 +29,7 @@ export type ToolContext = {
   sandboxProjectId: string;
   dbProjectId: string | null;
   sessionId?: string | null;
+  databaseUrl?: string | null;
 };
 
 const hashInput = (toolName: string, input: unknown): string =>
@@ -117,7 +119,7 @@ export const buildReadOnlyTools = (ctx: ToolContext) => {
 };
 
 export const buildWriteTools = (ctx: ToolContext) => {
-  const { sandboxProjectId, dbProjectId, sessionId } = ctx;
+  const { sandboxProjectId, dbProjectId, sessionId, databaseUrl } = ctx;
   const idem = <I, O>(name: string, fn: (input: I) => Promise<O>) =>
     withIdempotency(sessionId, name, fn);
 
@@ -151,6 +153,60 @@ export const buildWriteTools = (ctx: ToolContext) => {
         await rm(abs, { recursive: true, force: true });
         if (dbProjectId) await deleteProjectFile(dbProjectId, path);
         return { path, deleted: true };
+      }),
+    }),
+
+    run_sql: tool({
+      description:
+        "Execute SQL against the project's connected Postgres database (Supabase). Use for CREATE TABLE, ALTER TABLE, CREATE POLICY, and other DDL, or one-off data setup. Multiple statements separated by semicolons are allowed. The user must have provided a database URL in the Supabase connection modal — if they haven't, this tool returns an error asking them to add one. Never call this to run destructive DROP DATABASE, TRUNCATE without user consent, or arbitrary data-mutating queries the user didn't ask for.",
+      inputSchema: z.object({
+        sql: z
+          .string()
+          .describe(
+            "The SQL to execute. Prefer idempotent DDL like CREATE TABLE IF NOT EXISTS, CREATE POLICY IF NOT EXISTS.",
+          ),
+      }),
+      execute: idem("run_sql", async ({ sql: query }: { sql: string }) => {
+        const url = databaseUrl?.trim();
+        if (!url) {
+          return {
+            ok: false,
+            error:
+              "No database URL configured for this project. Ask the user to open the Supabase modal (database icon in the preview header) and add their Postgres connection string.",
+          };
+        }
+        if (query.length > 20000) {
+          return {
+            ok: false,
+            error: "SQL is too large (>20KB). Split it into smaller statements.",
+          };
+        }
+        const client = postgres(url, {
+          max: 1,
+          prepare: false,
+          connect_timeout: 10,
+          ssl: "require",
+        });
+        try {
+          const result = await client.unsafe(query).simple();
+          const rows = Array.isArray(result) ? result : [];
+          const preview = rows.slice(0, 50);
+          return {
+            ok: true,
+            rowCount: rows.length,
+            truncated: rows.length > 50,
+            rows: preview,
+          };
+        } catch (err) {
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        } finally {
+          try {
+            await client.end({ timeout: 5 });
+          } catch {}
+        }
       }),
     }),
 

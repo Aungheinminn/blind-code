@@ -46,6 +46,8 @@ const parseSupabaseBody = (body: unknown): SupabaseIntegration | string => {
   const anonKey = typeof b.anonKey === "string" ? b.anonKey.trim() : "";
   const serviceRoleKey =
     typeof b.serviceRoleKey === "string" ? b.serviceRoleKey.trim() : "";
+  const databaseUrl =
+    typeof b.databaseUrl === "string" ? b.databaseUrl.trim() : "";
   if (!url) return "url required";
   try {
     const parsed = new URL(url);
@@ -54,10 +56,21 @@ const parseSupabaseBody = (body: unknown): SupabaseIntegration | string => {
     return "url must be a valid URL";
   }
   if (!anonKey) return "anonKey required";
+  if (databaseUrl) {
+    try {
+      const parsed = new URL(databaseUrl);
+      if (!/^postgres(ql)?:$/.test(parsed.protocol)) {
+        return "databaseUrl must start with postgres:// or postgresql://";
+      }
+    } catch {
+      return "databaseUrl must be a valid URL";
+    }
+  }
   return {
     url,
     anonKey,
     serviceRoleKey: serviceRoleKey || undefined,
+    databaseUrl: databaseUrl || undefined,
     connectedAt: new Date().toISOString(),
   };
 };

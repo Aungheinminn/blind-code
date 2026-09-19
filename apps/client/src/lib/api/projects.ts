@@ -4,6 +4,7 @@ export type PublicSupabaseIntegration = {
   url: string;
   anonKey: string;
   hasServiceRoleKey: boolean;
+  hasDatabaseUrl: boolean;
   connectedAt: string;
 };
 
@@ -115,6 +116,7 @@ export type ConnectSupabaseInput = {
   url: string;
   anonKey: string;
   serviceRoleKey?: string;
+  databaseUrl?: string;
 };
 
 export const connectSupabase = (id: string, input: ConnectSupabaseInput) =>

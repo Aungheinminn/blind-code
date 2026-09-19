@@ -147,7 +147,9 @@ export const agentController = (app: Elysia) =>
         const projectRow = dbProjectId
           ? await getProjectForOwner(dbProjectId, userId)
           : null;
-        const supabaseConnected = Boolean(projectRow?.integrations?.supabase);
+        const supabase = projectRow?.integrations?.supabase ?? null;
+        const supabaseConnected = Boolean(supabase);
+        const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
 
         const resolvedModelId =
           msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
@@ -346,13 +348,19 @@ export const agentController = (app: Elysia) =>
           await runCoder({
             provider: msg.provider,
             model: msg.model,
-            toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },
+            toolContext: {
+              sandboxProjectId: msg.projectId,
+              dbProjectId,
+              sessionId,
+              databaseUrl: supabaseDatabaseUrl,
+            },
             prompt: msg.prompt,
             history: msg.history,
             maxSteps: msg.maxSteps,
             systemPrompt: msg.systemPrompt,
             plan,
             supabaseConnected,
+            supabaseCanRunSql: Boolean(supabaseDatabaseUrl),
             signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});

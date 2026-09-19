@@ -18,6 +18,7 @@
   let url = "";
   let anonKey = "";
   let serviceRoleKey = "";
+  let databaseUrl = "";
   let busy = false;
   let error = "";
   let urlInput: HTMLInputElement | undefined;
@@ -27,6 +28,7 @@
     url = integration?.url ?? "";
     anonKey = integration?.anonKey ?? "";
     serviceRoleKey = "";
+    databaseUrl = "";
     error = "";
     await tick();
     urlInput?.focus();
@@ -57,6 +59,7 @@
         url: url.trim(),
         anonKey: anonKey.trim(),
         serviceRoleKey: serviceRoleKey.trim() || undefined,
+        databaseUrl: databaseUrl.trim() || undefined,
       });
       const next = updated?.integrations?.supabase ?? null;
       dispatch("changed", next);
@@ -157,7 +160,13 @@
         <div>
           <div class="font-medium" style="color: var(--text-primary);">Service role key</div>
           <div class="mt-0.5">
-            {integration.hasServiceRoleKey ? "Configured (server-side only)" : "Not configured — AI cannot create tables"}
+            {integration.hasServiceRoleKey ? "Configured (server-side only)" : "Not configured"}
+          </div>
+        </div>
+        <div>
+          <div class="font-medium" style="color: var(--text-primary);">Database URL</div>
+          <div class="mt-0.5">
+            {integration.hasDatabaseUrl ? "Configured — AI can create tables" : "Not configured — AI cannot create tables"}
           </div>
         </div>
         <div>
@@ -197,12 +206,24 @@
           <textarea
             rows="2"
             bind:value={serviceRoleKey}
-            placeholder="Optional — lets the AI create tables for you"
+            placeholder="Optional — for privileged reads from server-side agent tools"
+            class="mt-1 w-full text-xs font-mono px-3 py-2 rounded-md border bg-transparent outline-none resize-none"
+            style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          ></textarea>
+        </label>
+
+        <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+          Database URL <span style="color: var(--text-secondary);">(optional)</span>
+          <textarea
+            rows="2"
+            bind:value={databaseUrl}
+            placeholder="postgresql://postgres.xxxx:password@aws-0-region.pooler.supabase.com:6543/postgres"
             class="mt-1 w-full text-xs font-mono px-3 py-2 rounded-md border bg-transparent outline-none resize-none"
             style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
           ></textarea>
           <span class="mt-1 block" style="color: var(--text-secondary);">
-            Stored server-side only. Never sent to the browser preview.
+            Supabase Dashboard → Project Settings → Database → Connection string.
+            Required for AI to create tables. Stored server-side only.
           </span>
         </label>
 

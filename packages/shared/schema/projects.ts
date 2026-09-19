@@ -4,6 +4,7 @@ export type SupabaseIntegration = {
   url: string;
   anonKey: string;
   serviceRoleKey?: string;
+  databaseUrl?: string;
   connectedAt: string;
 };
 
@@ -11,8 +12,12 @@ export type ProjectIntegrations = {
   supabase?: SupabaseIntegration;
 };
 
-export type PublicSupabaseIntegration = Omit<SupabaseIntegration, "serviceRoleKey"> & {
+export type PublicSupabaseIntegration = Omit<
+  SupabaseIntegration,
+  "serviceRoleKey" | "databaseUrl"
+> & {
   hasServiceRoleKey: boolean;
+  hasDatabaseUrl: boolean;
 };
 
 export type PublicProjectIntegrations = {
@@ -25,8 +30,12 @@ export const toPublicIntegrations = (
   if (!integrations) return null;
   const out: PublicProjectIntegrations = {};
   if (integrations.supabase) {
-    const { serviceRoleKey, ...rest } = integrations.supabase;
-    out.supabase = { ...rest, hasServiceRoleKey: Boolean(serviceRoleKey) };
+    const { serviceRoleKey, databaseUrl, ...rest } = integrations.supabase;
+    out.supabase = {
+      ...rest,
+      hasServiceRoleKey: Boolean(serviceRoleKey),
+      hasDatabaseUrl: Boolean(databaseUrl),
+    };
   }
   return out;
 };
