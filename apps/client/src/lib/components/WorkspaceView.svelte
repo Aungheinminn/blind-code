@@ -21,11 +21,13 @@
     planError,
     assembledFiles,
     projectFiles,
+    projectIntegration,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
+  import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
   import { getProject } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
 
@@ -44,6 +46,7 @@
   let activeProjectId: string | null = null;
   let sandpack: SandpackPreview | undefined;
   let projectName = "";
+  let supabaseModalOpen = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
   $: currentProvider = $providers.find((p) => p.name === $selectedProvider);
@@ -96,7 +99,9 @@
     bootstrapProject(projectId, pending);
     getProject(projectId)
       .then((p) => {
-        if (p && activeProjectId === projectId) projectName = p.name;
+        if (!p || activeProjectId !== projectId) return;
+        projectName = p.name;
+        projectIntegration.set(p.integrations?.supabase ?? null);
       })
       .catch(() => {});
   }
@@ -122,8 +127,10 @@
     <PreviewHeader
       {panelOpen}
       {launcherHidden}
+      supabaseConnected={$projectIntegration !== null}
       on:restart={() => sandpack?.refresh()}
       on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
+      on:open-supabase={() => (supabaseModalOpen = true)}
     />
     <div class="flex-1 min-h-0 relative">
       <SandpackPreview
@@ -164,6 +171,15 @@
     planError={$planError}
     on:open={openAgentPanel}
   />
+
+  {#if supabaseModalOpen}
+    <SupabaseConnectModal
+      {projectId}
+      integration={$projectIntegration}
+      on:close={() => (supabaseModalOpen = false)}
+      on:changed={(e) => projectIntegration.set(e.detail)}
+    />
+  {/if}
 </div>
 
 <style>

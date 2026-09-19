@@ -1,5 +1,11 @@
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
+import type {
+  ProjectIntegrations,
+  SupabaseAccountIntegration,
+  SupabaseIntegration,
+  UserIntegrations,
+} from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
 
 const projectIdFor = (idOrName: string, ownerId: string): string =>
@@ -26,6 +32,52 @@ export const createUser = async (
     .values({ email, displayName, passwordHash })
     .returning();
   return row;
+};
+
+export const getUserById = async (id: string) => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+};
+
+export const setUserSupabaseIntegration = async (
+  userId: string,
+  integration: SupabaseAccountIntegration,
+) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const nextIntegrations: UserIntegrations = {
+    ...(existing.integrations ?? {}),
+    supabase: integration,
+  };
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return updated ?? null;
+};
+
+export const clearUserSupabaseIntegration = async (userId: string) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const current = existing.integrations ?? {};
+  const { supabase: _drop, ...rest } = current;
+  const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return updated ?? null;
 };
 
 export const ensureProject = async (
@@ -108,6 +160,82 @@ export const updateProjectForOwner = async (
   const [updated] = await db
     .update(schema.projects)
     .set({ ...patch, updatedAt: new Date() })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return updated ?? null;
+};
+
+export const setSupabaseIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+  integration: SupabaseIntegration,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const nextIntegrations: ProjectIntegrations = {
+    ...(existing[0].integrations ?? {}),
+    supabase: integration,
+  };
+  const [updated] = await db
+    .update(schema.projects)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return updated ?? null;
+};
+
+export const clearSupabaseIntegrationsByRefForOwner = async (
+  ownerId: string,
+  projectRef: string,
+): Promise<number> => {
+  if (!db) return 0;
+  const rows = await db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.ownerId, ownerId));
+  let cleared = 0;
+  for (const row of rows) {
+    if (row.integrations?.supabase?.projectRef !== projectRef) continue;
+    const current = row.integrations ?? {};
+    const { supabase: _drop, ...rest } = current;
+    const nextIntegrations: ProjectIntegrations | null = Object.keys(rest).length
+      ? rest
+      : null;
+    await db
+      .update(schema.projects)
+      .set({ integrations: nextIntegrations, updatedAt: new Date() })
+      .where(and(eq(schema.projects.id, row.id), eq(schema.projects.ownerId, ownerId)));
+    cleared++;
+  }
+  return cleared;
+};
+
+export const clearSupabaseIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const current = existing[0].integrations ?? {};
+  const { supabase: _drop, ...rest } = current;
+  const nextIntegrations: ProjectIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.projects)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
   return updated ?? null;

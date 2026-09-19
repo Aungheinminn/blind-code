@@ -21,6 +21,7 @@ const VERSION_HINTS: Record<string, string> = {
   axios: "^1.7.9",
   recharts: "^2.15.0",
   "react-router-dom": "^7.1.1",
+  "@supabase/supabase-js": "^2.45.0",
 };
 
 const IMPORT_RE =
@@ -108,8 +109,29 @@ const DEFAULT_TSCONFIG = JSON.stringify(
   2,
 );
 
+export type SupabaseInject = {
+  url: string;
+  anonKey: string;
+};
+
+export type AssembleOptions = {
+  supabase?: SupabaseInject | null;
+};
+
+const escapeJsString = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+const generateSupabaseClient = (s: SupabaseInject): string =>
+  `import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  "${escapeJsString(s.url)}",
+  "${escapeJsString(s.anonKey)}",
+);
+`;
+
 export const assembleReactProject = (
   raw: Record<string, string>,
+  opts: AssembleOptions = {},
 ): Record<string, string> => {
   const files: Record<string, string> = {};
   for (const [path, content] of Object.entries(raw)) {
@@ -132,7 +154,15 @@ export const assembleReactProject = (
     files["/styles.css"] = DEFAULT_STYLES_CSS;
   }
 
+  if (opts.supabase) {
+    files["/src/lib/supabase.ts"] = generateSupabaseClient(opts.supabase);
+  }
+
   const detected = detectDeps(files);
+  if (opts.supabase) {
+    detected["@supabase/supabase-js"] =
+      VERSION_HINTS["@supabase/supabase-js"] ?? "^2.45.0";
+  }
   files["/tsconfig.json"] = DEFAULT_TSCONFIG;
   files["/package.json"] = JSON.stringify(
     {

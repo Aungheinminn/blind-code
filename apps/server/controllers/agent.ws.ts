@@ -18,6 +18,8 @@ import {
   endAgentSession,
   recordAgentAction,
   listProjectFiles,
+  getProjectForOwner,
+  getUserById,
   hasDb,
 } from "../db/repo";
 
@@ -143,6 +145,19 @@ export const agentController = (app: Elysia) =>
 
         await hydrateSandbox(msg.projectId, dbProjectId);
 
+        const [projectRow, userRow] = await Promise.all([
+          dbProjectId ? getProjectForOwner(dbProjectId, userId) : Promise.resolve(null),
+          getUserById(userId),
+        ]);
+        const supabase = projectRow?.integrations?.supabase ?? null;
+        const supabaseConnected = Boolean(supabase);
+        const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
+        const supabaseProjectRef = supabase?.projectRef ?? null;
+        const supabasePat = userRow?.integrations?.supabase?.accessToken ?? null;
+        const supabaseCanRunSqlViaMgmt = Boolean(supabasePat && supabaseProjectRef);
+        const supabaseCanRunSql =
+          supabaseCanRunSqlViaMgmt || Boolean(supabaseDatabaseUrl);
+
         const resolvedModelId =
           msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
         const sessionId = dbProjectId
@@ -225,6 +240,7 @@ export const agentController = (app: Elysia) =>
               prompt: msg.prompt,
               history: msg.history,
               maxSteps: msg.plannerMaxSteps,
+              supabaseConnected,
               signal: runSignal,
             });
             await publish({ type: "plan", plan });
@@ -339,12 +355,21 @@ export const agentController = (app: Elysia) =>
           await runCoder({
             provider: msg.provider,
             model: msg.model,
-            toolContext: { sandboxProjectId: msg.projectId, dbProjectId, sessionId },
+            toolContext: {
+              sandboxProjectId: msg.projectId,
+              dbProjectId,
+              sessionId,
+              databaseUrl: supabaseDatabaseUrl,
+              supabasePat,
+              supabaseProjectRef,
+            },
             prompt: msg.prompt,
             history: msg.history,
             maxSteps: msg.maxSteps,
             systemPrompt: msg.systemPrompt,
             plan,
+            supabaseConnected,
+            supabaseCanRunSql,
             signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});

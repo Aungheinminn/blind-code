@@ -2,7 +2,11 @@ import { writable, derived, get } from "svelte/store";
 import { assembleReactProject } from "$lib/preview/reactAssembler";
 import { enabledModels, loadConnect, providersState } from "./connect";
 import { getWsTicket } from "$lib/api/auth";
-import { getProjectFiles, getProjectHistory } from "$lib/api/projects";
+import {
+  getProjectFiles,
+  getProjectHistory,
+  type PublicSupabaseIntegration,
+} from "$lib/api/projects";
 
 export type ToolPart = {
   kind: "tool";
@@ -90,9 +94,18 @@ selectedProvider.subscribe((v) => writeStored(PROVIDER_KEY, v));
 selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
+export const projectIntegration = writable<PublicSupabaseIntegration | null>(null);
 
-export const assembledFiles = derived(projectFiles, ($files) =>
-  Object.keys($files).length === 0 ? {} : assembleReactProject($files),
+export const assembledFiles = derived(
+  [projectFiles, projectIntegration],
+  ([$files, $integration]) =>
+    Object.keys($files).length === 0
+      ? {}
+      : assembleReactProject($files, {
+          supabase: $integration
+            ? { url: $integration.url, anonKey: $integration.anonKey }
+            : null,
+        }),
 );
 
 export const activePlan = writable<Plan | null>(null);
@@ -160,6 +173,7 @@ export const resetWorkspace = () => {
   isRunning.set(false);
   resetPlan();
   projectFiles.set({});
+  projectIntegration.set(null);
   currentAgentMessageId = null;
   activeTurnId = null;
   activeProjectId = null;

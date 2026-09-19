@@ -3,6 +3,7 @@ import { z } from "zod";
 import { resolveModel } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 import type { CoderChatMessage } from "./coder";
+import { buildSupabasePlannerAppendix } from "./systemAppendix";
 
 export const planTodoSchema = z.object({
   id: z.string().describe("Short stable id, e.g. 't1', 't2'."),
@@ -30,6 +31,7 @@ export type RunPlannerOptions = {
   history?: CoderChatMessage[];
   maxSteps?: number;
   systemPrompt?: string;
+  supabaseConnected?: boolean;
   signal?: AbortSignal;
 };
 
@@ -62,9 +64,14 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
     { role: "user", content: opts.prompt },
   ];
 
+  const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;
+  const system = opts.supabaseConnected
+    ? baseSystem + buildSupabasePlannerAppendix()
+    : baseSystem;
+
   const result = await generateText({
     model,
-    system: opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT,
+    system,
     messages,
     tools,
     stopWhen: stepCountIs(opts.maxSteps ?? 10),
