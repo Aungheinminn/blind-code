@@ -5,6 +5,7 @@ export type PublicSupabaseIntegration = {
   anonKey: string;
   hasServiceRoleKey: boolean;
   hasDatabaseUrl: boolean;
+  projectRef?: string;
   connectedAt: string;
 };
 
