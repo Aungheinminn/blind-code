@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
+import type { ProjectIntegrations, SupabaseIntegration } from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
 
 const projectIdFor = (idOrName: string, ownerId: string): string =>
@@ -108,6 +109,56 @@ export const updateProjectForOwner = async (
   const [updated] = await db
     .update(schema.projects)
     .set({ ...patch, updatedAt: new Date() })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return updated ?? null;
+};
+
+export const setSupabaseIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+  integration: SupabaseIntegration,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const nextIntegrations: ProjectIntegrations = {
+    ...(existing[0].integrations ?? {}),
+    supabase: integration,
+  };
+  const [updated] = await db
+    .update(schema.projects)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return updated ?? null;
+};
+
+export const clearSupabaseIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const current = existing[0].integrations ?? {};
+  const { supabase: _drop, ...rest } = current;
+  const nextIntegrations: ProjectIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.projects)
+    .set({ integrations: nextIntegrations, updatedAt: new Date() })
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
   return updated ?? null;
