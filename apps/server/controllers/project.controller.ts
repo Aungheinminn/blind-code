@@ -1,5 +1,8 @@
 import type { Elysia } from "elysia";
 import { randomInt } from "crypto";
+import { rm } from "fs/promises";
+import { join } from "path";
+import { isUuid, stringToUuid } from "../services/uuid";
 import {
   listProjectsForOwner,
   getProjectForOwner,
@@ -290,6 +293,17 @@ export const projectController = (app: Elysia) =>
       if (!deleted) {
         set.status = 404;
         return { error: "not found" };
+      }
+      // Sandbox lives on disk keyed by the same id — the next create-with-same-name
+      // resolves to the same UUID, so leftover files would leak into the fresh project.
+      // Clean both the as-passed key and the canonical UUID in case the URL used a name.
+      const canonicalId = isUuid(params.id)
+        ? params.id.toLowerCase()
+        : stringToUuid(`${user.id}:${params.id}`);
+      for (const key of new Set([params.id, canonicalId])) {
+        try {
+          await rm(join("/tmp/vibe-sandbox", key), { recursive: true, force: true });
+        } catch {}
       }
       return { data: { id: params.id, deleted: true } };
     });
