@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
 import type {
   ProjectIntegrations,
@@ -346,11 +346,41 @@ export const clearSupabaseIntegrationForOwner = async (
 export const deleteProjectForOwner = async (idOrName: string, ownerId: string) => {
   if (!db) return false;
   const id = projectIdFor(idOrName, ownerId);
-  const res = await db
-    .delete(schema.projects)
-    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
-    .returning();
-  return res.length > 0;
+  return db.transaction(async (tx) => {
+    const project = await tx
+      .select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+      .limit(1);
+    if (!project[0]) return false;
+
+    const sessionRows = await tx
+      .select({ id: schema.agentSessions.id })
+      .from(schema.agentSessions)
+      .where(eq(schema.agentSessions.projectId, id));
+    const sessionIds = sessionRows.map((r) => r.id);
+
+    const turnRows = await tx
+      .select({ id: schema.turns.id })
+      .from(schema.turns)
+      .where(eq(schema.turns.projectId, id));
+    const turnIds = turnRows.map((r) => r.id);
+
+    if (turnIds.length > 0) {
+      await tx.delete(schema.turnEvents).where(inArray(schema.turnEvents.turnId, turnIds));
+      await tx.delete(schema.turns).where(inArray(schema.turns.id, turnIds));
+    }
+    if (sessionIds.length > 0) {
+      await tx.delete(schema.toolCallCache).where(inArray(schema.toolCallCache.sessionId, sessionIds));
+      await tx.delete(schema.agentActions).where(inArray(schema.agentActions.sessionId, sessionIds));
+      await tx.delete(schema.agentSessions).where(inArray(schema.agentSessions.id, sessionIds));
+    }
+    await tx.delete(schema.files).where(eq(schema.files.projectId, id));
+    await tx
+      .delete(schema.projects)
+      .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)));
+    return true;
+  });
 };
 
 export const createAgentSession = async (projectId: string, model: string): Promise<string | null> => {
