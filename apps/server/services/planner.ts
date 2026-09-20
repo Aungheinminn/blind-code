@@ -3,7 +3,10 @@ import { z } from "zod";
 import { resolveModel } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 import type { CoderChatMessage } from "./coder";
-import { buildSupabasePlannerAppendix } from "./systemAppendix";
+import {
+  buildLocalPersistencePlannerAppendix,
+  buildSupabasePlannerAppendix,
+} from "./systemAppendix";
 
 export const planTodoSchema = z.object({
   id: z.string().describe("Short stable id, e.g. 't1', 't2'."),
@@ -67,7 +70,7 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
   const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;
   const system = opts.supabaseConnected
     ? baseSystem + buildSupabasePlannerAppendix()
-    : baseSystem;
+    : baseSystem + buildLocalPersistencePlannerAppendix();
 
   const result = await generateText({
     model,
