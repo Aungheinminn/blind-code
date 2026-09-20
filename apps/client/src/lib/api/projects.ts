@@ -136,3 +136,6 @@ export const attachSupabaseProject = (id: string, projectRef: string) =>
     method: "POST",
     body: JSON.stringify({ projectRef }),
   });
+
+export const listAttachedSupabaseRefs = () =>
+  fetchJson<string[]>(`/projects/integrations/supabase/attached-refs`);

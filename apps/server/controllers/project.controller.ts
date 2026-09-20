@@ -14,6 +14,7 @@ import {
   setSupabaseIntegrationForOwner,
   clearSupabaseIntegrationForOwner,
   findProjectByOwnerAndSupabaseRef,
+  listAttachedSupabaseRefsForOwner,
   resolveProjectId,
   getUserById,
 } from "../db/repo";
@@ -97,6 +98,12 @@ const parseSupabaseBody = (body: unknown): SupabaseIntegration | string => {
 
 export const projectController = (app: Elysia) =>
   app
+    .get("/projects/integrations/supabase/attached-refs", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      return { data: await listAttachedSupabaseRefsForOwner(user.id) };
+    })
     .get("/projects", async ({ request, query, set }) => {
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);
