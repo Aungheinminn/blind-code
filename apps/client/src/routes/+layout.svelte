@@ -9,8 +9,10 @@
   import "../app.css";
 
   const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+  const AUTH_ROUTES = ["/login", "/signup"];
 
   const isPublic = (path: string) => PUBLIC_ROUTES.includes(path);
+  const isAuthPage = (path: string) => AUTH_ROUTES.includes(path);
   const isFullscreen = (path: string) => path.includes("/workspace");
   const projectDetailIdRe = /^\/projects\/([^/]+)$/;
   const projectDetailId = (path: string) => path.match(projectDetailIdRe)?.[1] ?? null;
@@ -35,9 +37,9 @@
   $: showSidebar =
     $auth.status === "authed" &&
     !isFullscreen($page.url.pathname) &&
-    !isPublic($page.url.pathname);
+    !isAuthPage($page.url.pathname);
   $: showHeader =
-    !isFullscreen($page.url.pathname) && !isPublic($page.url.pathname);
+    !isFullscreen($page.url.pathname) && !isAuthPage($page.url.pathname);
 
   const signOut = async () => {
     menuOpen = false;
