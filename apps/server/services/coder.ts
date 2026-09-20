@@ -2,7 +2,10 @@ import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
-import { buildSupabaseCoderAppendix } from "./systemAppendix";
+import {
+  buildLocalPersistenceCoderAppendix,
+  buildSupabaseCoderAppendix,
+} from "./systemAppendix";
 
 export type CoderEvent =
   | { type: "text-start"; id: string }
@@ -109,7 +112,10 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const withPlan = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
   const system = opts.supabaseConnected
     ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
-    : withPlan;
+    : withPlan + buildLocalPersistenceCoderAppendix();
+
+  // Each todo consumes ~6 model steps end-to-end, so a flat cap starves plans of 7+ todos.
+  const derivedMax = Math.max(30, (opts.plan?.todos.length ?? 0) * 6 + 10);
 
   try {
     const result = streamText({
@@ -117,7 +123,7 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
       system,
       messages,
       tools,
-      stopWhen: stepCountIs(opts.maxSteps ?? 20),
+      stopWhen: stepCountIs(opts.maxSteps ?? derivedMax),
       abortSignal: opts.signal,
       ...(reasoning.providerOptions ? { providerOptions: reasoning.providerOptions } : {}),
       ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
