@@ -88,6 +88,27 @@ const decryptProjectRow = <
 const projectIdFor = (idOrName: string, ownerId: string): string =>
   isUuid(idOrName) ? idOrName.toLowerCase() : stringToUuid(`${ownerId}:${idOrName}`);
 
+export const resolveProjectId = projectIdFor;
+
+export const findProjectByOwnerAndSupabaseRef = async (
+  ownerId: string,
+  projectRef: string,
+  exceptId?: string,
+): Promise<{ id: string; name: string } | null> => {
+  if (!db) return null;
+  const rows = await db
+    .select({ id: schema.projects.id, name: schema.projects.name })
+    .from(schema.projects)
+    .where(
+      and(
+        eq(schema.projects.ownerId, ownerId),
+        sql`${schema.projects.integrations}->'supabase'->>'projectRef' = ${projectRef}`,
+      ),
+    );
+  const conflict = rows.find((r) => (exceptId ? r.id !== exceptId : true));
+  return conflict ?? null;
+};
+
 export const findUserByEmail = async (email: string) => {
   if (!db) return null;
   const rows = await db

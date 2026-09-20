@@ -13,6 +13,8 @@ import {
   listProjectFiles,
   setSupabaseIntegrationForOwner,
   clearSupabaseIntegrationForOwner,
+  findProjectByOwnerAndSupabaseRef,
+  resolveProjectId,
   getUserById,
 } from "../db/repo";
 import { hasDb } from "../db/client";
@@ -47,6 +49,16 @@ const toPublicProject = <T extends ProjectRow>(project: T) => ({
   ...project,
   integrations: toPublicIntegrations(project.integrations),
 });
+
+const extractSupabaseRef = (url: string): string | null => {
+  try {
+    const host = new URL(url).host.toLowerCase();
+    const m = host.match(/^([a-z0-9-]+)\.supabase\.co$/);
+    return m?.[1] ?? null;
+  } catch {
+    return null;
+  }
+};
 
 const parseSupabaseBody = (body: unknown): SupabaseIntegration | string => {
   const b = (body as Record<string, unknown>) ?? {};
@@ -181,6 +193,20 @@ export const projectController = (app: Elysia) =>
         set.status = 400;
         return { error: parsed };
       }
+      const ref = extractSupabaseRef(parsed.url);
+      if (ref) {
+        const conflict = await findProjectByOwnerAndSupabaseRef(
+          user.id,
+          ref,
+          resolveProjectId(params.id, user.id),
+        );
+        if (conflict) {
+          set.status = 409;
+          return {
+            error: `This Supabase project is already attached to “${conflict.name}”. Detach it there first.`,
+          };
+        }
+      }
       const updated = await setSupabaseIntegrationForOwner(params.id, user.id, parsed);
       if (!updated) {
         set.status = 404;
@@ -200,6 +226,17 @@ export const projectController = (app: Elysia) =>
         if (!projectRef) {
           set.status = 400;
           return { error: "projectRef required" };
+        }
+        const conflict = await findProjectByOwnerAndSupabaseRef(
+          user.id,
+          projectRef,
+          resolveProjectId(params.id, user.id),
+        );
+        if (conflict) {
+          set.status = 409;
+          return {
+            error: `This Supabase project is already attached to “${conflict.name}”. Detach it there first.`,
+          };
         }
         const userRow = await getUserById(user.id);
         const pat = userRow?.integrations?.supabase?.accessToken;
