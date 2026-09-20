@@ -7,6 +7,83 @@ import type {
   UserIntegrations,
 } from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
+import { encrypt, decryptMaybe } from "../services/crypto";
+
+const encryptUserIntegrations = (
+  integrations: UserIntegrations,
+): UserIntegrations => {
+  if (!integrations.supabase) return integrations;
+  return {
+    ...integrations,
+    supabase: {
+      ...integrations.supabase,
+      accessToken: encrypt(integrations.supabase.accessToken),
+    },
+  };
+};
+
+const decryptUserIntegrations = (
+  integrations: UserIntegrations | null | undefined,
+): UserIntegrations | null => {
+  if (!integrations) return null;
+  if (!integrations.supabase) return integrations;
+  const at = decryptMaybe(integrations.supabase.accessToken);
+  return {
+    ...integrations,
+    supabase: { ...integrations.supabase, accessToken: at ?? "" },
+  };
+};
+
+const decryptUserRow = <T extends { integrations?: UserIntegrations | null }>(
+  row: T | null | undefined,
+): T | null => {
+  if (!row) return null;
+  return { ...row, integrations: decryptUserIntegrations(row.integrations) };
+};
+
+const encryptProjectIntegrations = (
+  integrations: ProjectIntegrations,
+): ProjectIntegrations => {
+  if (!integrations.supabase) return integrations;
+  const s = integrations.supabase;
+  return {
+    ...integrations,
+    supabase: {
+      ...s,
+      serviceRoleKey: s.serviceRoleKey ? encrypt(s.serviceRoleKey) : undefined,
+      databaseUrl: s.databaseUrl ? encrypt(s.databaseUrl) : undefined,
+    },
+  };
+};
+
+const decryptProjectIntegrations = (
+  integrations: ProjectIntegrations | null | undefined,
+): ProjectIntegrations | null => {
+  if (!integrations) return null;
+  if (!integrations.supabase) return integrations;
+  const s = integrations.supabase;
+  return {
+    ...integrations,
+    supabase: {
+      ...s,
+      serviceRoleKey: s.serviceRoleKey
+        ? (decryptMaybe(s.serviceRoleKey) ?? undefined)
+        : undefined,
+      databaseUrl: s.databaseUrl
+        ? (decryptMaybe(s.databaseUrl) ?? undefined)
+        : undefined,
+    },
+  };
+};
+
+const decryptProjectRow = <
+  T extends { integrations?: ProjectIntegrations | null },
+>(
+  row: T | null | undefined,
+): T | null => {
+  if (!row) return null;
+  return { ...row, integrations: decryptProjectIntegrations(row.integrations) };
+};
 
 const projectIdFor = (idOrName: string, ownerId: string): string =>
   isUuid(idOrName) ? idOrName.toLowerCase() : stringToUuid(`${ownerId}:${idOrName}`);
@@ -18,7 +95,7 @@ export const findUserByEmail = async (email: string) => {
     .from(schema.users)
     .where(eq(schema.users.email, email))
     .limit(1);
-  return rows[0] ?? null;
+  return decryptUserRow(rows[0] ?? null);
 };
 
 export const createUser = async (
@@ -41,7 +118,7 @@ export const getUserById = async (id: string) => {
     .from(schema.users)
     .where(eq(schema.users.id, id))
     .limit(1);
-  return rows[0] ?? null;
+  return decryptUserRow(rows[0] ?? null);
 };
 
 export const setUserSupabaseIntegration = async (
@@ -51,16 +128,16 @@ export const setUserSupabaseIntegration = async (
   if (!db) return null;
   const existing = await getUserById(userId);
   if (!existing) return null;
-  const nextIntegrations: UserIntegrations = {
+  const merged: UserIntegrations = {
     ...(existing.integrations ?? {}),
     supabase: integration,
   };
   const [updated] = await db
     .update(schema.users)
-    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .set({ integrations: encryptUserIntegrations(merged), updatedAt: new Date() })
     .where(eq(schema.users.id, userId))
     .returning();
-  return updated ?? null;
+  return decryptUserRow(updated ?? null);
 };
 
 export const clearUserSupabaseIntegration = async (userId: string) => {
@@ -74,10 +151,15 @@ export const clearUserSupabaseIntegration = async (userId: string) => {
     : null;
   const [updated] = await db
     .update(schema.users)
-    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .set({
+      integrations: nextIntegrations
+        ? encryptUserIntegrations(nextIntegrations)
+        : null,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.users.id, userId))
     .returning();
-  return updated ?? null;
+  return decryptUserRow(updated ?? null);
 };
 
 export const ensureProject = async (
@@ -136,7 +218,12 @@ export const listProjectsForOwner = async (
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  return { items, total: Number(count) || 0, page, pageSize };
+  return {
+    items: items.map((r) => decryptProjectRow(r)!),
+    total: Number(count) || 0,
+    page,
+    pageSize,
+  };
 };
 
 export const getProjectForOwner = async (idOrName: string, ownerId: string) => {
@@ -147,7 +234,7 @@ export const getProjectForOwner = async (idOrName: string, ownerId: string) => {
     .from(schema.projects)
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .limit(1);
-  return rows[0] ?? null;
+  return decryptProjectRow(rows[0] ?? null);
 };
 
 export const updateProjectForOwner = async (
@@ -162,7 +249,7 @@ export const updateProjectForOwner = async (
     .set({ ...patch, updatedAt: new Date() })
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
-  return updated ?? null;
+  return decryptProjectRow(updated ?? null);
 };
 
 export const setSupabaseIntegrationForOwner = async (
@@ -178,16 +265,20 @@ export const setSupabaseIntegrationForOwner = async (
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .limit(1);
   if (!existing[0]) return null;
-  const nextIntegrations: ProjectIntegrations = {
-    ...(existing[0].integrations ?? {}),
+  const decryptedExisting = decryptProjectRow(existing[0])!;
+  const merged: ProjectIntegrations = {
+    ...(decryptedExisting.integrations ?? {}),
     supabase: integration,
   };
   const [updated] = await db
     .update(schema.projects)
-    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .set({
+      integrations: encryptProjectIntegrations(merged),
+      updatedAt: new Date(),
+    })
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
-  return updated ?? null;
+  return decryptProjectRow(updated ?? null);
 };
 
 export const clearSupabaseIntegrationsByRefForOwner = async (
@@ -201,6 +292,7 @@ export const clearSupabaseIntegrationsByRefForOwner = async (
     .where(eq(schema.projects.ownerId, ownerId));
   let cleared = 0;
   for (const row of rows) {
+    // projectRef isn't encrypted, so this match works on the raw row.
     if (row.integrations?.supabase?.projectRef !== projectRef) continue;
     const current = row.integrations ?? {};
     const { supabase: _drop, ...rest } = current;
@@ -209,7 +301,12 @@ export const clearSupabaseIntegrationsByRefForOwner = async (
       : null;
     await db
       .update(schema.projects)
-      .set({ integrations: nextIntegrations, updatedAt: new Date() })
+      .set({
+        integrations: nextIntegrations
+          ? encryptProjectIntegrations(nextIntegrations)
+          : null,
+        updatedAt: new Date(),
+      })
       .where(and(eq(schema.projects.id, row.id), eq(schema.projects.ownerId, ownerId)));
     cleared++;
   }
@@ -235,10 +332,15 @@ export const clearSupabaseIntegrationForOwner = async (
     : null;
   const [updated] = await db
     .update(schema.projects)
-    .set({ integrations: nextIntegrations, updatedAt: new Date() })
+    .set({
+      integrations: nextIntegrations
+        ? encryptProjectIntegrations(nextIntegrations)
+        : null,
+      updatedAt: new Date(),
+    })
     .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
     .returning();
-  return updated ?? null;
+  return decryptProjectRow(updated ?? null);
 };
 
 export const deleteProjectForOwner = async (idOrName: string, ownerId: string) => {
