@@ -20,7 +20,7 @@ export const planTodoSchema = z.object({
 
 export const planSchema = z.object({
   summary: z.string().describe("One-sentence description of what will be built or changed."),
-  todos: z.array(planTodoSchema).min(1).max(10),
+  todos: z.array(planTodoSchema).min(1).max(6),
 });
 
 export type PlanTodo = z.infer<typeof planTodoSchema>;
@@ -49,7 +49,7 @@ Constraints the coder operates under:
 Your workflow:
 1. Call list_files first to see what already exists in the project.
 2. Read only the files directly relevant to the request — do not read the whole project.
-3. Return a plan with 1-10 todos. Each todo is a single, concrete change (create/edit one file).
+3. Return a plan with 1-6 todos. Each todo is a single, concrete change (create/edit one file). If the work would take more than 6 todos, merge related file changes into one todo — never exceed 6.
 4. Keep todos small and independent so they can be checked off one at a time.
 5. Reference existing files by path in your rationale so the coder knows what to touch.
 6. You have read-only access — do not attempt to write, delete, or run anything.
