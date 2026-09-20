@@ -14,6 +14,7 @@
   const isFullscreen = (path: string) => path.includes("/workspace");
   const projectDetailIdRe = /^\/projects\/([^/]+)$/;
   const projectDetailId = (path: string) => path.match(projectDetailIdRe)?.[1] ?? null;
+  const supabaseDetailRe = /^\/supabase\/[^/]+$/;
 
   let menuOpen = false;
   let menuAnchor: HTMLDivElement | null = null;
@@ -63,8 +64,10 @@
   };
 
   const goBack = () => {
-    const pid = projectDetailId($page.url.pathname);
+    const path = $page.url.pathname;
+    const pid = projectDetailId(path);
     if (pid) return goto(`/projects/${pid}/workspace`);
+    if (supabaseDetailRe.test(path)) return goto("/supabase");
     goto("/");
   };
 </script>
