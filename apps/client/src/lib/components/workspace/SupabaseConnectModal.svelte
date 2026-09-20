@@ -18,6 +18,7 @@
 
   let busy = false;
   let accountProjects: SupabaseAccountProject[] | null = null;
+  let loadingAccount = true;
 
   onMount(async () => {
     try {
@@ -25,6 +26,8 @@
       if (acct?.supabase) accountProjects = await listAccountSupabaseProjects();
     } catch {
       accountProjects = null;
+    } finally {
+      loadingAccount = false;
     }
   });
 
@@ -58,6 +61,7 @@
       {projectId}
       {integration}
       {accountProjects}
+      {loadingAccount}
       showClose
       on:changed={onChanged}
       on:close={() => dispatch("close")}

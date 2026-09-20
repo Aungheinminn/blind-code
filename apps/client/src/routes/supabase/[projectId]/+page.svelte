@@ -14,11 +14,13 @@
   let project: Project | null = null;
   let integration: PublicSupabaseIntegration | null = null;
   let accountProjects: SupabaseAccountProject[] | null = null;
+  let loadingAccount = true;
   let loading = true;
   let error = "";
 
   const load = async (id: string) => {
     loading = true;
+    loadingAccount = true;
     error = "";
     accountProjects = null;
     try {
@@ -43,6 +45,7 @@
       error = e instanceof Error ? e.message : "Could not load project.";
     } finally {
       loading = false;
+      loadingAccount = false;
     }
   };
 
@@ -84,6 +87,7 @@
         projectId={project.id}
         {integration}
         {accountProjects}
+        {loadingAccount}
         on:changed={onChanged}
         on:close={() => goto("/supabase")}
       />

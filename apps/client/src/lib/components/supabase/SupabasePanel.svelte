@@ -12,6 +12,7 @@
   export let projectId: string;
   export let integration: PublicSupabaseIntegration | null = null;
   export let accountProjects: SupabaseAccountProject[] | null = null;
+  export let loadingAccount = false;
   export let showClose = false;
 
   let attachedRefs = new Set<string>();
@@ -37,8 +38,7 @@
   type Mode = "view" | "edit" | "select";
   const initialMode = (): Mode => {
     if (integration) return "view";
-    if (accountProjects && accountProjects.length > 0) return "select";
-    return "edit";
+    return "select";
   };
 
   let mode: Mode = initialMode();
@@ -71,7 +71,7 @@
     if (integration) {
       mode = "view";
       error = "";
-    } else if (accountProjects && accountProjects.length > 0 && mode !== "select") {
+    } else if (mode !== "select") {
       mode = "select";
       error = "";
     } else {
@@ -199,7 +199,11 @@
 
 {#if mode === "select"}
   <div class="px-5 pb-4 space-y-3">
-    {#if selectableAccountProjects.length > 0}
+    {#if loadingAccount}
+      <div class="text-xs" style="color: var(--text-secondary);">
+        Loading your Supabase projects…
+      </div>
+    {:else if selectableAccountProjects.length > 0}
       <label class="block text-xs font-medium" style="color: var(--text-secondary);">
         Supabase project
         <select
