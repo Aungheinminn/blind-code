@@ -33,7 +33,11 @@
   }
 
   $: showSidebar =
-    $auth.status === "authed" && !isFullscreen($page.url.pathname);
+    $auth.status === "authed" &&
+    !isFullscreen($page.url.pathname) &&
+    !isPublic($page.url.pathname);
+  $: showHeader =
+    !isFullscreen($page.url.pathname) && !isPublic($page.url.pathname);
 
   const signOut = async () => {
     menuOpen = false;
@@ -82,7 +86,7 @@
     <Sidebar />
   {/if}
   <div class="flex-1 flex flex-col min-w-0">
-  {#if !isFullscreen($page.url.pathname)}
+  {#if showHeader}
     <header
       class="sticky top-0 z-40 h-14 flex items-center justify-between px-6 border-b"
       style="border-color: var(--border); background-color: var(--bg-secondary);"
