@@ -109,6 +109,24 @@ export const findProjectByOwnerAndSupabaseRef = async (
   return conflict ?? null;
 };
 
+export const listAttachedSupabaseRefsForOwner = async (
+  ownerId: string,
+): Promise<string[]> => {
+  if (!db) return [];
+  const rows = await db
+    .select({
+      ref: sql<string | null>`${schema.projects.integrations}->'supabase'->>'projectRef'`,
+    })
+    .from(schema.projects)
+    .where(
+      and(
+        eq(schema.projects.ownerId, ownerId),
+        sql`${schema.projects.integrations}->'supabase'->>'projectRef' IS NOT NULL`,
+      ),
+    );
+  return [...new Set(rows.map((r) => r.ref).filter((v): v is string => Boolean(v)))];
+};
+
 export const findUserByEmail = async (email: string) => {
   if (!db) return null;
   const rows = await db

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher, tick } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     attachSupabaseProject,
     connectSupabase,
     disconnectSupabase,
+    listAttachedSupabaseRefs,
     type PublicSupabaseIntegration,
   } from "$lib/api/projects";
   import type { SupabaseAccountProject } from "$lib/api/account";
@@ -12,6 +13,21 @@
   export let integration: PublicSupabaseIntegration | null = null;
   export let accountProjects: SupabaseAccountProject[] | null = null;
   export let showClose = false;
+
+  let attachedRefs = new Set<string>();
+
+  onMount(async () => {
+    try {
+      const refs = await listAttachedSupabaseRefs();
+      attachedRefs = new Set(refs ?? []);
+    } catch {
+      attachedRefs = new Set();
+    }
+  });
+
+  $: selectableAccountProjects = (accountProjects ?? []).filter(
+    (p) => p.id === integration?.projectRef || !attachedRefs.has(p.id),
+  );
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -183,7 +199,7 @@
 
 {#if mode === "select"}
   <div class="px-5 pb-4 space-y-3">
-    {#if accountProjects && accountProjects.length > 0}
+    {#if selectableAccountProjects.length > 0}
       <label class="block text-xs font-medium" style="color: var(--text-secondary);">
         Supabase project
         <select
@@ -192,11 +208,21 @@
           style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
         >
           <option value="">— select —</option>
-          {#each accountProjects as p}
+          {#each selectableAccountProjects as p}
             <option value={p.id}>{p.name} ({p.region})</option>
           {/each}
         </select>
       </label>
+    {:else if accountProjects && accountProjects.length > 0}
+      <div class="text-xs" style="color: var(--text-secondary);">
+        All your Supabase projects are already attached to other Blind Code projects. Detach one first, or
+        <a
+          href="https://supabase.com/dashboard/new"
+          target="_blank"
+          rel="noopener"
+          style="color: var(--accent);"
+        >create a new Supabase project</a>.
+      </div>
     {:else}
       <div class="text-xs" style="color: var(--text-secondary);">
         No Supabase projects found on your account. Create one at
