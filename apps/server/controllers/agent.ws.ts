@@ -8,6 +8,7 @@ import {
   type CoderEvent,
 } from "../services/coder";
 import { runPlanner, type Plan } from "../services/planner";
+import { runRouter, type RouterEvent } from "../services/router";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
@@ -38,6 +39,8 @@ type AgentIncoming =
       usePlan?: boolean;
       plannerMaxSteps?: number;
       persistPrompt?: boolean;
+      mode?: "router" | "legacy";
+      routerModel?: string;
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
@@ -225,9 +228,10 @@ export const agentController = (app: Elysia) =>
         };
 
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
+        const useRouter = msg.mode === "router";
 
         let plan: Plan | null = null;
-        if (msg.usePlan) {
+        if (!useRouter && msg.usePlan) {
           try {
             plan = await runPlanner({
               provider: msg.provider,
@@ -256,8 +260,43 @@ export const agentController = (app: Elysia) =>
           }
         }
 
-        const handleEvent = async (event: CoderEvent) => {
+        const handleEvent = async (event: CoderEvent | RouterEvent) => {
           await publish(event);
+          if (event.type === "plan" && sessionId) {
+            await recordAgentAction(sessionId, "plan", {
+              summary: event.plan.summary.slice(0, 200),
+              payload: { plan: event.plan },
+            });
+            return;
+          }
+          if (event.type === "plan-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `plan-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "planner" },
+            });
+            return;
+          }
+          if (event.type === "router-decision" && sessionId) {
+            await recordAgentAction(sessionId, "router_decision", {
+              summary: event.tool + (event.note ? `: ${event.note.slice(0, 120)}` : ""),
+              payload: { tool: event.tool, note: event.note },
+            });
+            return;
+          }
+          if (event.type === "router-answer" && sessionId) {
+            await recordAgentAction(sessionId, "assistant_text", {
+              summary: event.text.slice(0, 200),
+              payload: { text: event.text, source: "router" },
+            });
+            return;
+          }
+          if (event.type === "router-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `router-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "router" },
+            });
+            return;
+          }
           if (event.type === "tool-call") {
             if (event.toolName === "write_file") {
               const input = event.input as { path?: string; content?: string } | undefined;
@@ -351,34 +390,57 @@ export const agentController = (app: Elysia) =>
         let terminalStatus: "done" | "failed" | "cancelled" = "done";
         let terminalError: string | null = null;
 
+        const toolContext = {
+          sandboxProjectId: msg.projectId,
+          dbProjectId,
+          sessionId,
+          databaseUrl: supabaseDatabaseUrl,
+          supabasePat,
+          supabaseProjectRef,
+        };
+
         try {
-          await runCoder({
-            provider: msg.provider,
-            model: msg.model,
-            toolContext: {
-              sandboxProjectId: msg.projectId,
-              dbProjectId,
-              sessionId,
-              databaseUrl: supabaseDatabaseUrl,
-              supabasePat,
-              supabaseProjectRef,
-            },
-            prompt: msg.prompt,
-            history: msg.history,
-            maxSteps: msg.maxSteps,
-            systemPrompt: msg.systemPrompt,
-            plan,
-            supabaseConnected,
-            supabaseCanRunSql,
-            signal: runSignal,
-            onEvent: (event) => {
-              handleEvent(event).catch(() => {});
-              if (event.type === "error") {
-                terminalStatus = "failed";
-                terminalError = event.error;
-              }
-            },
-          });
+          if (useRouter) {
+            await runRouter({
+              provider: msg.provider,
+              model: msg.model,
+              routerModel: msg.routerModel,
+              toolContext,
+              prompt: msg.prompt,
+              history: msg.history,
+              supabaseConnected,
+              supabaseCanRunSql,
+              signal: runSignal,
+              onEvent: (event) => {
+                handleEvent(event).catch(() => {});
+                if (event.type === "error" || event.type === "router-error") {
+                  terminalStatus = "failed";
+                  terminalError = event.error;
+                }
+              },
+            });
+          } else {
+            await runCoder({
+              provider: msg.provider,
+              model: msg.model,
+              toolContext,
+              prompt: msg.prompt,
+              history: msg.history,
+              maxSteps: msg.maxSteps,
+              systemPrompt: msg.systemPrompt,
+              plan,
+              supabaseConnected,
+              supabaseCanRunSql,
+              signal: runSignal,
+              onEvent: (event) => {
+                handleEvent(event).catch(() => {});
+                if (event.type === "error") {
+                  terminalStatus = "failed";
+                  terminalError = event.error;
+                }
+              },
+            });
+          }
           if (runSignal?.aborted) {
             terminalStatus = "cancelled";
           }
