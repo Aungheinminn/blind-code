@@ -16,9 +16,12 @@ export type ToolPart = {
   output?: unknown;
 };
 
+export type ChipTone = "planner" | "coder" | "router" | "error";
+
 export type MessagePart =
   | { kind: "text"; id?: string; text: string }
   | { kind: "reasoning"; id?: string; text: string }
+  | { kind: "chip"; label: string; tone: ChipTone }
   | ToolPart;
 
 export type AgentMessage = {
@@ -333,6 +336,15 @@ const startReasoningPart = (id: string) => {
   }));
 };
 
+const appendChip = (label: string, tone: ChipTone) => {
+  updateAgentMessage((m) => {
+    const parts = m.parts ?? [];
+    const last = parts[parts.length - 1];
+    if (last && last.kind === "chip" && last.label === label && last.tone === tone) return m;
+    return { ...m, parts: [...parts, { kind: "chip", label, tone }] };
+  });
+};
+
 const recordToolCall = (call: { id: string; name: string; input: unknown }) => {
   updateAgentMessage((m) => ({
     ...m,
@@ -393,6 +405,35 @@ const handleEvent = (raw: unknown) => {
       break;
     case "plan-error":
       planError.set(typeof event.error === "string" ? event.error : "planner failed");
+      break;
+    case "router-decision": {
+      const label =
+        event.tool === "plan_task"
+          ? "Planning"
+          : event.tool === "code_task"
+          ? "Coding"
+          : event.tool === "answer_question"
+          ? "Answering"
+          : "Routing";
+      const tone: ChipTone =
+        event.tool === "plan_task"
+          ? "planner"
+          : event.tool === "code_task"
+          ? "coder"
+          : "router";
+      appendChip(label, tone);
+      break;
+    }
+    case "router-answer":
+      if (typeof event.text === "string" && event.text.length > 0) {
+        appendText(undefined, event.text);
+      }
+      break;
+    case "router-error":
+      appendChip(
+        typeof event.error === "string" ? `Router error: ${event.error}` : "Router error",
+        "error",
+      );
       break;
     case "text-start":
       if (typeof event.id === "string") startTextPart(event.id);
@@ -460,11 +501,6 @@ const handleEvent = (raw: unknown) => {
   }
 };
 
-const CONTROL_ONLY_PROMPT = /^\s*(continue|keep going|go on|resume|proceed|next|retry|try again|redo|finish|finish it|go)\b[\s.!?]*$/i;
-
-const isControlOnlyPrompt = (prompt: string): boolean =>
-  CONTROL_ONLY_PROMPT.test(prompt.trim());
-
 export const sendPrompt = async (
   projectId: string,
   prompt: string,
@@ -506,7 +542,7 @@ export const sendPrompt = async (
         projectId,
         prompt: prompt.trim(),
         history,
-        usePlan: !isControlOnlyPrompt(prompt),
+        mode: "router",
         persistPrompt: !opts.skipUserAppend,
       }),
     );
