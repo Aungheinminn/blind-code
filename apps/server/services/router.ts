@@ -55,6 +55,7 @@ export type RunRouterOptions = {
   supabaseCanRunSql?: boolean;
   signal?: AbortSignal;
   onEvent: (event: RouterEvent) => void;
+  existingPlan?: Plan | null;
 };
 
 const emit = (
@@ -99,6 +100,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
 
   let lastPlan: Plan | null = null;
   let sawTerminalError = false;
+  const fallbackPlan: Plan | null = opts.existingPlan ?? null;
 
   const tools = {
     plan_task: tool({
@@ -146,7 +148,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       }),
       execute: async ({ instructions, use_last_plan }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "code_task" });
-        const plan = use_last_plan ? lastPlan : null;
+        const plan = use_last_plan ? lastPlan : fallbackPlan;
         try {
           await runCoder({
             provider: opts.provider,
