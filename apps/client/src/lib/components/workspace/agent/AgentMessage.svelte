@@ -12,10 +12,12 @@
 
   const dispatch = createEventDispatcher<{ retry: void }>();
 
+  type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
   type RenderGroup =
     | { kind: "text"; text: string; lastIndex: number }
     | { kind: "reasoning"; text: string; lastIndex: number }
-    | { kind: "tools"; calls: ToolPart[]; lastIndex: number };
+    | { kind: "tools"; calls: ToolPart[]; lastIndex: number }
+    | { kind: "chip"; label: string; tone: ChipTone; lastIndex: number };
 
   const groupParts = (parts: MessagePart[]): RenderGroup[] => {
     const out: RenderGroup[] = [];
@@ -28,11 +30,28 @@
         } else {
           out.push({ kind: "tools", calls: [part], lastIndex: i });
         }
+      } else if (part.kind === "chip") {
+        out.push({ kind: "chip", label: part.label, tone: part.tone, lastIndex: i });
       } else {
         out.push({ kind: part.kind, text: part.text, lastIndex: i });
       }
     });
     return out;
+  };
+
+  const chipStyle = (tone: ChipTone): string => {
+    switch (tone) {
+      case "planner":
+        return "background-color: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--accent);";
+      case "coder":
+        return "background-color: var(--bg-panel); border-color: var(--border-strong); color: var(--text-secondary);";
+      case "router":
+        return "background-color: var(--bg-panel); border-color: var(--border); color: var(--text-tertiary);";
+      case "verifier":
+        return "background-color: color-mix(in srgb, #10b981 10%, transparent); border-color: color-mix(in srgb, #10b981 40%, transparent); color: #10b981;";
+      case "error":
+        return "background-color: color-mix(in srgb, #ef4444 12%, transparent); border-color: color-mix(in srgb, #ef4444 45%, transparent); color: #ef4444;";
+    }
   };
 
   $: parts = (message.parts ?? []) as MessagePart[];
@@ -44,7 +63,8 @@
       (p) =>
         (p.kind === "text" && p.text.length > 0) ||
         (p.kind === "reasoning" && p.text.length > 0) ||
-        p.kind === "tool",
+        p.kind === "tool" ||
+        p.kind === "chip",
     );
   $: meta = toolCount > 0 ? `ran ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
 
@@ -133,6 +153,14 @@
       </button>
     {:else if group.kind === "tools"}
       <ToolCallList calls={group.calls} />
+    {:else if group.kind === "chip"}
+      <span
+        class="phase-chip self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider"
+        style={chipStyle(group.tone)}
+      >
+        <span class="chip-dot" aria-hidden="true"></span>
+        {group.label}
+      </span>
     {/if}
   {/each}
 
@@ -194,5 +222,16 @@
   .retry-btn:hover {
     color: var(--text-primary);
     border-color: var(--border-strong);
+  }
+  .phase-chip {
+    letter-spacing: 0.08em;
+    line-height: 1.4;
+  }
+  .chip-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background-color: currentColor;
+    opacity: 0.7;
   }
 </style>

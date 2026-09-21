@@ -16,9 +16,12 @@ export type ToolPart = {
   output?: unknown;
 };
 
+export type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
+
 export type MessagePart =
   | { kind: "text"; id?: string; text: string }
   | { kind: "reasoning"; id?: string; text: string }
+  | { kind: "chip"; label: string; tone: ChipTone }
   | ToolPart;
 
 export type AgentMessage = {
@@ -333,6 +336,15 @@ const startReasoningPart = (id: string) => {
   }));
 };
 
+const appendChip = (label: string, tone: ChipTone) => {
+  updateAgentMessage((m) => {
+    const parts = m.parts ?? [];
+    const last = parts[parts.length - 1];
+    if (last && last.kind === "chip" && last.label === label && last.tone === tone) return m;
+    return { ...m, parts: [...parts, { kind: "chip", label, tone }] };
+  });
+};
+
 const recordToolCall = (call: { id: string; name: string; input: unknown }) => {
   updateAgentMessage((m) => ({
     ...m,
@@ -393,6 +405,58 @@ const handleEvent = (raw: unknown) => {
       break;
     case "plan-error":
       planError.set(typeof event.error === "string" ? event.error : "planner failed");
+      break;
+    case "router-decision": {
+      const label =
+        event.tool === "plan_task"
+          ? "Planning"
+          : event.tool === "code_task"
+          ? "Coding"
+          : event.tool === "verify_task"
+          ? "Verifying"
+          : event.tool === "answer_question"
+          ? "Answering"
+          : "Routing";
+      const tone: ChipTone =
+        event.tool === "plan_task"
+          ? "planner"
+          : event.tool === "code_task"
+          ? "coder"
+          : event.tool === "verify_task"
+          ? "verifier"
+          : "router";
+      appendChip(label, tone);
+      break;
+    }
+    case "router-answer":
+      if (typeof event.text === "string" && event.text.length > 0) {
+        appendText(undefined, event.text);
+      }
+      break;
+    case "router-error":
+      appendChip(
+        typeof event.error === "string" ? `Router error: ${event.error}` : "Router error",
+        "error",
+      );
+      break;
+    case "verify-result": {
+      const result = event.result ?? {};
+      const issueCount = Array.isArray(result.issues) ? result.issues.length : 0;
+      if (result.ok && issueCount === 0) {
+        appendChip("Verified", "verifier");
+      } else {
+        appendChip(`Verified: ${issueCount} issue${issueCount === 1 ? "" : "s"}`, "error");
+        if (issueCount > 0) {
+          appendText(undefined, "\n\n**Verifier issues:**\n" + result.issues.map((i: string) => `- ${i}`).join("\n"));
+        }
+      }
+      break;
+    }
+    case "verify-error":
+      appendChip(
+        typeof event.error === "string" ? `Verify error: ${event.error}` : "Verify error",
+        "error",
+      );
       break;
     case "text-start":
       if (typeof event.id === "string") startTextPart(event.id);
@@ -501,7 +565,7 @@ export const sendPrompt = async (
         projectId,
         prompt: prompt.trim(),
         history,
-        usePlan: true,
+        mode: "router",
         persistPrompt: !opts.skipUserAppend,
       }),
     );

@@ -3,11 +3,10 @@ import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import {
   extractErrorMessage,
-  runCoder,
   type CoderChatMessage,
   type CoderEvent,
 } from "../services/coder";
-import { runPlanner, type Plan } from "../services/planner";
+import { runRouter, type RouterEvent } from "../services/router";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
@@ -33,11 +32,8 @@ type AgentIncoming =
       projectId: string;
       prompt: string;
       history?: CoderChatMessage[];
-      maxSteps?: number;
-      systemPrompt?: string;
-      usePlan?: boolean;
-      plannerMaxSteps?: number;
       persistPrompt?: boolean;
+      routerModel?: string;
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
@@ -226,38 +222,60 @@ export const agentController = (app: Elysia) =>
 
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
 
-        let plan: Plan | null = null;
-        if (msg.usePlan) {
-          try {
-            plan = await runPlanner({
-              provider: msg.provider,
-              model: msg.model,
-              toolContext: {
-                sandboxProjectId: msg.projectId,
-                dbProjectId,
-                sessionId: null,
-              },
-              prompt: msg.prompt,
-              history: msg.history,
-              maxSteps: msg.plannerMaxSteps,
-              supabaseConnected,
-              signal: runSignal,
-            });
-            await publish({ type: "plan", plan });
-            if (sessionId) {
-              await recordAgentAction(sessionId, "plan", {
-                summary: plan.summary.slice(0, 200),
-                payload: { plan },
-              });
-            }
-          } catch (err) {
-            console.error("[planner] failed", err);
-            await publish({ type: "plan-error", error: extractErrorMessage(err) });
-          }
-        }
-
-        const handleEvent = async (event: CoderEvent) => {
+        const handleEvent = async (event: CoderEvent | RouterEvent) => {
           await publish(event);
+          if (event.type === "plan" && sessionId) {
+            await recordAgentAction(sessionId, "plan", {
+              summary: event.plan.summary.slice(0, 200),
+              payload: { plan: event.plan },
+            });
+            return;
+          }
+          if (event.type === "plan-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `plan-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "planner" },
+            });
+            return;
+          }
+          if (event.type === "router-decision" && sessionId) {
+            await recordAgentAction(sessionId, "router_decision", {
+              summary: event.tool + (event.note ? `: ${event.note.slice(0, 120)}` : ""),
+              payload: { tool: event.tool, note: event.note },
+            });
+            return;
+          }
+          if (event.type === "router-answer" && sessionId) {
+            await recordAgentAction(sessionId, "assistant_text", {
+              summary: event.text.slice(0, 200),
+              payload: { text: event.text, source: "router" },
+            });
+            return;
+          }
+          if (event.type === "router-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `router-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "router" },
+            });
+            return;
+          }
+          if (event.type === "verify-result" && sessionId) {
+            const issueCount = event.result.issues.length;
+            await recordAgentAction(sessionId, "verify_result", {
+              summary: event.result.ok
+                ? `verified ok (${issueCount} issues)`
+                : `verify failed (${issueCount} issues)`,
+              payload: { result: event.result },
+            });
+            return;
+          }
+          if (event.type === "verify-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `verify-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "verifier" },
+            });
+            return;
+          }
           if (event.type === "tool-call") {
             if (event.toolName === "write_file") {
               const input = event.input as { path?: string; content?: string } | undefined;
@@ -351,29 +369,29 @@ export const agentController = (app: Elysia) =>
         let terminalStatus: "done" | "failed" | "cancelled" = "done";
         let terminalError: string | null = null;
 
+        const toolContext = {
+          sandboxProjectId: msg.projectId,
+          dbProjectId,
+          sessionId,
+          databaseUrl: supabaseDatabaseUrl,
+          supabasePat,
+          supabaseProjectRef,
+        };
+
         try {
-          await runCoder({
+          await runRouter({
             provider: msg.provider,
             model: msg.model,
-            toolContext: {
-              sandboxProjectId: msg.projectId,
-              dbProjectId,
-              sessionId,
-              databaseUrl: supabaseDatabaseUrl,
-              supabasePat,
-              supabaseProjectRef,
-            },
+            routerModel: msg.routerModel,
+            toolContext,
             prompt: msg.prompt,
             history: msg.history,
-            maxSteps: msg.maxSteps,
-            systemPrompt: msg.systemPrompt,
-            plan,
             supabaseConnected,
             supabaseCanRunSql,
             signal: runSignal,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});
-              if (event.type === "error") {
+              if (event.type === "error" || event.type === "router-error") {
                 terminalStatus = "failed";
                 terminalError = event.error;
               }
