@@ -106,13 +106,24 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
 
   const tools = {
     plan_task: tool({
-      description: "Produce a todo list for a build or change request. Use before code_task.",
+      description:
+        "Produce a todo list for a build or change request. Use before code_task. If an incomplete plan already exists for the project, its unfinished todos are automatically carried into the new plan — the planner merges them.",
       inputSchema: z.object({
         task: z.string().describe("One-sentence description of the change to plan."),
       }),
       execute: async ({ task }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "plan_task", note: task });
         try {
+          const existingUnfinished =
+            opts.existingPlan && opts.existingPlanStatuses
+              ? {
+                  summary: opts.existingPlan.summary,
+                  todos: opts.existingPlan.todos.filter((t) => {
+                    const s = opts.existingPlanStatuses?.[t.id] ?? "pending";
+                    return s === "pending" || s === "active";
+                  }),
+                }
+              : null;
           const plan = await runPlanner({
             provider: opts.provider,
             model: opts.model,
@@ -121,6 +132,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
             history: opts.history,
             supabaseConnected: opts.supabaseConnected,
             signal: opts.signal,
+            existingUnfinished,
           });
           lastPlan = plan;
           emit(opts.onEvent, { type: "plan", plan });

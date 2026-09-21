@@ -36,6 +36,7 @@ export type RunPlannerOptions = {
   systemPrompt?: string;
   supabaseConnected?: boolean;
   signal?: AbortSignal;
+  existingUnfinished?: Plan | null;
 };
 
 const DEFAULT_PLANNER_PROMPT = `You are a planning agent for a coding platform that builds small React + TypeScript web apps rendered live in an in-browser Sandpack preview. Given a user's request and the current project state, produce a concise todo list the coding agent will execute.
@@ -56,6 +57,13 @@ Your workflow:
 
 Return the plan via structured output.`;
 
+const buildCarryForwardAppendix = (unfinished: Plan): string => {
+  const list = unfinished.todos
+    .map((t) => `- ${t.title}${t.rationale ? ` — ${t.rationale}` : ""}`)
+    .join("\n");
+  return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with related new work:\n${list}\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
+};
+
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
   const model = await resolveModel(opts.provider, opts.model);
   const tools = buildReadOnlyTools(opts.toolContext);
@@ -68,9 +76,13 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
   ];
 
   const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;
+  const withCarry =
+    opts.existingUnfinished && opts.existingUnfinished.todos.length > 0
+      ? baseSystem + buildCarryForwardAppendix(opts.existingUnfinished)
+      : baseSystem;
   const system = opts.supabaseConnected
-    ? baseSystem + buildSupabasePlannerAppendix()
-    : baseSystem + buildLocalPersistencePlannerAppendix();
+    ? withCarry + buildSupabasePlannerAppendix()
+    : withCarry + buildLocalPersistencePlannerAppendix();
 
   const result = await generateText({
     model,
