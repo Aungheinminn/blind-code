@@ -71,3 +71,33 @@ export const turnEvents = pgTable(
     turnOrdinal: uniqueIndex("turn_events_turn_ordinal_uq").on(t.turnId, t.ordinal),
   }),
 );
+
+export type PlanTodoStatus = "pending" | "active" | "done" | "skipped";
+
+export const plans = pgTable("plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").notNull(),
+  sessionId: uuid("session_id").notNull(),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const planTodos = pgTable(
+  "plan_todos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planId: uuid("plan_id").notNull(),
+    todoKey: varchar("todo_key", { length: 32 }).notNull(),
+    title: text("title").notNull(),
+    rationale: text("rationale").notNull().default(""),
+    status: varchar("status", { length: 16 })
+      .$type<PlanTodoStatus>()
+      .notNull()
+      .default("pending"),
+    note: text("note"),
+    orderIndex: integer("order_index").notNull(),
+  },
+  (t) => ({
+    planTodoUq: uniqueIndex("plan_todos_plan_key_uq").on(t.planId, t.todoKey),
+  }),
+);
