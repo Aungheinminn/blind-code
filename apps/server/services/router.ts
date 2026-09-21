@@ -90,7 +90,8 @@ Tools:
 Rules:
 - Trivial control words ("continue", "keep going", "next", "retry", "resume") → call code_task directly with the user's message as instructions and use_last_plan=false. The coder will pick up from history. Never plan for these.
 - A pure question with no code intent → call answer_question.
-- A build/change request → call plan_task, then in the next step call code_task with use_last_plan=true.
+- A build/change request → call plan_task, then in the NEXT step call code_task with use_last_plan=true.
+- IMPORTANT: When you call plan_task, call it ALONE in that step. Do NOT emit code_task in the same step as plan_task — you have no plan to work from yet. Wait for the plan_task result, then decide on code_task in the following step.
 - After a large or multi-file code_task, you MAY call verify_task once. Skip it for single-line tweaks or trivial changes — verification isn't free.
 - If verify_task reports blocking issues, you MAY call code_task once more to fix them.
 - Never call plan_task twice in the same turn. Never call verify_task twice.
@@ -103,6 +104,10 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
   let lastPlan: Plan | null = null;
   let sawTerminalError = false;
   const fallbackPlan: Plan | null = opts.existingPlan ?? null;
+  // Lock so a parallel-called code_task waits for an in-flight plan_task.
+  // Keeps parallelism enabled for genuinely independent tools; only pairs
+  // where the second call depends on the first (plan → code) get serialized.
+  let planPromise: Promise<void> | null = null;
 
   const tools = {
     plan_task: tool({
@@ -113,38 +118,42 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       }),
       execute: async ({ task }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "plan_task", note: task });
-        try {
-          const existingUnfinished =
-            opts.existingPlan && opts.existingPlanStatuses
-              ? {
-                  summary: opts.existingPlan.summary,
-                  todos: opts.existingPlan.todos.filter((t) => {
-                    const s = opts.existingPlanStatuses?.[t.id] ?? "pending";
-                    return s === "pending" || s === "active";
-                  }),
-                }
-              : null;
-          const plan = await runPlanner({
-            provider: opts.provider,
-            model: opts.model,
-            toolContext: opts.toolContext,
-            prompt: task,
-            history: opts.history,
-            supabaseConnected: opts.supabaseConnected,
-            signal: opts.signal,
-            existingUnfinished,
-          });
-          lastPlan = plan;
-          emit(opts.onEvent, { type: "plan", plan });
-          return {
-            summary: plan.summary,
-            todos: plan.todos.map((t) => ({ id: t.id, title: t.title })),
-          };
-        } catch (err) {
-          const error = extractErrorMessage(err);
-          emit(opts.onEvent, { type: "plan-error", error });
-          return { error };
-        }
+        const work = (async () => {
+          try {
+            const existingUnfinished =
+              opts.existingPlan && opts.existingPlanStatuses
+                ? {
+                    summary: opts.existingPlan.summary,
+                    todos: opts.existingPlan.todos.filter((t) => {
+                      const s = opts.existingPlanStatuses?.[t.id] ?? "pending";
+                      return s === "pending" || s === "active";
+                    }),
+                  }
+                : null;
+            const plan = await runPlanner({
+              provider: opts.provider,
+              model: opts.model,
+              toolContext: opts.toolContext,
+              prompt: task,
+              history: opts.history,
+              supabaseConnected: opts.supabaseConnected,
+              signal: opts.signal,
+              existingUnfinished,
+            });
+            lastPlan = plan;
+            emit(opts.onEvent, { type: "plan", plan });
+            return {
+              summary: plan.summary,
+              todos: plan.todos.map((t) => ({ id: t.id, title: t.title })),
+            };
+          } catch (err) {
+            const error = extractErrorMessage(err);
+            emit(opts.onEvent, { type: "plan-error", error });
+            return { error };
+          }
+        })();
+        planPromise = work.then(() => undefined).catch(() => undefined);
+        return work;
       },
     }),
 
@@ -162,9 +171,17 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       }),
       execute: async ({ instructions, use_last_plan }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "code_task" });
-        const plan = use_last_plan ? lastPlan : fallbackPlan;
+        // If a plan_task is in flight (parallel call from the router LLM), wait
+        // for it. This preserves parallelism for other tool combos while
+        // guaranteeing the coder sees the plan when both were called together.
+        if (planPromise) {
+          await planPromise;
+        }
+        // Prefer a plan produced THIS turn (lastPlan). Only fall back to the
+        // project's existing plan when no plan_task ran this turn.
+        const plan = lastPlan ?? (use_last_plan ? null : fallbackPlan);
         // Statuses only apply to the fallback plan (a fresh plan_task result is all-pending).
-        const todoStatuses = use_last_plan ? undefined : opts.existingPlanStatuses;
+        const todoStatuses = lastPlan ? undefined : opts.existingPlanStatuses;
         try {
           await runCoder({
             provider: opts.provider,
