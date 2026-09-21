@@ -3,11 +3,9 @@ import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import {
   extractErrorMessage,
-  runCoder,
   type CoderChatMessage,
   type CoderEvent,
 } from "../services/coder";
-import { runPlanner, type Plan } from "../services/planner";
 import { runRouter, type RouterEvent } from "../services/router";
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
@@ -34,12 +32,7 @@ type AgentIncoming =
       projectId: string;
       prompt: string;
       history?: CoderChatMessage[];
-      maxSteps?: number;
-      systemPrompt?: string;
-      usePlan?: boolean;
-      plannerMaxSteps?: number;
       persistPrompt?: boolean;
-      mode?: "router" | "legacy";
       routerModel?: string;
     }
   | { type: "cancel" }
@@ -228,37 +221,6 @@ export const agentController = (app: Elysia) =>
         };
 
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
-        const useRouter = msg.mode === "router";
-
-        let plan: Plan | null = null;
-        if (!useRouter && msg.usePlan) {
-          try {
-            plan = await runPlanner({
-              provider: msg.provider,
-              model: msg.model,
-              toolContext: {
-                sandboxProjectId: msg.projectId,
-                dbProjectId,
-                sessionId: null,
-              },
-              prompt: msg.prompt,
-              history: msg.history,
-              maxSteps: msg.plannerMaxSteps,
-              supabaseConnected,
-              signal: runSignal,
-            });
-            await publish({ type: "plan", plan });
-            if (sessionId) {
-              await recordAgentAction(sessionId, "plan", {
-                summary: plan.summary.slice(0, 200),
-                payload: { plan },
-              });
-            }
-          } catch (err) {
-            console.error("[planner] failed", err);
-            await publish({ type: "plan-error", error: extractErrorMessage(err) });
-          }
-        }
 
         const handleEvent = async (event: CoderEvent | RouterEvent) => {
           await publish(event);
@@ -400,47 +362,24 @@ export const agentController = (app: Elysia) =>
         };
 
         try {
-          if (useRouter) {
-            await runRouter({
-              provider: msg.provider,
-              model: msg.model,
-              routerModel: msg.routerModel,
-              toolContext,
-              prompt: msg.prompt,
-              history: msg.history,
-              supabaseConnected,
-              supabaseCanRunSql,
-              signal: runSignal,
-              onEvent: (event) => {
-                handleEvent(event).catch(() => {});
-                if (event.type === "error" || event.type === "router-error") {
-                  terminalStatus = "failed";
-                  terminalError = event.error;
-                }
-              },
-            });
-          } else {
-            await runCoder({
-              provider: msg.provider,
-              model: msg.model,
-              toolContext,
-              prompt: msg.prompt,
-              history: msg.history,
-              maxSteps: msg.maxSteps,
-              systemPrompt: msg.systemPrompt,
-              plan,
-              supabaseConnected,
-              supabaseCanRunSql,
-              signal: runSignal,
-              onEvent: (event) => {
-                handleEvent(event).catch(() => {});
-                if (event.type === "error") {
-                  terminalStatus = "failed";
-                  terminalError = event.error;
-                }
-              },
-            });
-          }
+          await runRouter({
+            provider: msg.provider,
+            model: msg.model,
+            routerModel: msg.routerModel,
+            toolContext,
+            prompt: msg.prompt,
+            history: msg.history,
+            supabaseConnected,
+            supabaseCanRunSql,
+            signal: runSignal,
+            onEvent: (event) => {
+              handleEvent(event).catch(() => {});
+              if (event.type === "error" || event.type === "router-error") {
+                terminalStatus = "failed";
+                terminalError = event.error;
+              }
+            },
+          });
           if (runSignal?.aborted) {
             terminalStatus = "cancelled";
           }
