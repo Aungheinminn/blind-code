@@ -18,11 +18,13 @@ import {
   recordAgentAction,
   createPlan,
   updateTodoStatus,
+  getLatestPlanForProject,
   listProjectFiles,
   getProjectForOwner,
   getUserById,
   hasDb,
 } from "../db/repo";
+import type { Plan } from "../services/planner";
 import type { PlanTodoStatus } from "@vibe/shared";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
@@ -385,6 +387,24 @@ export const agentController = (app: Elysia) =>
           supabaseProjectRef,
         };
 
+        let existingPlan: Plan | null = null;
+        let existingPlanStatuses: Record<string, PlanTodoStatus> | undefined;
+        if (dbProjectId) {
+          const snapshot = await getLatestPlanForProject(dbProjectId);
+          if (snapshot) {
+            existingPlan = {
+              summary: snapshot.summary,
+              todos: snapshot.todos.map((t) => ({
+                id: t.id,
+                title: t.title,
+                rationale: t.rationale,
+              })),
+            };
+            existingPlanStatuses = {};
+            for (const t of snapshot.todos) existingPlanStatuses[t.id] = t.status;
+          }
+        }
+
         try {
           await runRouter({
             provider: msg.provider,
@@ -396,6 +416,8 @@ export const agentController = (app: Elysia) =>
             supabaseConnected,
             supabaseCanRunSql,
             signal: runSignal,
+            existingPlan,
+            existingPlanStatuses,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});
               if (event.type === "error" || event.type === "router-error") {

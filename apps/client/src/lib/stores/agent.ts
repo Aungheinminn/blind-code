@@ -443,6 +443,10 @@ const handleEvent = (raw: unknown) => {
           ? "verifier"
           : "router";
       appendChip(label, tone);
+      if (event.tool === "plan_task") {
+        activePlan.set(null);
+        todoStatuses.set({});
+      }
       break;
     }
     case "router-answer":
@@ -602,7 +606,7 @@ export const cancelAgent = () => {
   const interruptedId = currentAgentMessageId;
   currentAgentMessageId = null;
   lastOrdinal = -1;
-  resetPlan();
+  planError.set(null);
   if (interruptedId) {
     messages.update((list) =>
       list.map((m) => (m.id === interruptedId ? { ...m, interrupted: true } : m)),
