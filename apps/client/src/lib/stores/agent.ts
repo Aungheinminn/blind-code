@@ -443,6 +443,10 @@ const handleEvent = (raw: unknown) => {
           ? "verifier"
           : "router";
       appendChip(label, tone);
+      if (event.tool === "plan_task") {
+        activePlan.set(null);
+        todoStatuses.set({});
+      }
       break;
     }
     case "router-answer":
