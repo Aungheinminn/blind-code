@@ -12,7 +12,7 @@
 
   const dispatch = createEventDispatcher<{ retry: void }>();
 
-  type ChipTone = "planner" | "coder" | "router" | "error";
+  type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
   type RenderGroup =
     | { kind: "text"; text: string; lastIndex: number }
     | { kind: "reasoning"; text: string; lastIndex: number }
@@ -47,6 +47,8 @@
         return "background-color: var(--bg-panel); border-color: var(--border-strong); color: var(--text-secondary);";
       case "router":
         return "background-color: var(--bg-panel); border-color: var(--border); color: var(--text-tertiary);";
+      case "verifier":
+        return "background-color: color-mix(in srgb, #10b981 10%, transparent); border-color: color-mix(in srgb, #10b981 40%, transparent); color: #10b981;";
       case "error":
         return "background-color: color-mix(in srgb, #ef4444 12%, transparent); border-color: color-mix(in srgb, #ef4444 45%, transparent); color: #ef4444;";
     }

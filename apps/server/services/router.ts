@@ -8,11 +8,12 @@ import {
   type CoderChatMessage,
   type CoderEvent,
 } from "./coder";
+import { runVerifier, type VerifyResult } from "./verifier";
 import type { ToolContext } from "./tools";
 
-export type RouterDecision = "plan_task" | "code_task" | "answer_question";
+export type RouterDecision = "plan_task" | "code_task" | "answer_question" | "verify_task";
 
-export type SubAgent = "router" | "planner" | "coder";
+export type SubAgent = "router" | "planner" | "coder" | "verifier";
 
 type BareRouterEvent =
   | { type: "router-decision"; tool: RouterDecision; note?: string }
@@ -20,6 +21,8 @@ type BareRouterEvent =
   | { type: "router-error"; error: string }
   | { type: "plan"; plan: Plan }
   | { type: "plan-error"; error: string }
+  | { type: "verify-result"; result: VerifyResult }
+  | { type: "verify-error"; error: string }
   | CoderEvent;
 
 export type RouterEvent = BareRouterEvent & { subAgent: SubAgent };
@@ -33,6 +36,9 @@ const subAgentFor = (event: BareRouterEvent): SubAgent => {
     case "plan":
     case "plan-error":
       return "planner";
+    case "verify-result":
+    case "verify-error":
+      return "verifier";
     default:
       return "coder";
   }
@@ -75,13 +81,16 @@ const ROUTER_SYSTEM_PROMPT = `You are the router for a coding assistant. On each
 Tools:
 - plan_task({ task }) — produce a todo list for a build/change request. Call this FIRST for any non-trivial code change when no fresh plan exists.
 - code_task({ instructions, use_last_plan }) — invoke the coding sub-agent to write/edit files. Set use_last_plan=true if you just called plan_task in this turn.
+- verify_task({ what_was_built }) — OPTIONAL sanity check after a substantial code_task. Skip for tiny edits.
 - answer_question({ text }) — reply directly for questions that need no code changes (explanations, clarifications, small how-tos).
 
 Rules:
 - Trivial control words ("continue", "keep going", "next", "retry", "resume") → call code_task directly with the user's message as instructions and use_last_plan=false. The coder will pick up from history. Never plan for these.
 - A pure question with no code intent → call answer_question.
 - A build/change request → call plan_task, then in the next step call code_task with use_last_plan=true.
-- Never call plan_task twice in the same turn.
+- After a large or multi-file code_task, you MAY call verify_task once. Skip it for single-line tweaks or trivial changes — verification isn't free.
+- If verify_task reports blocking issues, you MAY call code_task once more to fix them.
+- Never call plan_task twice in the same turn. Never call verify_task twice.
 - Stop calling tools once the task is complete.`;
 
 export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
@@ -164,6 +173,34 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       },
     }),
 
+    verify_task: tool({
+      description:
+        "Sanity-check the last change with a read-only reviewer. Returns { ok, issues, notes }. Use sparingly — only after substantial code_task calls.",
+      inputSchema: z.object({
+        what_was_built: z
+          .string()
+          .describe("One-sentence description of what the coder just changed, for the verifier's context."),
+      }),
+      execute: async ({ what_was_built }) => {
+        emit(opts.onEvent, { type: "router-decision", tool: "verify_task", note: what_was_built });
+        try {
+          const result = await runVerifier({
+            provider: opts.provider,
+            model: opts.model,
+            toolContext: opts.toolContext,
+            whatWasBuilt: what_was_built,
+            signal: opts.signal,
+          });
+          emit(opts.onEvent, { type: "verify-result", result });
+          return { ok: result.ok, issues: result.issues, notes: result.notes ?? null };
+        } catch (err) {
+          const error = extractErrorMessage(err);
+          emit(opts.onEvent, { type: "verify-error", error });
+          return { error };
+        }
+      },
+    }),
+
     answer_question: tool({
       description:
         "Reply directly to the user for questions that need no code changes. The text you pass is shown to the user.",
@@ -191,7 +228,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       system: ROUTER_SYSTEM_PROMPT,
       messages,
       tools,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(7),
       abortSignal: opts.signal,
     });
 

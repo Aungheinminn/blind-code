@@ -259,6 +259,23 @@ export const agentController = (app: Elysia) =>
             });
             return;
           }
+          if (event.type === "verify-result" && sessionId) {
+            const issueCount = event.result.issues.length;
+            await recordAgentAction(sessionId, "verify_result", {
+              summary: event.result.ok
+                ? `verified ok (${issueCount} issues)`
+                : `verify failed (${issueCount} issues)`,
+              payload: { result: event.result },
+            });
+            return;
+          }
+          if (event.type === "verify-error" && sessionId) {
+            await recordAgentAction(sessionId, "error", {
+              summary: `verify-error: ${event.error.slice(0, 180)}`,
+              payload: { error: event.error, phase: "verifier" },
+            });
+            return;
+          }
           if (event.type === "tool-call") {
             if (event.toolName === "write_file") {
               const input = event.input as { path?: string; content?: string } | undefined;

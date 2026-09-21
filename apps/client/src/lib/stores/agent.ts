@@ -16,7 +16,7 @@ export type ToolPart = {
   output?: unknown;
 };
 
-export type ChipTone = "planner" | "coder" | "router" | "error";
+export type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
 
 export type MessagePart =
   | { kind: "text"; id?: string; text: string }
@@ -412,6 +412,8 @@ const handleEvent = (raw: unknown) => {
           ? "Planning"
           : event.tool === "code_task"
           ? "Coding"
+          : event.tool === "verify_task"
+          ? "Verifying"
           : event.tool === "answer_question"
           ? "Answering"
           : "Routing";
@@ -420,6 +422,8 @@ const handleEvent = (raw: unknown) => {
           ? "planner"
           : event.tool === "code_task"
           ? "coder"
+          : event.tool === "verify_task"
+          ? "verifier"
           : "router";
       appendChip(label, tone);
       break;
@@ -432,6 +436,25 @@ const handleEvent = (raw: unknown) => {
     case "router-error":
       appendChip(
         typeof event.error === "string" ? `Router error: ${event.error}` : "Router error",
+        "error",
+      );
+      break;
+    case "verify-result": {
+      const result = event.result ?? {};
+      const issueCount = Array.isArray(result.issues) ? result.issues.length : 0;
+      if (result.ok && issueCount === 0) {
+        appendChip("Verified", "verifier");
+      } else {
+        appendChip(`Verified: ${issueCount} issue${issueCount === 1 ? "" : "s"}`, "error");
+        if (issueCount > 0) {
+          appendText(undefined, "\n\n**Verifier issues:**\n" + result.issues.map((i: string) => `- ${i}`).join("\n"));
+        }
+      }
+      break;
+    }
+    case "verify-error":
+      appendChip(
+        typeof event.error === "string" ? `Verify error: ${event.error}` : "Verify error",
         "error",
       );
       break;
