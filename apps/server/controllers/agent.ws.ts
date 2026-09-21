@@ -16,11 +16,14 @@ import {
   createAgentSession,
   endAgentSession,
   recordAgentAction,
+  createPlan,
+  updateTodoStatus,
   listProjectFiles,
   getProjectForOwner,
   getUserById,
   hasDb,
 } from "../db/repo";
+import type { PlanTodoStatus } from "@vibe/shared";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
@@ -224,11 +227,8 @@ export const agentController = (app: Elysia) =>
 
         const handleEvent = async (event: CoderEvent | RouterEvent) => {
           await publish(event);
-          if (event.type === "plan" && sessionId) {
-            await recordAgentAction(sessionId, "plan", {
-              summary: event.plan.summary.slice(0, 200),
-              payload: { plan: event.plan },
-            });
+          if (event.type === "plan" && sessionId && dbProjectId) {
+            await createPlan(dbProjectId, sessionId, event.plan);
             return;
           }
           if (event.type === "plan-error" && sessionId) {
@@ -286,6 +286,13 @@ export const agentController = (app: Elysia) =>
               const input = event.input as { path?: string } | undefined;
               if (typeof input?.path === "string") {
                 pendingDeletes.set(event.toolCallId, { path: input.path });
+              }
+            } else if (event.toolName === "update_todo" && sessionId) {
+              const input = event.input as
+                | { id?: string; status?: PlanTodoStatus; note?: string }
+                | undefined;
+              if (input?.id && input.status) {
+                await updateTodoStatus(sessionId, input.id, input.status, input.note);
               }
             }
           } else if (event.type === "tool-result") {

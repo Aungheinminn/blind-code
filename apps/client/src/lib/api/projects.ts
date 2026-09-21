@@ -107,8 +107,27 @@ export type HistoryMessage = {
   interrupted?: boolean;
 };
 
+export type HistoryPlanTodoStatus = "pending" | "active" | "done" | "skipped";
+
+export type HistoryPlanSnapshot = {
+  id: string;
+  summary: string;
+  todos: Array<{
+    id: string;
+    title: string;
+    rationale: string;
+    status: HistoryPlanTodoStatus;
+    note: string | null;
+  }>;
+};
+
+export type HistoryResponse = {
+  messages: HistoryMessage[];
+  latestPlan: HistoryPlanSnapshot | null;
+};
+
 export const getProjectHistory = (id: string) =>
-  fetchJson<HistoryMessage[]>(`/projects/${id}/history`);
+  fetchJson<HistoryResponse>(`/projects/${id}/history`);
 
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);

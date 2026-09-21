@@ -141,26 +141,43 @@ export const loadProjectFiles = async (projectId: string): Promise<void> => {
 
 export const loadHistory = async (projectId: string): Promise<void> => {
   try {
-    const history = await getProjectHistory(projectId);
-    if (!history || history.length === 0) return;
-    messages.set(
-      history.map((m) => {
-        const parts: MessagePart[] =
-          m.parts?.map((p) =>
-            p.kind === "tool"
-              ? { kind: "tool", id: p.id, name: p.name, input: p.input, output: p.output }
-              : { kind: p.kind, text: p.text },
-          ) ?? (m.content ? [{ kind: "text", text: m.content }] : []);
-        return {
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          parts: m.role === "agent" ? parts : undefined,
-          timestamp: new Date(m.timestamp),
-          ...(m.interrupted ? { interrupted: true } : {}),
-        };
-      }),
-    );
+    const response = await getProjectHistory(projectId);
+    if (!response) return;
+    const history = response.messages ?? [];
+    if (history.length > 0) {
+      messages.set(
+        history.map((m) => {
+          const parts: MessagePart[] =
+            m.parts?.map((p) =>
+              p.kind === "tool"
+                ? { kind: "tool", id: p.id, name: p.name, input: p.input, output: p.output }
+                : { kind: p.kind, text: p.text },
+            ) ?? (m.content ? [{ kind: "text", text: m.content }] : []);
+          return {
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            parts: m.role === "agent" ? parts : undefined,
+            timestamp: new Date(m.timestamp),
+            ...(m.interrupted ? { interrupted: true } : {}),
+          };
+        }),
+      );
+    }
+    if (response.latestPlan) {
+      const snap = response.latestPlan;
+      activePlan.set({
+        summary: snap.summary,
+        todos: snap.todos.map((t) => ({
+          id: t.id,
+          title: t.title,
+          rationale: t.rationale,
+        })),
+      });
+      const statuses: Record<string, TodoStatus> = {};
+      for (const t of snap.todos) statuses[t.id] = t.status;
+      todoStatuses.set(statuses);
+    }
   } catch (e) {
     console.warn("Failed to load history", e);
   }
@@ -392,7 +409,7 @@ const handleEvent = (raw: unknown) => {
         lastOrdinal = -1;
         if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
       }
-      resetPlan();
+      planError.set(null);
       startAgentMessage();
       break;
     case "plan":

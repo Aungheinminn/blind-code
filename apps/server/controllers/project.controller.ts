@@ -10,6 +10,7 @@ import {
   updateProjectForOwner,
   deleteProjectForOwner,
   getProjectHistory,
+  getLatestPlanForProject,
   listProjectFiles,
   setSupabaseIntegrationForOwner,
   clearSupabaseIntegrationForOwner,
@@ -310,7 +311,11 @@ export const projectController = (app: Elysia) =>
         set.status = 404;
         return { error: "not found" };
       }
-      return { data: await getProjectHistory(project.id) };
+      const [messages, latestPlan] = await Promise.all([
+        getProjectHistory(project.id),
+        getLatestPlanForProject(project.id),
+      ]);
+      return { data: { messages, latestPlan } };
     })
     .get("/projects/:id/files", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
