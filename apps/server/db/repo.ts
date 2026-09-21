@@ -732,10 +732,16 @@ export const updateTodoStatus = async (
   note?: string,
 ): Promise<void> => {
   if (!db) return;
+  const [session] = await db
+    .select({ projectId: schema.agentSessions.projectId })
+    .from(schema.agentSessions)
+    .where(eq(schema.agentSessions.id, sessionId))
+    .limit(1);
+  if (!session) return;
   const [latest] = await db
     .select({ id: schema.plans.id })
     .from(schema.plans)
-    .where(eq(schema.plans.sessionId, sessionId))
+    .where(eq(schema.plans.projectId, session.projectId))
     .orderBy(desc(schema.plans.createdAt))
     .limit(1);
   if (!latest) return;
