@@ -392,7 +392,7 @@ const handleEvent = (raw: unknown) => {
         lastOrdinal = -1;
         if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
       }
-      resetPlan();
+      planError.set(null);
       startAgentMessage();
       break;
     case "plan":
