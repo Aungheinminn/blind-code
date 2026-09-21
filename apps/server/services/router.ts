@@ -12,13 +12,31 @@ import type { ToolContext } from "./tools";
 
 export type RouterDecision = "plan_task" | "code_task" | "answer_question";
 
-export type RouterEvent =
+export type SubAgent = "router" | "planner" | "coder";
+
+type BareRouterEvent =
   | { type: "router-decision"; tool: RouterDecision; note?: string }
   | { type: "router-answer"; text: string }
   | { type: "router-error"; error: string }
   | { type: "plan"; plan: Plan }
   | { type: "plan-error"; error: string }
   | CoderEvent;
+
+export type RouterEvent = BareRouterEvent & { subAgent: SubAgent };
+
+const subAgentFor = (event: BareRouterEvent): SubAgent => {
+  switch (event.type) {
+    case "router-decision":
+    case "router-answer":
+    case "router-error":
+      return "router";
+    case "plan":
+    case "plan-error":
+      return "planner";
+    default:
+      return "coder";
+  }
+};
 
 export type RunRouterOptions = {
   provider: string;
@@ -31,6 +49,13 @@ export type RunRouterOptions = {
   supabaseCanRunSql?: boolean;
   signal?: AbortSignal;
   onEvent: (event: RouterEvent) => void;
+};
+
+const emit = (
+  onEvent: (event: RouterEvent) => void,
+  event: BareRouterEvent,
+): void => {
+  onEvent({ ...event, subAgent: subAgentFor(event) } as RouterEvent);
 };
 
 const CHEAP_ROUTER_MODEL: Record<string, string> = {
@@ -73,7 +98,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
         task: z.string().describe("One-sentence description of the change to plan."),
       }),
       execute: async ({ task }) => {
-        opts.onEvent({ type: "router-decision", tool: "plan_task", note: task });
+        emit(opts.onEvent, { type: "router-decision", tool: "plan_task", note: task });
         try {
           const plan = await runPlanner({
             provider: opts.provider,
@@ -85,14 +110,14 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
             signal: opts.signal,
           });
           lastPlan = plan;
-          opts.onEvent({ type: "plan", plan });
+          emit(opts.onEvent, { type: "plan", plan });
           return {
             summary: plan.summary,
             todos: plan.todos.map((t) => ({ id: t.id, title: t.title })),
           };
         } catch (err) {
           const error = extractErrorMessage(err);
-          opts.onEvent({ type: "plan-error", error });
+          emit(opts.onEvent, { type: "plan-error", error });
           return { error };
         }
       },
@@ -111,7 +136,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
           .describe("True if plan_task was just called in this turn."),
       }),
       execute: async ({ instructions, use_last_plan }) => {
-        opts.onEvent({ type: "router-decision", tool: "code_task" });
+        emit(opts.onEvent, { type: "router-decision", tool: "code_task" });
         const plan = use_last_plan ? lastPlan : null;
         try {
           await runCoder({
@@ -126,14 +151,14 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
             signal: opts.signal,
             onEvent: (event) => {
               if (event.type === "error") sawTerminalError = true;
-              opts.onEvent(event);
+              emit(opts.onEvent, event);
             },
           });
           return { ok: true };
         } catch (err) {
           const error = extractErrorMessage(err);
           sawTerminalError = true;
-          opts.onEvent({ type: "error", error });
+          emit(opts.onEvent, { type: "error", error });
           return { error };
         }
       },
@@ -146,8 +171,8 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
         text: z.string().describe("The full answer to show the user."),
       }),
       execute: async ({ text }) => {
-        opts.onEvent({ type: "router-decision", tool: "answer_question" });
-        opts.onEvent({ type: "router-answer", text });
+        emit(opts.onEvent, { type: "router-decision", tool: "answer_question" });
+        emit(opts.onEvent, { type: "router-answer", text });
         return { ok: true };
       },
     }),
@@ -177,7 +202,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
     }
   } catch (err) {
     if (opts.signal?.aborted) return;
-    opts.onEvent({ type: "router-error", error: extractErrorMessage(err) });
+    emit(opts.onEvent, { type: "router-error", error: extractErrorMessage(err) });
   }
 
   if (sawTerminalError) return;
