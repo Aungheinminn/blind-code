@@ -460,6 +460,11 @@ const handleEvent = (raw: unknown) => {
   }
 };
 
+const CONTROL_ONLY_PROMPT = /^\s*(continue|keep going|go on|resume|proceed|next|retry|try again|redo|finish|finish it|go)\b[\s.!?]*$/i;
+
+const isControlOnlyPrompt = (prompt: string): boolean =>
+  CONTROL_ONLY_PROMPT.test(prompt.trim());
+
 export const sendPrompt = async (
   projectId: string,
   prompt: string,
@@ -501,7 +506,7 @@ export const sendPrompt = async (
         projectId,
         prompt: prompt.trim(),
         history,
-        usePlan: true,
+        usePlan: !isControlOnlyPrompt(prompt),
         persistPrompt: !opts.skipUserAppend,
       }),
     );
