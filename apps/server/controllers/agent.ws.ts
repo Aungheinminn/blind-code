@@ -388,6 +388,7 @@ export const agentController = (app: Elysia) =>
         };
 
         let existingPlan: Plan | null = null;
+        let existingPlanStatuses: Record<string, PlanTodoStatus> | undefined;
         if (dbProjectId) {
           const snapshot = await getLatestPlanForProject(dbProjectId);
           if (snapshot) {
@@ -399,6 +400,8 @@ export const agentController = (app: Elysia) =>
                 rationale: t.rationale,
               })),
             };
+            existingPlanStatuses = {};
+            for (const t of snapshot.todos) existingPlanStatuses[t.id] = t.status;
           }
         }
 
@@ -414,6 +417,7 @@ export const agentController = (app: Elysia) =>
             supabaseCanRunSql,
             signal: runSignal,
             existingPlan,
+            existingPlanStatuses,
             onEvent: (event) => {
               handleEvent(event).catch(() => {});
               if (event.type === "error" || event.type === "router-error") {

@@ -2,6 +2,7 @@ import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import type { Plan } from "./planner";
+import type { PlanTodoStatus as SharedPlanTodoStatus } from "@vibe/shared";
 import {
   buildLocalPersistenceCoderAppendix,
   buildSupabaseCoderAppendix,
@@ -41,6 +42,8 @@ export const extractErrorMessage = (v: unknown): string => {
   return String(v);
 };
 
+export type PlanTodoStatus = SharedPlanTodoStatus;
+
 export type RunCoderOptions = {
   provider: string;
   model?: string;
@@ -50,17 +53,29 @@ export type RunCoderOptions = {
   maxSteps?: number;
   systemPrompt?: string;
   plan?: Plan | null;
+  todoStatuses?: Record<string, PlanTodoStatus>;
   supabaseConnected?: boolean;
   supabaseCanRunSql?: boolean;
   onEvent: (event: CoderEvent) => void;
   signal?: AbortSignal;
 };
 
-const buildPlanAppendix = (plan: Plan): string => {
+const buildPlanAppendix = (
+  plan: Plan,
+  statuses?: Record<string, PlanTodoStatus>,
+): string => {
   const list = plan.todos
-    .map((t) => `- ${t.id}: ${t.title}${t.rationale ? ` — ${t.rationale}` : ""}`)
+    .map((t) => {
+      const status = statuses?.[t.id] ?? "pending";
+      const rationale = t.rationale ? ` — ${t.rationale}` : "";
+      return `- [${status}] ${t.id}: ${t.title}${rationale}`;
+    })
     .join("\n");
-  return `\n\nA plan has been produced for this turn.\n\nSummary: ${plan.summary}\n\nTodos:\n${list}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
+  const carryForwardNote =
+    statuses && Object.values(statuses).some((s) => s === "done" || s === "skipped")
+      ? "\n\nSome todos are already [done] or [skipped] from prior turns — do NOT re-execute them. Start from the first [pending] or [active] todo."
+      : "";
+  return `\n\nA plan is active for this project.\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
 };
 
 const DEFAULT_SYSTEM_PROMPT = `You are a React + TypeScript coding agent. You build small web apps end-to-end from a user's natural-language request. Your output renders live inside an in-browser Sandpack preview — there is no server dev server, no bundler config, no package install to trigger.
@@ -109,7 +124,9 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   ];
 
   const baseSystem = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
-  const withPlan = opts.plan ? baseSystem + buildPlanAppendix(opts.plan) : baseSystem;
+  const withPlan = opts.plan
+    ? baseSystem + buildPlanAppendix(opts.plan, opts.todoStatuses)
+    : baseSystem;
   const system = opts.supabaseConnected
     ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
     : withPlan + buildLocalPersistenceCoderAppendix();

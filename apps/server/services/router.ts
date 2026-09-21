@@ -10,6 +10,7 @@ import {
 } from "./coder";
 import { runVerifier, type VerifyResult } from "./verifier";
 import type { ToolContext } from "./tools";
+import type { PlanTodoStatus } from "@vibe/shared";
 
 export type RouterDecision = "plan_task" | "code_task" | "answer_question" | "verify_task";
 
@@ -56,6 +57,7 @@ export type RunRouterOptions = {
   signal?: AbortSignal;
   onEvent: (event: RouterEvent) => void;
   existingPlan?: Plan | null;
+  existingPlanStatuses?: Record<string, PlanTodoStatus>;
 };
 
 const emit = (
@@ -149,6 +151,8 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       execute: async ({ instructions, use_last_plan }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "code_task" });
         const plan = use_last_plan ? lastPlan : fallbackPlan;
+        // Statuses only apply to the fallback plan (a fresh plan_task result is all-pending).
+        const todoStatuses = use_last_plan ? undefined : opts.existingPlanStatuses;
         try {
           await runCoder({
             provider: opts.provider,
@@ -157,6 +161,7 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
             prompt: instructions,
             history: opts.history,
             plan,
+            todoStatuses,
             supabaseConnected: opts.supabaseConnected,
             supabaseCanRunSql: opts.supabaseCanRunSql,
             signal: opts.signal,
