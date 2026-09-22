@@ -3,10 +3,17 @@ import { join, dirname } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import {
   extractErrorMessage,
+  runCoder,
   type CoderChatMessage,
   type CoderEvent,
 } from "../services/coder";
 import { runRouter, type RouterEvent } from "../services/router";
+
+const CONTROL_PROMPT =
+  /^\s*(?:(?:sry|sorry|ok|okay|please|pls|yeah|yea|yep|k|kk)[\s,.!?]+)*(continue|keep going|go on|resume|proceed|next|retry|try again|redo|finish|finish it|go)\b[\s.!?]*$/i;
+
+const isControlOnlyPrompt = (prompt: string): boolean =>
+  CONTROL_PROMPT.test(prompt.trim());
 import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
@@ -405,27 +412,50 @@ export const agentController = (app: Elysia) =>
           }
         }
 
+        const forwardEvent = (event: CoderEvent | RouterEvent) => {
+          handleEvent(event).catch(() => {});
+          if (event.type === "error" || event.type === "router-error") {
+            terminalStatus = "failed";
+            terminalError = event.error;
+          }
+        };
+
         try {
-          await runRouter({
-            provider: msg.provider,
-            model: msg.model,
-            routerModel: msg.routerModel,
-            toolContext,
-            prompt: msg.prompt,
-            history: msg.history,
-            supabaseConnected,
-            supabaseCanRunSql,
-            signal: runSignal,
-            existingPlan,
-            existingPlanStatuses,
-            onEvent: (event) => {
-              handleEvent(event).catch(() => {});
-              if (event.type === "error" || event.type === "router-error") {
-                terminalStatus = "failed";
-                terminalError = event.error;
-              }
-            },
-          });
+          if (isControlOnlyPrompt(msg.prompt)) {
+            forwardEvent({
+              type: "router-decision",
+              tool: "code_task",
+              subAgent: "router",
+            });
+            await runCoder({
+              provider: msg.provider,
+              model: msg.model,
+              toolContext,
+              prompt: msg.prompt,
+              history: msg.history,
+              plan: existingPlan,
+              todoStatuses: existingPlanStatuses,
+              supabaseConnected,
+              supabaseCanRunSql,
+              signal: runSignal,
+              onEvent: forwardEvent,
+            });
+          } else {
+            await runRouter({
+              provider: msg.provider,
+              model: msg.model,
+              routerModel: msg.routerModel,
+              toolContext,
+              prompt: msg.prompt,
+              history: msg.history,
+              supabaseConnected,
+              supabaseCanRunSql,
+              signal: runSignal,
+              existingPlan,
+              existingPlanStatuses,
+              onEvent: forwardEvent,
+            });
+          }
           if (runSignal?.aborted) {
             terminalStatus = "cancelled";
           }
