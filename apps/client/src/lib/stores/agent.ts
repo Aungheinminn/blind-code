@@ -423,6 +423,26 @@ const handleEvent = (raw: unknown) => {
     case "plan-error":
       planError.set(typeof event.error === "string" ? event.error : "planner failed");
       break;
+    case "plan-todo-added":
+      if (event.todo && typeof event.todo.id === "string") {
+        activePlan.update((plan) => {
+          if (!plan) return plan;
+          if (plan.todos.some((t) => t.id === event.todo.id)) return plan;
+          return {
+            ...plan,
+            todos: [
+              ...plan.todos,
+              {
+                id: event.todo.id,
+                title: event.todo.title ?? "",
+                rationale: event.todo.rationale ?? "",
+              },
+            ],
+          };
+        });
+        todoStatuses.update((m) => ({ ...m, [event.todo.id]: "pending" }));
+      }
+      break;
     case "router-decision": {
       const label =
         event.tool === "plan_task"
