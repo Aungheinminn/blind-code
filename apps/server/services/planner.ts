@@ -61,7 +61,7 @@ const buildCarryForwardAppendix = (unfinished: Plan): string => {
   const list = unfinished.todos
     .map((t) => `- ${t.title}${t.rationale ? ` — ${t.rationale}` : ""}`)
     .join("\n");
-  return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with related new work:\n${list}\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
+  return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with related new work:\n${list}\n\nOrdering: place carried-over unfinished todos FIRST in the new plan, then the new work. Merged todos (where old and new work touch the same file) can go wherever fits the flow best.\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
 };
 
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
