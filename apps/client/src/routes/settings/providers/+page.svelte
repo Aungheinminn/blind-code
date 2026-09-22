@@ -209,15 +209,14 @@
 </script>
 
 <svelte:head>
-  <title>Connect — Blind Code</title>
+  <title>Providers — Blind Code</title>
 </svelte:head>
 
-<div class="px-6 py-8">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-semibold">Connect</h1>
-    <p class="mt-2 text-sm" style="color: var(--text-secondary);">
-      Manage API keys and pick which models show up in the workspace.
-    </p>
+<div>
+  <h1 class="text-2xl font-semibold">Providers</h1>
+  <p class="mt-2 text-sm" style="color: var(--text-secondary);">
+    Manage API keys and pick which models show up in the workspace.
+  </p>
 
     <div class="mt-6 flex gap-1 border-b" style="border-color: var(--border);">
       {#each TABS as t (t.id)}
@@ -546,5 +545,4 @@
         </section>
       </div>
     {/if}
-  </div>
 </div>

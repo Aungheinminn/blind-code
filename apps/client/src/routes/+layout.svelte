@@ -52,7 +52,7 @@
 
   const goToSettings = () => {
     menuOpen = false;
-    goto("/settings/connect");
+    goto("/settings/providers");
   };
 
   const initialFor = (user: { displayName: string; email: string }): string => {
