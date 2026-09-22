@@ -1,0 +1,313 @@
+import { streamText, stepCountIs, tool, type ModelMessage } from "ai";
+import { z } from "zod";
+import { getReasoningProviderOptions, resolveModel } from "./providers";
+import { buildCoderTools, type ToolContext } from "./tools";
+import { runPlanner, type Plan } from "./planner";
+import { runVerifier, type VerifyResult } from "./verifier";
+import {
+  extractErrorMessage,
+  type CoderChatMessage,
+  type CoderEvent,
+  type PlanTodoStatus,
+} from "./coder";
+import {
+  buildLocalPersistenceCoderAppendix,
+  buildSupabaseCoderAppendix,
+} from "./systemAppendix";
+
+export type AgentDecision = "plan_task" | "verify_task";
+export type SubAgent = "agent" | "planner" | "verifier";
+
+type BareAgentEvent =
+  | { type: "router-decision"; tool: AgentDecision; note?: string }
+  | { type: "plan"; plan: Plan }
+  | { type: "plan-error"; error: string }
+  | { type: "verify-result"; result: VerifyResult }
+  | { type: "verify-error"; error: string }
+  | CoderEvent;
+
+export type AgentEvent = BareAgentEvent & { subAgent: SubAgent };
+
+const subAgentFor = (event: BareAgentEvent): SubAgent => {
+  switch (event.type) {
+    case "plan":
+    case "plan-error":
+      return "planner";
+    case "verify-result":
+    case "verify-error":
+      return "verifier";
+    default:
+      return "agent";
+  }
+};
+
+const emit = (
+  onEvent: (event: AgentEvent) => void,
+  event: BareAgentEvent,
+): void => {
+  onEvent({ ...event, subAgent: subAgentFor(event) } as AgentEvent);
+};
+
+export type RunAgentOptions = {
+  provider: string;
+  model?: string;
+  toolContext: ToolContext;
+  prompt: string;
+  history?: CoderChatMessage[];
+  existingPlan?: Plan | null;
+  existingPlanStatuses?: Record<string, PlanTodoStatus>;
+  supabaseConnected?: boolean;
+  supabaseCanRunSql?: boolean;
+  signal?: AbortSignal;
+  onEvent: (event: AgentEvent) => void;
+};
+
+const AGENT_SYSTEM_PROMPT = `You are a React + TypeScript coding agent. You build small web apps end-to-end from a user's natural-language request. Your output renders live inside an in-browser Sandpack preview — there is no server dev server, no bundler config, no package install to trigger.
+
+Stack (fixed):
+- React 19 with react-dom/client createRoot.
+- TypeScript with the react-jsx transform. Strict mode is on.
+- Plain CSS via styles.css imports. Tailwind is not available unless the user asks for it — and even then it'll take extra plumbing.
+- No routing library by default. If the user needs navigation, prefer conditional rendering unless they explicitly ask for react-router.
+
+File layout (strict):
+- App.tsx — the root component. This is your main entry point.
+- Additional components/hooks/utilities go in src/ subfolders (src/components/Button.tsx, src/hooks/useX.ts, etc.).
+- styles.css — global styles at the project root. Import it from index.tsx (already set up for you).
+- Do NOT create: package.json, tsconfig.json, index.tsx, index.html, vite.config.*, .env, README.md, node_modules. All of these are auto-generated or unnecessary. Writing them wastes tokens and gets overwritten.
+
+Dependencies:
+- react and react-dom are always available. You never install them.
+- For any other package (framer-motion, clsx, lucide-react, etc.), just import it — the platform detects imports and installs the package automatically. Do NOT ask the user to install anything.
+
+Narration:
+- Before each concrete step, call say-style narration in one short sentence (5–15 words). A step may involve several tool calls — do not re-narrate between calls within the same step.
+- Only re-narrate when your intent changes (moving to a new step, or a tool result forces a re-plan).
+- Keep narration terse; never restate tool arguments or dump output back to the user.
+
+Deciding what to do:
+- BUILD or CHANGE request (user asks you to create/edit/add something): first call plan_task with a one-sentence description of the change. Then work through the returned todos in order, calling update_todo before/after each.
+- CONTINUE or RESUME request ("continue", "keep going", "sry my bad continue", etc.): do NOT call plan_task. Read the plan already in your system context (if any), find the first unfinished todo, and resume from there. If no plan exists, treat the request as a general instruction and proceed.
+- PURE QUESTION with no code intent ("what does src/App.tsx do?"): read the relevant files, respond in text, do not modify anything.
+- After a substantial multi-file change, you MAY call verify_task once to sanity-check. Skip it for single-line tweaks — verification isn't free.
+- If verify_task reports blocking issues, fix them, then stop.
+
+Workflow:
+1. Call list_files first to see what already exists.
+2. Read any file you're about to modify — do not guess at existing content.
+3. Write only source files (App.tsx and files under src/, plus styles.css). Prefer editing existing files over creating parallel new ones.
+4. Do NOT call run_command. There is no build to run and no dev server to start — the preview compiles your source in the browser. If you think you need run_command, you don't.
+5. Keep components small and focused. Split a large component into src/components/*.
+6. When finished, respond with a one-sentence summary of what the user can now do.
+
+Tools:
+- list_files, read_file, write_file, delete_file — file operations
+- update_todo — mark plan todos active/done/skipped
+- plan_task — produce a todo list for a new build/change request (never call twice in one turn)
+- verify_task — sanity-check the last change (call at most once per turn)
+Do not use run_command.`;
+
+const buildPlanAppendix = (
+  plan: Plan,
+  statuses?: Record<string, PlanTodoStatus>,
+): string => {
+  const list = plan.todos
+    .map((t) => {
+      const status = statuses?.[t.id] ?? "pending";
+      const rationale = t.rationale ? ` — ${t.rationale}` : "";
+      return `- [${status}] ${t.id}: ${t.title}${rationale}`;
+    })
+    .join("\n");
+  const carryForwardNote =
+    statuses && Object.values(statuses).some((s) => s === "done" || s === "skipped")
+      ? "\n\nSome todos are already [done] or [skipped] from prior turns — do NOT re-execute them. Start from the first [pending] or [active] todo."
+      : "";
+  return `\n\nA plan is active for this project.\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
+};
+
+export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
+  const model = await resolveModel(opts.provider, opts.model);
+  const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
+
+  const baseTools = buildCoderTools(opts.toolContext);
+
+  const tools = {
+    ...baseTools,
+    plan_task: tool({
+      description:
+        "Produce a todo list for a new build or change request. Call this FIRST for any non-trivial code change. If an incomplete plan already exists for the project, its unfinished todos are automatically carried into the new plan — the planner merges them. Never call twice per turn.",
+      inputSchema: z.object({
+        task: z.string().describe("One-sentence description of the change to plan."),
+      }),
+      execute: async ({ task }) => {
+        emit(opts.onEvent, { type: "router-decision", tool: "plan_task", note: task });
+        try {
+          const existingUnfinished =
+            opts.existingPlan && opts.existingPlanStatuses
+              ? {
+                  summary: opts.existingPlan.summary,
+                  todos: opts.existingPlan.todos.filter((t) => {
+                    const s = opts.existingPlanStatuses?.[t.id] ?? "pending";
+                    return s === "pending" || s === "active";
+                  }),
+                }
+              : null;
+          const plan = await runPlanner({
+            provider: opts.provider,
+            model: opts.model,
+            toolContext: opts.toolContext,
+            prompt: task,
+            history: opts.history,
+            supabaseConnected: opts.supabaseConnected,
+            signal: opts.signal,
+            existingUnfinished,
+          });
+          emit(opts.onEvent, { type: "plan", plan });
+          return {
+            summary: plan.summary,
+            todos: plan.todos.map((t) => ({
+              id: t.id,
+              title: t.title,
+              rationale: t.rationale,
+            })),
+          };
+        } catch (err) {
+          const error = extractErrorMessage(err);
+          emit(opts.onEvent, { type: "plan-error", error });
+          return { error };
+        }
+      },
+    }),
+
+    verify_task: tool({
+      description:
+        "Sanity-check the last change with a read-only reviewer. Returns { ok, issues, notes }. Use sparingly — only after substantial changes. Call at most once per turn.",
+      inputSchema: z.object({
+        what_was_built: z
+          .string()
+          .describe("One-sentence description of what you just changed, for the verifier's context."),
+      }),
+      execute: async ({ what_was_built }) => {
+        emit(opts.onEvent, {
+          type: "router-decision",
+          tool: "verify_task",
+          note: what_was_built,
+        });
+        try {
+          const result = await runVerifier({
+            provider: opts.provider,
+            model: opts.model,
+            toolContext: opts.toolContext,
+            whatWasBuilt: what_was_built,
+            signal: opts.signal,
+          });
+          emit(opts.onEvent, { type: "verify-result", result });
+          return { ok: result.ok, issues: result.issues, notes: result.notes ?? null };
+        } catch (err) {
+          const error = extractErrorMessage(err);
+          emit(opts.onEvent, { type: "verify-error", error });
+          return { error };
+        }
+      },
+    }),
+  };
+
+  const messages: ModelMessage[] = [
+    ...(opts.history ?? []).map(
+      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    ),
+    { role: "user", content: opts.prompt },
+  ];
+
+  const withPlan = opts.existingPlan
+    ? AGENT_SYSTEM_PROMPT + buildPlanAppendix(opts.existingPlan, opts.existingPlanStatuses)
+    : AGENT_SYSTEM_PROMPT;
+  const system = opts.supabaseConnected
+    ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
+    : withPlan + buildLocalPersistenceCoderAppendix();
+
+  const todoCount = opts.existingPlan?.todos.length ?? 0;
+  const stepCap = Math.max(40, todoCount * 6 + 20);
+
+  try {
+    const result = streamText({
+      model,
+      system,
+      messages,
+      tools,
+      stopWhen: stepCountIs(stepCap),
+      abortSignal: opts.signal,
+      ...(reasoning.providerOptions ? { providerOptions: reasoning.providerOptions } : {}),
+      ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
+    });
+
+    for await (const chunk of result.fullStream) {
+      switch (chunk.type) {
+        case "text-start" as any:
+          emit(opts.onEvent, { type: "text-start", id: (chunk as any).id });
+          break;
+        case "text-delta":
+          emit(opts.onEvent, {
+            type: "text-delta",
+            id: (chunk as any).id,
+            text: (chunk as any).text ?? (chunk as any).delta ?? "",
+          });
+          break;
+        case "text-end" as any:
+          emit(opts.onEvent, { type: "text-end", id: (chunk as any).id });
+          break;
+        case "reasoning-start" as any:
+          emit(opts.onEvent, { type: "reasoning-start", id: (chunk as any).id });
+          break;
+        case "reasoning-delta" as any: {
+          const text = (chunk as any).delta ?? (chunk as any).text ?? "";
+          if (text)
+            emit(opts.onEvent, { type: "reasoning-delta", id: (chunk as any).id, text });
+          break;
+        }
+        case "reasoning-end" as any:
+          emit(opts.onEvent, { type: "reasoning-end", id: (chunk as any).id });
+          break;
+        case "tool-call":
+          emit(opts.onEvent, {
+            type: "tool-call",
+            toolCallId: (chunk as any).toolCallId,
+            toolName: (chunk as any).toolName,
+            input: (chunk as any).input ?? (chunk as any).args,
+          });
+          break;
+        case "tool-result":
+          emit(opts.onEvent, {
+            type: "tool-result",
+            toolCallId: (chunk as any).toolCallId,
+            toolName: (chunk as any).toolName,
+            output: (chunk as any).output ?? (chunk as any).result,
+          });
+          break;
+        case "finish-step":
+        case "step-finish" as any:
+          emit(opts.onEvent, {
+            type: "step-finish",
+            finishReason: (chunk as any).finishReason ?? "unknown",
+          });
+          break;
+        case "finish":
+          emit(opts.onEvent, {
+            type: "finish",
+            finishReason: (chunk as any).finishReason ?? "unknown",
+            usage: (chunk as any).usage,
+          });
+          break;
+        case "error":
+          emit(opts.onEvent, {
+            type: "error",
+            error: extractErrorMessage((chunk as any).error),
+          });
+          break;
+      }
+    }
+  } catch (err) {
+    if (opts.signal?.aborted) return;
+    emit(opts.onEvent, { type: "error", error: extractErrorMessage(err) });
+  }
+};
