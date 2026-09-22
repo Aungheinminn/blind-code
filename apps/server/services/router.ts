@@ -104,9 +104,6 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
   let lastPlan: Plan | null = null;
   let sawTerminalError = false;
   const fallbackPlan: Plan | null = opts.existingPlan ?? null;
-  // Lock so a parallel-called code_task waits for an in-flight plan_task.
-  // Keeps parallelism enabled for genuinely independent tools; only pairs
-  // where the second call depends on the first (plan → code) get serialized.
   let planPromise: Promise<void> | null = null;
 
   const tools = {
@@ -171,16 +168,10 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       }),
       execute: async ({ instructions, use_last_plan }) => {
         emit(opts.onEvent, { type: "router-decision", tool: "code_task" });
-        // If a plan_task is in flight (parallel call from the router LLM), wait
-        // for it. This preserves parallelism for other tool combos while
-        // guaranteeing the coder sees the plan when both were called together.
         if (planPromise) {
           await planPromise;
         }
-        // Prefer a plan produced THIS turn (lastPlan). Only fall back to the
-        // project's existing plan when no plan_task ran this turn.
         const plan = lastPlan ?? (use_last_plan ? null : fallbackPlan);
-        // Statuses only apply to the fallback plan (a fresh plan_task result is all-pending).
         const todoStatuses = lastPlan ? undefined : opts.existingPlanStatuses;
         try {
           await runCoder({
@@ -266,12 +257,13 @@ export const runRouter = async (opts: RunRouterOptions): Promise<void> => {
       tools,
       stopWhen: stepCountIs(7),
       abortSignal: opts.signal,
+      providerOptions: {
+        openai: { parallelToolCalls: false },
+        anthropic: { parallelToolCalls: false },
+      },
     });
 
-    // Drain the router's own stream so tool execution runs to completion.
-    // Router text/reasoning is suppressed by design — it communicates only via tool calls.
     for await (const _chunk of result.fullStream) {
-      // no-op; sub-agent events are already forwarded via onEvent
     }
   } catch (err) {
     if (opts.signal?.aborted) return;
