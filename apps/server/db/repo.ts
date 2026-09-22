@@ -786,4 +786,50 @@ export const getLatestPlanForProject = async (
   return { id: plan.id, summary: plan.summary, todos };
 };
 
+export const addTodoToLatestPlan = async (
+  projectId: string,
+  todo: { title: string; rationale?: string },
+): Promise<{ id: string; title: string; rationale: string } | null> => {
+  if (!db) return null;
+  const [latest] = await db
+    .select({ id: schema.plans.id })
+    .from(schema.plans)
+    .where(eq(schema.plans.projectId, projectId))
+    .orderBy(desc(schema.plans.createdAt))
+    .limit(1);
+  if (!latest) return null;
+
+  const existing = await db
+    .select({
+      todoKey: schema.planTodos.todoKey,
+      orderIndex: schema.planTodos.orderIndex,
+    })
+    .from(schema.planTodos)
+    .where(eq(schema.planTodos.planId, latest.id));
+
+  let maxN = 0;
+  let maxOrder = -1;
+  for (const row of existing) {
+    const m = row.todoKey.match(/^t(\d+)$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > maxN) maxN = n;
+    }
+    if (row.orderIndex > maxOrder) maxOrder = row.orderIndex;
+  }
+  const nextKey = `t${maxN + 1}`;
+  const nextOrder = maxOrder + 1;
+  const rationale = todo.rationale ?? "";
+
+  await db.insert(schema.planTodos).values({
+    planId: latest.id,
+    todoKey: nextKey,
+    title: todo.title,
+    rationale,
+    orderIndex: nextOrder,
+  });
+
+  return { id: nextKey, title: todo.title, rationale };
+};
+
 export { hasDb };

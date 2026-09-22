@@ -14,6 +14,7 @@ import {
   buildLocalPersistenceCoderAppendix,
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
+import { addTodoToLatestPlan } from "../db/repo";
 
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
@@ -22,6 +23,10 @@ type BareAgentEvent =
   | { type: "router-decision"; tool: AgentDecision; note?: string }
   | { type: "plan"; plan: Plan }
   | { type: "plan-error"; error: string }
+  | {
+      type: "plan-todo-added";
+      todo: { id: string; title: string; rationale: string };
+    }
   | { type: "verify-result"; result: VerifyResult }
   | { type: "verify-error"; error: string }
   | CoderEvent;
@@ -32,6 +37,7 @@ const subAgentFor = (event: BareAgentEvent): SubAgent => {
   switch (event.type) {
     case "plan":
     case "plan-error":
+    case "plan-todo-added":
       return "planner";
     case "verify-result":
     case "verify-error":
@@ -86,8 +92,11 @@ Narration:
 - Keep narration terse; never restate tool arguments or dump output back to the user.
 
 Deciding what to do:
-- BUILD or CHANGE request (user asks you to create/edit/add something): first call plan_task with a one-sentence description of the change. Then work through the returned todos in order, calling update_todo before/after each.
-- CONTINUE or RESUME request ("continue", "keep going", "sry my bad continue", etc.): do NOT call plan_task. Read the plan already in your system context (if any), find the first unfinished todo, and resume from there. If no plan exists, treat the request as a general instruction and proceed.
+- BUILD or CHANGE request when NO plan exists yet: call plan_task first with a one-sentence description, then work through the returned todos.
+- SMALL EXTENSION while a plan is already active (user asks for something that naturally fits current scope — "also add X to the list", "handle the empty state too", "put a reject button on each row"): call add_todo to append a single new todo, then do the work. Do NOT call plan_task — that would regenerate the whole plan unnecessarily.
+- LARGER NEW WORK or a shift in direction ("now let's add auth", "redesign the whole app"): call plan_task. Carry-forward will preserve any unfinished todos from the current plan.
+- CONTINUE or RESUME request ("continue", "keep going", "go on", "proceed", "next", "sry my bad continue", any synonym or filler variant): do NOT call plan_task or add_todo. Read the plan in your system context, find the first unfinished todo, resume.
+- MIXED continue + new work ("continue and also add X", "keep going but also do Y", "go on, plus add Z"): recognize the mixed intent. Call add_todo FIRST to track the new item (so it appears in the plan tray immediately), THEN resume the existing plan as normal. Do NOT silently bundle the new work into an existing todo — the user asked for a distinct addition, track it distinctly. This applies to any continue synonym paired with any new-work signal (also / plus / and / a new imperative like "add" / "make" / "fix").
 - PURE QUESTION with no code intent ("what does src/App.tsx do?"): read the relevant files, respond in text, do not modify anything.
 - After a substantial multi-file change, you MAY call verify_task once to sanity-check. Skip it for single-line tweaks — verification isn't free.
 - If verify_task reports blocking issues, fix them, then stop.
@@ -103,7 +112,8 @@ Workflow:
 Tools:
 - list_files, read_file, write_file, delete_file — file operations
 - update_todo — mark plan todos active/done/skipped
-- plan_task — produce a todo list for a new build/change request (never call twice in one turn)
+- plan_task — produce (or replace) the todo list. Never call twice per turn. Use for genuinely new/larger work.
+- add_todo — append ONE new todo to the current plan (cheaper than plan_task; use when the user asks for a small extension mid-work that fits current plan scope)
 - verify_task — sanity-check the last change (call at most once per turn)
 Do not use run_command.`;
 
@@ -175,6 +185,38 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
           const error = extractErrorMessage(err);
           emit(opts.onEvent, { type: "plan-error", error });
           return { error };
+        }
+      },
+    }),
+
+    add_todo: tool({
+      description:
+        "Append ONE new todo to the current plan without regenerating the whole plan. Use for small mid-work extensions that fit the current plan's scope (e.g. user asks 'also add X to the list' while you're already working on that list). Requires an existing plan; returns { error } if none. Cheaper than plan_task — no planner LLM call.",
+      inputSchema: z.object({
+        title: z
+          .string()
+          .describe("Single concrete action, e.g. 'Add reject button to TodoList row'."),
+        rationale: z
+          .string()
+          .optional()
+          .describe("One-line reason this todo is needed."),
+      }),
+      execute: async ({ title, rationale }) => {
+        if (!opts.toolContext.dbProjectId) {
+          return { error: "no project — cannot add todo" };
+        }
+        try {
+          const added = await addTodoToLatestPlan(opts.toolContext.dbProjectId, {
+            title,
+            rationale,
+          });
+          if (!added) {
+            return { error: "no active plan to append to — call plan_task first" };
+          }
+          emit(opts.onEvent, { type: "plan-todo-added", todo: added });
+          return { added };
+        } catch (err) {
+          return { error: extractErrorMessage(err) };
         }
       },
     }),
