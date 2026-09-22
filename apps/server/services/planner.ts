@@ -20,7 +20,7 @@ export const planTodoSchema = z.object({
 
 export const planSchema = z.object({
   summary: z.string().describe("One-sentence description of what will be built or changed."),
-  todos: z.array(planTodoSchema).min(1).max(6),
+  todos: z.array(planTodoSchema).min(1),
 });
 
 export type PlanTodo = z.infer<typeof planTodoSchema>;
@@ -50,10 +50,18 @@ Constraints the coder operates under:
 Your workflow:
 1. Call list_files first to see what already exists in the project.
 2. Read only the files directly relevant to the request — do not read the whole project.
-3. Return a plan with 1-6 todos. Each todo is a single, concrete change (create/edit one file). If the work would take more than 6 todos, merge related file changes into one todo — never exceed 6.
+3. Return a plan whose length matches the request's actual scope. Each todo is a single, concrete change (create/edit one file, or one tight logical step).
 4. Keep todos small and independent so they can be checked off one at a time.
 5. Reference existing files by path in your rationale so the coder knows what to touch.
 6. You have read-only access — do not attempt to write, delete, or run anything.
+
+Right-sizing the plan (this matters — do not pad, do not squash):
+- Trivial tweak (rename a variable, change a color): 1 todo.
+- Small self-contained app ("build a calculator", "build a timer", "build a todo list"): 3-5 todos usually. Not 8, not 2.
+- Medium feature on an existing app (add auth, add filters, add a settings page): 4-7 todos.
+- Large multi-surface change (redesign whole app, add multi-page routing): whatever it takes — commonly 8-12. Never pad to look thorough.
+- If the request is genuinely simple, DO NOT invent extra todos to look thorough.
+- If the request is genuinely large, DO NOT collapse everything into 2 mega-todos that the coder can't act on cleanly.
 
 Return the plan via structured output.`;
 
@@ -61,7 +69,7 @@ const buildCarryForwardAppendix = (unfinished: Plan): string => {
   const list = unfinished.todos
     .map((t) => `- ${t.title}${t.rationale ? ` — ${t.rationale}` : ""}`)
     .join("\n");
-  return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with related new work:\n${list}\n\nOrdering: place carried-over unfinished todos FIRST in the new plan, then the new work. Merged todos (where old and new work touch the same file) can go wherever fits the flow best.\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
+  return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with genuinely related new work:\n${list}\n\nOrdering: place carried-over unfinished todos FIRST in the new plan, then the new work. Merged todos (where old and new work touch the same file) can go wherever fits the flow best.\n\nMerging rules:\n- Do NOT collapse multiple unfinished todos into one to shorten the list. Each carried-over todo represents concrete work the user has already invested in — losing granularity means losing trackability.\n- Only merge an unfinished todo with a new one when they touch the same file AND the new work naturally supersedes or extends the unfinished intent.\n- If the combined plan gets long, that is fine. Length should reflect actual scope, not an arbitrary ceiling.\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
 };
 
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
