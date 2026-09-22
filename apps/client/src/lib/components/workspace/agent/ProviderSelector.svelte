@@ -84,7 +84,7 @@
     </div>
   {:else}
     <a
-      href="/settings/connect?tab=models"
+      href="/settings/providers?tab=models"
       class="pill no-underline"
       style="border-color: var(--border); background-color: var(--bg-tertiary); color: var(--text-secondary);"
       title={modelPlaceholder ? `default: ${modelPlaceholder}` : ""}

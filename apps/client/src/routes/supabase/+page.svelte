@@ -7,7 +7,6 @@
     type PublicSupabaseAccountIntegration,
     type SupabaseAccountProject,
   } from "$lib/api/account";
-  import AccountConnectCard from "$lib/components/supabase/AccountConnectCard.svelte";
   import SupabaseProjectCard from "$lib/components/supabase/SupabaseProjectCard.svelte";
   import AttachProjectModal from "$lib/components/supabase/AttachProjectModal.svelte";
   import CreateProjectModal from "$lib/components/supabase/CreateProjectModal.svelte";
@@ -71,18 +70,6 @@
     if (account) await loadProjects();
   });
 
-  const onAccountChanged = async (
-    e: CustomEvent<PublicSupabaseAccountIntegration | null>,
-  ) => {
-    account = e.detail;
-    if (account) {
-      await loadProjects();
-    } else {
-      supabaseProjects = [];
-      bcProjects = [];
-    }
-  };
-
   const onAttached = async (e: CustomEvent<{ bcProjectId: string }>) => {
     attaching = null;
     // Refresh so the attached badge shows up immediately.
@@ -125,9 +112,24 @@
     {/if}
   </div>
 
-  {#if !accountLoading}
-    <div class="mb-6">
-      <AccountConnectCard integration={account} on:changed={onAccountChanged} />
+  {#if !accountLoading && !account}
+    <div
+      class="mb-6 rounded-xl border px-5 py-4 flex items-center justify-between gap-4"
+      style="border-color: var(--border); background-color: var(--bg-secondary);"
+    >
+      <div class="min-w-0">
+        <div class="text-sm font-medium">Supabase account not connected</div>
+        <div class="text-xs mt-0.5" style="color: var(--text-secondary);">
+          Connect your account in Settings to see your projects and attach them here.
+        </div>
+      </div>
+      <a
+        href="/settings/supabase"
+        class="shrink-0 px-3 py-2 rounded-md text-sm font-medium text-white no-underline"
+        style="background-color: var(--accent);"
+      >
+        Connect in Settings →
+      </a>
     </div>
   {/if}
 

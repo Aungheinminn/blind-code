@@ -24,7 +24,7 @@
     },
     {
       label: "Settings",
-      href: "/settings/connect",
+      href: "/settings/providers",
       icon: "settings",
       isActive: (p) => p.startsWith("/settings"),
     },
