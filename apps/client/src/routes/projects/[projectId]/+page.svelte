@@ -10,6 +10,7 @@
     type Project,
   } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
 
   $: projectId = $page.params.projectId;
   let loadedFor = "";
@@ -259,17 +260,17 @@
                   {t.description}
                 </div>
               </div>
-              <label class="flex items-center gap-2 text-xs shrink-0 cursor-pointer">
+              <div class="flex items-center gap-2 text-xs shrink-0">
                 <span style="color: var(--text-tertiary);">
                   {busy ? "…" : enabled ? "on" : "off"}
                 </span>
-                <input
-                  type="checkbox"
+                <Toggle
                   checked={enabled}
                   disabled={busy}
-                  on:change={(e) => togglePerm(t.key, e.currentTarget.checked)}
+                  ariaLabel={t.title}
+                  on:change={(e) => togglePerm(t.key, e.detail)}
                 />
-              </label>
+              </div>
             </li>
           {/each}
         </ul>
