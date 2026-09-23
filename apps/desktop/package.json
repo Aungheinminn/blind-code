@@ -1,0 +1,27 @@
+{
+  "name": "@vibe/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Electron desktop wrapper for the vibe-coding platform (macOS + Windows)",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json",
+    "package:mac": "electron-vite build && electron-builder --mac",
+    "package:win": "electron-vite build && electron-builder --win",
+    "package:all": "electron-vite build && electron-builder -mw"
+  },
+  "dependencies": {
+    "@vibe/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.5.4"
+  }
+}

@@ -11,7 +11,11 @@
     "dev": "bun run --filter ./apps/client dev & bun run --filter ./apps/server dev",
     "dev:client": "bun run --filter ./apps/client dev",
     "dev:server": "bun run --filter ./apps/server dev",
+    "dev:desktop": "bun run --filter ./apps/desktop dev",
+    "dev:desktop:all": "bun run --filter ./apps/server dev & bun run --filter ./apps/client dev & bun run --filter ./apps/desktop dev",
     "build": "bun run --filter ./apps/client build",
+    "package:mac": "bun run --filter ./apps/desktop package:mac",
+    "package:win": "bun run --filter ./apps/desktop package:win",
     "lint": "bun run --filter ./apps/client lint",
     "typecheck": "bun run --filter ./apps/server typecheck"
   }
