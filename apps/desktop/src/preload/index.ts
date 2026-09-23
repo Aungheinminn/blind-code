@@ -1,4 +1,4 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
 const desktopApi = {
   isDesktop: true,
@@ -8,6 +8,7 @@ const desktopApi = {
     chrome: process.versions.chrome,
     node: process.versions.node,
   },
+  getServerUrl: (): Promise<string> => ipcRenderer.invoke("desktop:server-url"),
 } as const;
 
 contextBridge.exposeInMainWorld("desktop", desktopApi);
