@@ -13,6 +13,9 @@ export type PublicProjectIntegrations = {
   supabase?: PublicSupabaseIntegration;
 };
 
+export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
+export type AgentToolPermissions = Partial<Record<AgentToolName, boolean>>;
+
 export type Project = {
   id: string;
   ownerId: string;
@@ -22,12 +25,14 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
   integrations?: PublicProjectIntegrations | null;
+  agentToolPermissions?: AgentToolPermissions | null;
 };
 
 export type ProjectPatch = Partial<{
   name: string;
   description: string | null;
   isArchived: boolean;
+  agentToolPermissions: AgentToolPermissions | null;
 }>;
 
 export type ProjectListPage = {

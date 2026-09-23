@@ -25,7 +25,7 @@ import {
   hasDb,
 } from "../db/repo";
 import type { Plan } from "../services/planner";
-import type { PlanTodoStatus } from "@vibe/shared";
+import { resolveAgentToolPermissions, type PlanTodoStatus } from "@vibe/shared";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
@@ -157,6 +157,14 @@ export const agentController = (app: Elysia) =>
         const supabaseCanRunSqlViaMgmt = Boolean(supabasePat && supabaseProjectRef);
         const supabaseCanRunSql =
           supabaseCanRunSqlViaMgmt || Boolean(supabaseDatabaseUrl);
+        const resolvedPerms = resolveAgentToolPermissions(
+          projectRow?.agentToolPermissions ?? null,
+        );
+        // Auto-provision guidance only makes sense when the agent can do BOTH.
+        const canAutoProvisionSupabase =
+          Boolean(supabasePat) &&
+          resolvedPerms.create_supabase_project &&
+          resolvedPerms.attach_supabase_project;
 
         const resolvedModelId =
           msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
@@ -425,7 +433,8 @@ export const agentController = (app: Elysia) =>
             history: msg.history,
             supabaseConnected,
             supabaseCanRunSql,
-            userSupabasePatConnected: Boolean(supabasePat),
+            userSupabasePatConnected: canAutoProvisionSupabase,
+            agentToolPermissions: resolvedPerms,
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,

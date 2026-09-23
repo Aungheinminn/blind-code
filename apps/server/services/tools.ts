@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import type { AgentToolPermissions } from "@vibe/shared";
 import { createHash } from "crypto";
 import { join, resolve, relative, dirname } from "path";
 import { mkdir, readFile, writeFile, readdir, stat, rm } from "fs/promises";
@@ -481,10 +482,20 @@ export const buildWriteTools = (ctx: ToolContext) => {
   };
 };
 
-export const buildCoderTools = (ctx: ToolContext) => ({
-  ...buildReadOnlyTools(ctx),
-  ...buildWriteTools(ctx),
-});
+export const buildCoderTools = (
+  ctx: ToolContext,
+  permissions: AgentToolPermissions = {},
+) => {
+  const write = buildWriteTools(ctx) as Record<string, unknown>;
+  // Missing permission key = allowed by default (backwards-compat, permissive).
+  if (permissions.create_supabase_project === false) {
+    delete write.create_supabase_project;
+  }
+  if (permissions.attach_supabase_project === false) {
+    delete write.attach_supabase_project;
+  }
+  return { ...buildReadOnlyTools(ctx), ...write };
+};
 
 export type ReadOnlyTools = ReturnType<typeof buildReadOnlyTools>;
 export type WriteTools = ReturnType<typeof buildWriteTools>;

@@ -28,9 +28,30 @@ import {
 } from "../services/supabaseManagement";
 import {
   toPublicIntegrations,
+  type AgentToolPermissions,
   type ProjectIntegrations,
   type SupabaseIntegration,
 } from "@vibe/shared";
+
+const ALLOWED_AGENT_TOOLS = new Set([
+  "create_supabase_project",
+  "attach_supabase_project",
+]);
+
+const parseAgentToolPermissions = (
+  value: unknown,
+): AgentToolPermissions | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) return undefined;
+  const out: AgentToolPermissions = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (!ALLOWED_AGENT_TOOLS.has(k)) continue;
+    if (typeof v !== "boolean") continue;
+    (out as Record<string, boolean>)[k] = v;
+  }
+  return out;
+};
 
 const unauthorized = (set: { status?: number | string }) => {
   set.status = 401;
@@ -184,7 +205,20 @@ export const projectController = (app: Elysia) =>
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
-      const patch = body as Partial<{ name: string; description: string | null; isArchived: boolean }>;
+      const raw = (body as Record<string, unknown>) ?? {};
+      const patch: Partial<{
+        name: string;
+        description: string | null;
+        isArchived: boolean;
+        agentToolPermissions: AgentToolPermissions | null;
+      }> = {};
+      if (typeof raw.name === "string") patch.name = raw.name;
+      if (raw.description === null || typeof raw.description === "string") {
+        patch.description = raw.description as string | null;
+      }
+      if (typeof raw.isArchived === "boolean") patch.isArchived = raw.isArchived;
+      const perms = parseAgentToolPermissions(raw.agentToolPermissions);
+      if (perms !== undefined) patch.agentToolPermissions = perms;
       const updated = await updateProjectForOwner(params.id, user.id, patch);
       if (!updated) {
         set.status = 404;

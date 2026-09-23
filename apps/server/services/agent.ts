@@ -1,5 +1,6 @@
 import { streamText, stepCountIs, tool, type ModelMessage } from "ai";
 import { z } from "zod";
+import type { AgentToolPermissions } from "@vibe/shared";
 import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import { runPlanner, type Plan } from "./planner";
@@ -66,6 +67,7 @@ export type RunAgentOptions = {
   supabaseConnected?: boolean;
   supabaseCanRunSql?: boolean;
   userSupabasePatConnected?: boolean;
+  agentToolPermissions?: AgentToolPermissions;
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
 };
@@ -141,7 +143,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const model = await resolveModel(opts.provider, opts.model);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
-  const baseTools = buildCoderTools(opts.toolContext);
+  const baseTools = buildCoderTools(opts.toolContext, opts.agentToolPermissions);
 
   const tools = {
     ...baseTools,

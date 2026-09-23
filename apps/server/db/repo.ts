@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db, hasDb, schema } from "./client";
 import type {
+  AgentToolPermissions,
   ProjectIntegrations,
   SupabaseAccountIntegration,
   SupabaseIntegration,
@@ -279,7 +280,12 @@ export const getProjectForOwner = async (idOrName: string, ownerId: string) => {
 export const updateProjectForOwner = async (
   idOrName: string,
   ownerId: string,
-  patch: Partial<{ name: string; description: string | null; isArchived: boolean }>,
+  patch: Partial<{
+    name: string;
+    description: string | null;
+    isArchived: boolean;
+    agentToolPermissions: AgentToolPermissions | null;
+  }>,
 ) => {
   if (!db) return null;
   const id = projectIdFor(idOrName, ownerId);

@@ -13,6 +13,22 @@ export type ProjectIntegrations = {
   supabase?: SupabaseIntegration;
 };
 
+export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
+
+export type AgentToolPermissions = Partial<Record<AgentToolName, boolean>>;
+
+export const DEFAULT_AGENT_TOOL_PERMISSIONS: Record<AgentToolName, boolean> = {
+  create_supabase_project: true,
+  attach_supabase_project: true,
+};
+
+export const resolveAgentToolPermissions = (
+  stored: AgentToolPermissions | null | undefined,
+): Record<AgentToolName, boolean> => ({
+  ...DEFAULT_AGENT_TOOL_PERMISSIONS,
+  ...(stored ?? {}),
+});
+
 export type PublicSupabaseIntegration = Omit<
   SupabaseIntegration,
   "serviceRoleKey" | "databaseUrl"
@@ -52,6 +68,7 @@ export const projects = pgTable("projects", {
     env?: Record<string, string>;
   }>(),
   integrations: jsonb("integrations").$type<ProjectIntegrations>(),
+  agentToolPermissions: jsonb("agent_tool_permissions").$type<AgentToolPermissions>(),
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
