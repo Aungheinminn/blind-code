@@ -143,10 +143,19 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const model = await resolveModel(opts.provider, opts.model);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
+  // Leaf tools from tools.ts — file/DB/HTTP operations that only need ToolContext.
+  // They stand alone: no sub-agent LLM calls, no access to runAgent's closure
+  // (provider/model/history/onEvent). Add new tools here if they're pure I/O.
   const baseTools = buildCoderTools(opts.toolContext, opts.agentToolPermissions);
 
   const tools = {
     ...baseTools,
+    // Below: tools that live inline in runAgent (NOT in tools.ts) because they
+    // need runAgent's closure — either to spawn sub-agent LLMs (plan_task,
+    // verify_task hand off to the planner/verifier with this run's provider,
+    // model, history, abort signal), or to emit control-flow events into
+    // opts.onEvent so the client's plan-tray UI updates in real time
+    // (plan-todo-added, plan, verify-result, router-decision).
     plan_task: tool({
       description:
         "Produce a todo list for a new build or change request. Call this FIRST for any non-trivial code change. If an incomplete plan already exists for the project, its unfinished todos are automatically carried into the new plan — the planner merges them. Never call twice per turn.",
