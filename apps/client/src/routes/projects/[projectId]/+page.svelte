@@ -260,10 +260,7 @@
                   {t.description}
                 </div>
               </div>
-              <div class="flex items-center gap-2 text-xs shrink-0">
-                <span style="color: var(--text-tertiary);">
-                  {busy ? "…" : enabled ? "on" : "off"}
-                </span>
+              <div class="shrink-0">
                 <Toggle
                   checked={enabled}
                   disabled={busy}
