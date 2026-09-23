@@ -11,6 +11,7 @@ import {
   type PlanTodoStatus,
 } from "./coder";
 import {
+  buildAutoProvisionSupabaseCoderAppendix,
   buildLocalPersistenceCoderAppendix,
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
@@ -64,6 +65,7 @@ export type RunAgentOptions = {
   existingPlanStatuses?: Record<string, PlanTodoStatus>;
   supabaseConnected?: boolean;
   supabaseCanRunSql?: boolean;
+  userSupabasePatConnected?: boolean;
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
 };
@@ -169,6 +171,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             prompt: task,
             history: opts.history,
             supabaseConnected: opts.supabaseConnected,
+            userSupabasePatConnected: opts.userSupabasePatConnected,
             signal: opts.signal,
             existingUnfinished,
           });
@@ -266,7 +269,9 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     : AGENT_SYSTEM_PROMPT;
   const system = opts.supabaseConnected
     ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
-    : withPlan + buildLocalPersistenceCoderAppendix();
+    : opts.userSupabasePatConnected
+      ? withPlan + buildAutoProvisionSupabaseCoderAppendix()
+      : withPlan + buildLocalPersistenceCoderAppendix();
 
   const todoCount = opts.existingPlan?.todos.length ?? 0;
   const stepCap = Math.max(40, todoCount * 6 + 20);

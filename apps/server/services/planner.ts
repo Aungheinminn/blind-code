@@ -4,6 +4,7 @@ import { resolveModel } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 import type { CoderChatMessage } from "./coder";
 import {
+  buildAutoProvisionSupabasePlannerAppendix,
   buildLocalPersistencePlannerAppendix,
   buildSupabasePlannerAppendix,
 } from "./systemAppendix";
@@ -35,6 +36,7 @@ export type RunPlannerOptions = {
   maxSteps?: number;
   systemPrompt?: string;
   supabaseConnected?: boolean;
+  userSupabasePatConnected?: boolean;
   signal?: AbortSignal;
   existingUnfinished?: Plan | null;
 };
@@ -90,7 +92,9 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
       : baseSystem;
   const system = opts.supabaseConnected
     ? withCarry + buildSupabasePlannerAppendix()
-    : withCarry + buildLocalPersistencePlannerAppendix();
+    : opts.userSupabasePatConnected
+      ? withCarry + buildAutoProvisionSupabasePlannerAppendix()
+      : withCarry + buildLocalPersistencePlannerAppendix();
 
   const result = await generateText({
     model,

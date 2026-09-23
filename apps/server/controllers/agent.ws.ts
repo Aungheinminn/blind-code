@@ -408,6 +408,7 @@ export const agentController = (app: Elysia) =>
             history: msg.history,
             supabaseConnected,
             supabaseCanRunSql,
+            userSupabasePatConnected: Boolean(supabasePat),
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,
