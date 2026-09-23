@@ -366,6 +366,7 @@ export const agentController = (app: Elysia) =>
         const toolContext = {
           sandboxProjectId: msg.projectId,
           dbProjectId,
+          ownerId: userId,
           sessionId,
           databaseUrl: supabaseDatabaseUrl,
           supabasePat,

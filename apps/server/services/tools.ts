@@ -3,16 +3,23 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { join, resolve, relative, dirname } from "path";
 import { mkdir, readFile, writeFile, readdir, stat, rm } from "fs/promises";
+import { randomBytes } from "crypto";
 import postgres from "postgres";
 import {
   upsertProjectFile,
   deleteProjectFile,
   getCachedToolResult,
   putCachedToolResult,
+  setSupabaseIntegrationForOwner,
+  findProjectByOwnerAndSupabaseRef,
 } from "../db/repo";
 import {
+  createSupabaseProject,
+  getSupabaseApiKeys,
+  listSupabaseOrganizations,
   runSupabaseManagementQuery,
   SupabaseManagementError,
+  waitForSupabaseProjectReady,
 } from "./supabaseManagement";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
@@ -32,6 +39,7 @@ const safeJoin = (projectId: string, rel: string): string => {
 export type ToolContext = {
   sandboxProjectId: string;
   dbProjectId: string | null;
+  ownerId?: string | null;
   sessionId?: string | null;
   databaseUrl?: string | null;
   supabasePat?: string | null;
@@ -125,14 +133,7 @@ export const buildReadOnlyTools = (ctx: ToolContext) => {
 };
 
 export const buildWriteTools = (ctx: ToolContext) => {
-  const {
-    sandboxProjectId,
-    dbProjectId,
-    sessionId,
-    databaseUrl,
-    supabasePat,
-    supabaseProjectRef,
-  } = ctx;
+  const { sandboxProjectId, dbProjectId, sessionId } = ctx;
   const idem = <I, O>(name: string, fn: (input: I) => Promise<O>) =>
     withIdempotency(sessionId, name, fn);
 
@@ -187,13 +188,11 @@ export const buildWriteTools = (ctx: ToolContext) => {
           };
         }
 
-        if (supabasePat && supabaseProjectRef) {
+        const pat = ctx.supabasePat;
+        const ref = ctx.supabaseProjectRef;
+        if (pat && ref) {
           try {
-            const result = await runSupabaseManagementQuery(
-              supabasePat,
-              supabaseProjectRef,
-              query,
-            );
+            const result = await runSupabaseManagementQuery(pat, ref, query);
             const rows = Array.isArray(result) ? result : [];
             const preview = rows.slice(0, 50);
             return {
@@ -214,7 +213,7 @@ export const buildWriteTools = (ctx: ToolContext) => {
           }
         }
 
-        const url = databaseUrl?.trim();
+        const url = ctx.databaseUrl?.trim();
         if (!url) {
           return {
             ok: false,
@@ -251,6 +250,208 @@ export const buildWriteTools = (ctx: ToolContext) => {
           } catch {}
         }
       }),
+    }),
+
+    create_supabase_project: tool({
+      description:
+        "Provision a new Supabase project for this workspace. Only call when the app the user is building genuinely needs persistent data, auth, or realtime (e.g. todo lists, chat, dashboards) — not for stateless UIs (calculators, static pages, single-render tools). Requires the user to have connected their Supabase account at /settings/supabase. If they haven't, returns an error asking them to. Provisioning takes ~60–120s (the tool polls until ready). After this succeeds, follow up with attach_supabase_project to link the new project to this workspace.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .min(1)
+          .max(80)
+          .describe(
+            "Human-readable project name shown in the Supabase dashboard, e.g. 'todo-app-prod'.",
+          ),
+        organizationSlug: z
+          .string()
+          .optional()
+          .describe(
+            "Supabase organization slug. Omit if the user has exactly one org (auto-selected).",
+          ),
+        regionCode: z
+          .string()
+          .optional()
+          .describe(
+            "Supabase region code, e.g. 'us-east-1', 'eu-west-1', 'ap-southeast-1'. Defaults to 'us-east-1'.",
+          ),
+      }),
+      execute: idem(
+        "create_supabase_project",
+        async ({
+          name,
+          organizationSlug,
+          regionCode,
+        }: {
+          name: string;
+          organizationSlug?: string;
+          regionCode?: string;
+        }) => {
+          const pat = ctx.supabasePat;
+          if (!pat) {
+            return {
+              ok: false as const,
+              error:
+                "Supabase account not connected. Ask the user to connect their Supabase PAT at /settings/supabase, then retry.",
+            };
+          }
+
+          let slug = organizationSlug?.trim() || "";
+          if (!slug) {
+            try {
+              const orgs = await listSupabaseOrganizations(pat);
+              if (orgs.length === 0) {
+                return {
+                  ok: false as const,
+                  error:
+                    "Your Supabase account has no organizations. Create one at https://supabase.com/dashboard first.",
+                };
+              }
+              if (orgs.length > 1) {
+                return {
+                  ok: false as const,
+                  error: `Multiple Supabase organizations found — specify organizationSlug. Options: ${orgs
+                    .map((o) => o.slug ?? o.id)
+                    .join(", ")}`,
+                };
+              }
+              slug = orgs[0].slug ?? orgs[0].id;
+            } catch (err) {
+              return {
+                ok: false as const,
+                error: `Failed to list Supabase organizations: ${err instanceof Error ? err.message : String(err)}`,
+              };
+            }
+          }
+
+          const region = regionCode?.trim() || "us-east-1";
+          const dbPass = randomBytes(24).toString("base64url");
+
+          try {
+            const created = await createSupabaseProject(pat, {
+              name,
+              organizationSlug: slug,
+              dbPass,
+              regionCode: region,
+            });
+            const ready = await waitForSupabaseProjectReady(pat, created.id, {
+              timeoutMs: 180_000,
+              pollMs: 3_000,
+            });
+            return {
+              ok: true as const,
+              projectRef: created.id,
+              name: created.name,
+              region: created.region,
+              organizationId: created.organization_id,
+              status: ready.status ?? "ACTIVE_HEALTHY",
+              dashboardUrl: `https://supabase.com/dashboard/project/${created.id}`,
+            };
+          } catch (err) {
+            const message =
+              err instanceof SupabaseManagementError
+                ? err.message
+                : err instanceof Error
+                  ? err.message
+                  : String(err);
+            return { ok: false as const, error: message };
+          }
+        },
+      ),
+    }),
+
+    attach_supabase_project: tool({
+      description:
+        "Link an existing Supabase project (identified by its projectRef) to this workspace. Fetches the API keys via the user's PAT and stores them encrypted. Call this immediately after create_supabase_project, or when the user wants to connect an existing Supabase project to this workspace. After this succeeds, run_sql works in the same turn.",
+      inputSchema: z.object({
+        projectRef: z
+          .string()
+          .min(1)
+          .describe(
+            "The Supabase project ref (id), e.g. 'abcdefghijklmnop'. Returned by create_supabase_project.",
+          ),
+      }),
+      execute: idem(
+        "attach_supabase_project",
+        async ({ projectRef }: { projectRef: string }) => {
+          const pat = ctx.supabasePat;
+          if (!pat) {
+            return {
+              ok: false as const,
+              error:
+                "Supabase account not connected. Ask the user to connect at /settings/supabase, then retry.",
+            };
+          }
+          if (!ctx.ownerId || !dbProjectId) {
+            return {
+              ok: false as const,
+              error: "No workspace project in context — cannot attach.",
+            };
+          }
+
+          const existing = await findProjectByOwnerAndSupabaseRef(
+            ctx.ownerId,
+            projectRef,
+          );
+          if (existing && existing.id !== dbProjectId) {
+            return {
+              ok: false as const,
+              error: `Supabase project ${projectRef} is already attached to another workspace ('${existing.name}'). Detach it there first.`,
+            };
+          }
+
+          let keys: Array<{ name: string; api_key: string }>;
+          try {
+            keys = await getSupabaseApiKeys(pat, projectRef);
+          } catch (err) {
+            const message =
+              err instanceof SupabaseManagementError
+                ? err.message
+                : err instanceof Error
+                  ? err.message
+                  : String(err);
+            return { ok: false as const, error: `Failed to fetch API keys: ${message}` };
+          }
+
+          const anonKey = keys.find((k) => k.name === "anon")?.api_key;
+          const serviceRoleKey = keys.find((k) => k.name === "service_role")?.api_key;
+          if (!anonKey || !serviceRoleKey) {
+            return {
+              ok: false as const,
+              error: "Supabase did not return both anon and service_role keys.",
+            };
+          }
+          // Sanity check: both are JWTs; swapping would be catastrophic.
+          if (!anonKey.startsWith("eyJ") || !serviceRoleKey.startsWith("eyJ")) {
+            return {
+              ok: false as const,
+              error: "Unexpected Supabase key format — refusing to store.",
+            };
+          }
+
+          const url = `https://${projectRef}.supabase.co`;
+          const saved = await setSupabaseIntegrationForOwner(dbProjectId, ctx.ownerId, {
+            url,
+            anonKey,
+            serviceRoleKey,
+            projectRef,
+            connectedAt: new Date().toISOString(),
+          });
+          if (!saved) {
+            return { ok: false as const, error: "Failed to persist Supabase integration." };
+          }
+
+          // Hot-swap so subsequent run_sql calls this turn go through Management API.
+          ctx.supabaseProjectRef = projectRef;
+
+          return {
+            ok: true as const,
+            projectRef,
+            url,
+            attached: true,
+          };
+        },
+      ),
     }),
 
     update_todo: tool({
