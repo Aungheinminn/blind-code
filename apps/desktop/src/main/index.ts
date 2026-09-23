@@ -67,6 +67,23 @@ ipcMain.handle("desktop:server-url", () => {
   return isDev ? DEV_SERVER_URL : getServerUrl();
 });
 
+async function waitForUrl(url: string, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr: unknown = null;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.status < 500) return;
+    } catch (err) {
+      lastErr = err;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(
+    `dev server at ${url} did not respond within ${timeoutMs}ms: ${String(lastErr)}`,
+  );
+}
+
 app.whenReady().then(async () => {
   if (!isDev) {
     registerRendererProtocol(join(process.resourcesPath, "client"));
@@ -74,6 +91,15 @@ app.whenReady().then(async () => {
       await startBundledServer();
     } catch (err) {
       console.error("[main] failed to start bundled server:", err);
+      app.quit();
+      return;
+    }
+  } else {
+    console.log(`[main] waiting for client dev server at ${CLIENT_DEV_URL}...`);
+    try {
+      await waitForUrl(CLIENT_DEV_URL);
+    } catch (err) {
+      console.error("[main]", err);
       app.quit();
       return;
     }
