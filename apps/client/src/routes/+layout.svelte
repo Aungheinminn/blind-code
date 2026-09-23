@@ -11,7 +11,12 @@
   const PUBLIC_ROUTES = ["/", "/login", "/signup"];
   const AUTH_ROUTES = ["/login", "/signup"];
 
-  const isPublic = (path: string) => PUBLIC_ROUTES.includes(path);
+  const isDesktopApp = () =>
+    typeof window !== "undefined" &&
+    Boolean((window as unknown as { desktop?: { isDesktop?: boolean } }).desktop?.isDesktop);
+
+  const isPublic = (path: string) =>
+    isDesktopApp() ? AUTH_ROUTES.includes(path) : PUBLIC_ROUTES.includes(path);
   const isAuthPage = (path: string) => AUTH_ROUTES.includes(path);
   const isFullscreen = (path: string) => path.includes("/workspace");
   const projectDetailIdRe = /^\/projects\/([^/]+)$/;
