@@ -1,0 +1,28 @@
+{
+  "name": "@vibe/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Electron desktop wrapper for the vibe-coding platform (macOS + Windows)",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json",
+    "build:server:mac-arm64": "bun scripts/build-server.ts darwin-arm64",
+    "build:server:mac-x64": "bun scripts/build-server.ts darwin-x64",
+    "build:server:win-x64": "bun scripts/build-server.ts win32-x64",
+    "prepare:mac": "cd ../.. && bun run --filter ./apps/client build && cd apps/desktop && bun scripts/build-server.ts darwin-arm64 && bun scripts/build-server.ts darwin-x64",
+    "prepare:win": "cd ../.. && bun run --filter ./apps/client build && cd apps/desktop && bun scripts/build-server.ts win32-x64",
+    "package:mac": "bun run prepare:mac && electron-vite build && electron-builder --mac",
+    "package:win": "bun run prepare:win && electron-vite build && electron-builder --win"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.5.4"
+  }
+}
