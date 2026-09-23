@@ -5,6 +5,8 @@
     getProject,
     updateProject,
     deleteProject,
+    type AgentToolName,
+    type AgentToolPermissions,
     type Project,
   } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
@@ -24,6 +26,58 @@
   let saveMsg = "";
   let confirmingDelete = false;
   let deleteBusy = false;
+
+  const AGENT_TOOLS: Array<{
+    key: AgentToolName;
+    title: string;
+    description: string;
+  }> = [
+    {
+      key: "create_supabase_project",
+      title: "create_supabase_project",
+      description:
+        "Let the agent provision a brand-new Supabase project on your account when the app it's building needs a backend. Uses one of your Supabase project slots.",
+    },
+    {
+      key: "attach_supabase_project",
+      title: "attach_supabase_project",
+      description:
+        "Let the agent link an existing Supabase project (by ref) to this workspace and fetch its API keys.",
+    },
+  ];
+
+  const resolvePerm = (
+    perms: AgentToolPermissions | null | undefined,
+    key: AgentToolName,
+  ): boolean => (perms?.[key] ?? true);
+
+  let permBusy: Record<string, boolean> = {};
+
+  const togglePerm = async (key: AgentToolName, next: boolean) => {
+    if (!project) return;
+    permBusy = { ...permBusy, [key]: true };
+    try {
+      const current: AgentToolPermissions = {
+        create_supabase_project: resolvePerm(
+          project.agentToolPermissions,
+          "create_supabase_project",
+        ),
+        attach_supabase_project: resolvePerm(
+          project.agentToolPermissions,
+          "attach_supabase_project",
+        ),
+      };
+      current[key] = next;
+      const updated = await updateProject(project.id, {
+        agentToolPermissions: current,
+      });
+      if (updated) project = updated;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      permBusy = { ...permBusy, [key]: false };
+    }
+  };
 
   const load = async (id: string) => {
     loading = true;
@@ -178,6 +232,48 @@
           {/if}
         </div>
       </form>
+
+      <section class="mt-12">
+        <h2 class="text-sm font-semibold" style="color: var(--text-primary);">
+          Agent tool permissions
+        </h2>
+        <p class="mt-1 text-xs" style="color: var(--text-tertiary);">
+          Control which Supabase-related tools the agent may call in this workspace.
+          Both are on by default when you've connected Supabase at
+          <a href="/settings/supabase" class="underline">/settings/supabase</a>.
+        </p>
+
+        <ul class="mt-4 space-y-3">
+          {#each AGENT_TOOLS as t}
+            {@const enabled = resolvePerm(project.agentToolPermissions, t.key)}
+            {@const busy = permBusy[t.key]}
+            <li
+              class="flex items-start justify-between gap-4 rounded-lg border px-4 py-3"
+              style="border-color: var(--border); background-color: var(--bg-panel);"
+            >
+              <div class="min-w-0">
+                <div class="text-sm font-medium font-mono" style="color: var(--text-primary);">
+                  {t.title}
+                </div>
+                <div class="mt-1 text-xs" style="color: var(--text-secondary);">
+                  {t.description}
+                </div>
+              </div>
+              <label class="flex items-center gap-2 text-xs shrink-0 cursor-pointer">
+                <span style="color: var(--text-tertiary);">
+                  {busy ? "…" : enabled ? "on" : "off"}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  disabled={busy}
+                  on:change={(e) => togglePerm(t.key, e.currentTarget.checked)}
+                />
+              </label>
+            </li>
+          {/each}
+        </ul>
+      </section>
 
       <div class="mt-12">
         {#if !confirmingDelete}
