@@ -8,3 +8,7 @@ release/
 # Compiled server binaries (regenerated per platform via scripts/build-server.ts)
 resources/bin/*
 !resources/bin/.gitkeep
+
+# Local python shim created by scripts/build-mac.sh when the system's
+# `python` command is missing (see the script for context).
+.python-shim/
