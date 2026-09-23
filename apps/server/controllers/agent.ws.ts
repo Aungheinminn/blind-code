@@ -303,6 +303,23 @@ export const agentController = (app: Elysia) =>
                 pendingDeletes.delete(event.toolCallId);
                 await publish({ type: "file-deleted", path: pending.path });
               }
+            } else if (event.toolName === "attach_supabase_project") {
+              const out = event.output as
+                | { ok?: boolean; projectRef?: string; url?: string; anonKey?: string }
+                | null;
+              if (out?.ok && out.projectRef && out.url && out.anonKey) {
+                await publish({
+                  type: "supabase-attached",
+                  integration: {
+                    url: out.url,
+                    anonKey: out.anonKey,
+                    projectRef: out.projectRef,
+                    hasServiceRoleKey: true,
+                    hasDatabaseUrl: false,
+                    connectedAt: new Date().toISOString(),
+                  },
+                });
+              }
             }
           }
           if (!sessionId) return;

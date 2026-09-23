@@ -547,6 +547,11 @@ const handleEvent = (raw: unknown) => {
         });
       }
       break;
+    case "supabase-attached":
+      if (event.integration && typeof event.integration === "object") {
+        projectIntegration.set(event.integration as PublicSupabaseIntegration);
+      }
+      break;
     case "turn-terminal":
       appendText(undefined, `\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
       isRunning.set(false);

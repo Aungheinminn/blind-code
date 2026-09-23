@@ -448,6 +448,7 @@ export const buildWriteTools = (ctx: ToolContext) => {
             ok: true as const,
             projectRef,
             url,
+            anonKey,
             attached: true,
           };
         },
