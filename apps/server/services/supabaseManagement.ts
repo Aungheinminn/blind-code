@@ -123,3 +123,42 @@ export const deleteSupabaseProject = (pat: string, ref: string) =>
   managementFetch<unknown>(pat, `/v1/projects/${encodeURIComponent(ref)}`, {
     method: "DELETE",
   });
+
+export const getSupabaseProject = (pat: string, ref: string) =>
+  managementFetch<SupabaseProject>(
+    pat,
+    `/v1/projects/${encodeURIComponent(ref)}`,
+  );
+
+export type WaitForSupabaseProjectReadyOptions = {
+  timeoutMs?: number;
+  pollMs?: number;
+  signal?: AbortSignal;
+};
+
+export const waitForSupabaseProjectReady = async (
+  pat: string,
+  ref: string,
+  opts: WaitForSupabaseProjectReadyOptions = {},
+): Promise<SupabaseProject> => {
+  const timeoutMs = opts.timeoutMs ?? 180_000;
+  const pollMs = opts.pollMs ?? 3_000;
+  const deadline = Date.now() + timeoutMs;
+  let last: SupabaseProject | null = null;
+  while (Date.now() < deadline) {
+    if (opts.signal?.aborted) {
+      throw new SupabaseManagementError(499, "wait aborted");
+    }
+    try {
+      last = await getSupabaseProject(pat, ref);
+      if (last.status === "ACTIVE_HEALTHY") return last;
+    } catch (err) {
+      if (err instanceof SupabaseManagementError && err.status !== 404) throw err;
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new SupabaseManagementError(
+    504,
+    `Supabase project ${ref} did not become ACTIVE_HEALTHY within ${Math.round(timeoutMs / 1000)}s (last status: ${last?.status ?? "unknown"})`,
+  );
+};
