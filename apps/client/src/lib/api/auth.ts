@@ -24,5 +24,24 @@ export const logout = () =>
 
 export const me = () => fetchJson<{ user: AuthUser }>("/auth/me");
 
+export type ProfilePatch = {
+  displayName?: string;
+  email?: string;
+  avatarUrl?: string | null;
+  currentPassword?: string;
+};
+
+export const updateProfile = (patch: ProfilePatch) =>
+  fetchJson<{ user: AuthUser }>("/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  fetchJson<{ ok: boolean }>("/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
 export const getWsTicket = () =>
   fetchJson<{ ticket: string; expiresAt: number }>("/auth/ws-ticket", { method: "POST" });

@@ -5,6 +5,11 @@
 
   const sections: Section[] = [
     {
+      href: "/settings/profile",
+      label: "Profile",
+      match: (p) => p === "/settings/profile" || p.startsWith("/settings/profile/"),
+    },
+    {
       href: "/settings/providers",
       label: "Providers",
       match: (p) => p === "/settings/providers" || p.startsWith("/settings/providers/"),

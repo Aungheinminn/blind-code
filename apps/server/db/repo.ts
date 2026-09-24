@@ -161,6 +161,32 @@ export const getUserById = async (id: string) => {
   return decryptUserRow(rows[0] ?? null);
 };
 
+export const updateUserProfile = async (
+  userId: string,
+  patch: { displayName?: string; email?: string; avatarUrl?: string | null },
+) => {
+  if (!db) return null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
+export const updateUserPasswordHash = async (
+  userId: string,
+  passwordHash: string,
+) => {
+  if (!db) return null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
 export const setUserSupabaseIntegration = async (
   userId: string,
   integration: SupabaseAccountIntegration,
