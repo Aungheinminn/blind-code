@@ -1,7 +1,13 @@
 import type { Elysia } from "elysia";
 import { z } from "zod";
 import { hasDb } from "../db/client";
-import { createUser, findUserByEmail } from "../db/repo";
+import {
+  createUser,
+  findUserByEmail,
+  getUserById,
+  updateUserPasswordHash,
+  updateUserProfile,
+} from "../db/repo";
 import { hashPassword, verifyPassword } from "../services/password";
 import {
   buildClearCookie,
@@ -22,6 +28,22 @@ const signupSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(1).max(200),
+});
+
+const profileSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(120).optional(),
+    email: z.string().email().max(255).optional(),
+    avatarUrl: z.string().url().max(2000).nullable().optional(),
+    currentPassword: z.string().min(1).max(200).optional(),
+  })
+  .refine((v) => v.displayName !== undefined || v.email !== undefined || v.avatarUrl !== undefined, {
+    message: "no changes",
+  });
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(8).max(200),
 });
 
 const publicUser = (u: { id: string; email: string; displayName: string; avatarUrl: string | null }) => ({
@@ -109,6 +131,93 @@ export const authController = (app: Elysia) =>
         return { error: "unauthorized" };
       }
       return { data: { user } };
+    })
+    .patch("/auth/me", async ({ body, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const authed = await getUserFromRequest(request);
+      if (!authed) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const parsed = profileSchema.safeParse(body);
+      if (!parsed.success) {
+        set.status = 400;
+        return { error: parsed.error.issues[0]?.message ?? "invalid input" };
+      }
+      const { displayName, email, avatarUrl, currentPassword } = parsed.data;
+
+      const full = await getUserById(authed.id);
+      if (!full) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+
+      const emailChanging = email !== undefined && email !== full.email;
+      if (emailChanging) {
+        if (!currentPassword) {
+          set.status = 400;
+          return { error: "current password required to change email" };
+        }
+        const ok = await verifyPassword(currentPassword, full.passwordHash);
+        if (!ok) {
+          set.status = 401;
+          return { error: "current password is incorrect" };
+        }
+        const clash = await findUserByEmail(email);
+        if (clash && clash.id !== full.id) {
+          set.status = 409;
+          return { error: "email already in use" };
+        }
+      }
+
+      const patch: { displayName?: string; email?: string; avatarUrl?: string | null } = {};
+      if (displayName !== undefined) patch.displayName = displayName;
+      if (emailChanging) patch.email = email!;
+      if (avatarUrl !== undefined) patch.avatarUrl = avatarUrl;
+
+      const updated = await updateUserProfile(full.id, patch);
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update profile" };
+      }
+      return { data: { user: publicUser(updated) } };
+    })
+    .post("/auth/password", async ({ body, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const authed = await getUserFromRequest(request);
+      if (!authed) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const parsed = passwordChangeSchema.safeParse(body);
+      if (!parsed.success) {
+        set.status = 400;
+        return { error: parsed.error.issues[0]?.message ?? "invalid input" };
+      }
+      const { currentPassword, newPassword } = parsed.data;
+      const full = await getUserById(authed.id);
+      if (!full) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      const ok = await verifyPassword(currentPassword, full.passwordHash);
+      if (!ok) {
+        set.status = 401;
+        return { error: "current password is incorrect" };
+      }
+      const passwordHash = await hashPassword(newPassword);
+      const updated = await updateUserPasswordHash(full.id, passwordHash);
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update password" };
+      }
+      return { data: { ok: true } };
     })
     .post("/auth/ws-ticket", async ({ request, set }) => {
       const user = await getUserFromRequest(request);
