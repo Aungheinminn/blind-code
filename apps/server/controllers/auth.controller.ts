@@ -3,6 +3,7 @@ import { z } from "zod";
 import { hasDb } from "../db/client";
 import {
   createUser,
+  deleteUser,
   findUserByEmail,
   getUserById,
   updateUserPasswordHash,
@@ -44,6 +45,10 @@ const profileSchema = z
 const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1).max(200),
   newPassword: z.string().min(8).max(200),
+});
+
+const deleteAccountSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
 });
 
 const publicUser = (u: { id: string; email: string; displayName: string; avatarUrl: string | null }) => ({
@@ -217,6 +222,39 @@ export const authController = (app: Elysia) =>
         set.status = 500;
         return { error: "failed to update password" };
       }
+      return { data: { ok: true } };
+    })
+    .delete("/auth/me", async ({ body, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const authed = await getUserFromRequest(request);
+      if (!authed) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const parsed = deleteAccountSchema.safeParse(body);
+      if (!parsed.success) {
+        set.status = 400;
+        return { error: parsed.error.issues[0]?.message ?? "invalid input" };
+      }
+      const full = await getUserById(authed.id);
+      if (!full) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      const ok = await verifyPassword(parsed.data.currentPassword, full.passwordHash);
+      if (!ok) {
+        set.status = 401;
+        return { error: "current password is incorrect" };
+      }
+      const deleted = await deleteUser(full.id);
+      if (!deleted) {
+        set.status = 500;
+        return { error: "failed to delete account" };
+      }
+      set.headers["set-cookie"] = buildClearCookie();
       return { data: { ok: true } };
     })
     .post("/auth/ws-ticket", async ({ request, set }) => {

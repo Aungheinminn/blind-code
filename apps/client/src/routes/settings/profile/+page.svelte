@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { auth, setAuthedUser } from "$lib/stores/auth";
+  import { goto } from "$app/navigation";
+  import { auth, clearAuth, setAuthedUser } from "$lib/stores/auth";
   import { changePassword, updateProfile } from "$lib/api/auth";
   import Toggle from "$lib/components/ui/Toggle.svelte";
+  import DeleteAccountModal from "$lib/components/settings/DeleteAccountModal.svelte";
 
   let displayName = "";
   let email = "";
@@ -23,6 +25,7 @@
 
   let toast = "";
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  let showDeleteModal = false;
 
   const flash = (msg: string) => {
     toast = msg;
@@ -315,7 +318,7 @@
         <button
           type="button"
           class="delete-btn"
-          on:click={() => alert("Account deletion is not yet available.")}
+          on:click={() => (showDeleteModal = true)}
         >
           Delete account…
         </button>
@@ -323,6 +326,18 @@
     </section>
   {/if}
 </div>
+
+{#if showDeleteModal && $auth.status === "authed"}
+  <DeleteAccountModal
+    email={$auth.user.email}
+    on:close={() => (showDeleteModal = false)}
+    on:deleted={() => {
+      showDeleteModal = false;
+      clearAuth();
+      goto("/login");
+    }}
+  />
+{/if}
 
 {#if dirty && $auth.status === "authed"}
   <div

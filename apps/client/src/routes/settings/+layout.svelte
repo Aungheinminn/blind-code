@@ -24,9 +24,9 @@
   $: activePath = $page.url.pathname;
 </script>
 
-<div class="flex min-h-[calc(100vh-3.5rem)]">
+<div class="flex h-[calc(100vh-3.5rem)]">
   <aside
-    class="w-64 shrink-0 border-r py-6 px-3"
+    class="w-64 shrink-0 border-r py-6 px-3 overflow-y-auto"
     style="border-color: var(--border); background-color: var(--bg-secondary);"
   >
     <div
@@ -51,7 +51,7 @@
     </nav>
   </aside>
 
-  <section class="flex-1 min-w-0 px-8 py-8">
+  <section class="flex-1 min-w-0 overflow-y-auto px-8 py-8">
     <div class="max-w-3xl">
       <slot />
     </div>

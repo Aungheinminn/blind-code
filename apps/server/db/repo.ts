@@ -187,6 +187,53 @@ export const updateUserPasswordHash = async (
   return decryptUserRow(updated ?? null);
 };
 
+export const deleteUser = async (userId: string) => {
+  if (!db) return false;
+  return db.transaction(async (tx) => {
+    const projectRows = await tx
+      .select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(eq(schema.projects.ownerId, userId));
+    const projectIds = projectRows.map((r) => r.id);
+    if (projectIds.length > 0) {
+      const sessionRows = await tx
+        .select({ id: schema.agentSessions.id })
+        .from(schema.agentSessions)
+        .where(inArray(schema.agentSessions.projectId, projectIds));
+      const sessionIds = sessionRows.map((r) => r.id);
+      const turnRows = await tx
+        .select({ id: schema.turns.id })
+        .from(schema.turns)
+        .where(inArray(schema.turns.projectId, projectIds));
+      const turnIds = turnRows.map((r) => r.id);
+      if (turnIds.length > 0) {
+        await tx
+          .delete(schema.turnEvents)
+          .where(inArray(schema.turnEvents.turnId, turnIds));
+        await tx.delete(schema.turns).where(inArray(schema.turns.id, turnIds));
+      }
+      if (sessionIds.length > 0) {
+        await tx
+          .delete(schema.toolCallCache)
+          .where(inArray(schema.toolCallCache.sessionId, sessionIds));
+        await tx
+          .delete(schema.agentActions)
+          .where(inArray(schema.agentActions.sessionId, sessionIds));
+        await tx
+          .delete(schema.agentSessions)
+          .where(inArray(schema.agentSessions.id, sessionIds));
+      }
+      await tx.delete(schema.files).where(inArray(schema.files.projectId, projectIds));
+      await tx.delete(schema.projects).where(eq(schema.projects.ownerId, userId));
+    }
+    const deleted = await tx
+      .delete(schema.users)
+      .where(eq(schema.users.id, userId))
+      .returning({ id: schema.users.id });
+    return deleted.length > 0;
+  });
+};
+
 export const setUserSupabaseIntegration = async (
   userId: string,
   integration: SupabaseAccountIntegration,
