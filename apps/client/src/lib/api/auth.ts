@@ -43,5 +43,11 @@ export const changePassword = (currentPassword: string, newPassword: string) =>
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 
+export const deleteAccount = (currentPassword: string) =>
+  fetchJson<{ ok: boolean }>("/auth/me", {
+    method: "DELETE",
+    body: JSON.stringify({ currentPassword }),
+  });
+
 export const getWsTicket = () =>
   fetchJson<{ ticket: string; expiresAt: number }>("/auth/ws-ticket", { method: "POST" });
