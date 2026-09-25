@@ -541,7 +541,6 @@ export const recordAgentAction = async (
 
 export type HistoryPart =
   | { kind: "text"; text: string }
-  | { kind: "reasoning"; text: string }
   | { kind: "tool"; id: string; name: string; input: unknown; output?: unknown };
 
 export type HistoryMessage = {
@@ -642,9 +641,8 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
       }
 
       if (row.actionType === "assistant_reasoning") {
-        const t = typeof payload.text === "string" ? payload.text : "";
-        if (!t) continue;
-        a.parts.push({ kind: "reasoning", text: t });
+        // Legacy: older sessions persisted reasoning blocks; reasoning is no
+        // longer surfaced in the UI, so drop them on hydration.
         continue;
       }
 

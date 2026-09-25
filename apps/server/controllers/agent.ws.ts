@@ -192,17 +192,12 @@ export const agentController = (app: Elysia) =>
         }
 
         const textBlocks = new Map<string, string>();
-        const reasoningBlocks = new Map<string, string>();
         const pendingWrites = new Map<string, { path: string; content: string }>();
         const pendingDeletes = new Map<string, { path: string }>();
 
-        const persistBlock = async (
-          kind: "assistant_text" | "assistant_reasoning",
-          id: string,
-          text: string,
-        ) => {
+        const persistBlock = async (id: string, text: string) => {
           if (!sessionId || !text) return;
-          await recordAgentAction(sessionId, kind, {
+          await recordAgentAction(sessionId, "assistant_text", {
             summary: text.slice(0, 200),
             payload: { text, blockId: id },
           });
@@ -211,18 +206,11 @@ export const agentController = (app: Elysia) =>
         const flushTextBlock = async (id: string) => {
           const text = textBlocks.get(id);
           textBlocks.delete(id);
-          if (text) await persistBlock("assistant_text", id, text);
-        };
-
-        const flushReasoningBlock = async (id: string) => {
-          const text = reasoningBlocks.get(id);
-          reasoningBlocks.delete(id);
-          if (text) await persistBlock("assistant_reasoning", id, text);
+          if (text) await persistBlock(id, text);
         };
 
         const flushAllBlocks = async () => {
           for (const id of [...textBlocks.keys()]) await flushTextBlock(id);
-          for (const id of [...reasoningBlocks.keys()]) await flushReasoningBlock(id);
         };
 
         const publish = async (event: CoderEvent | Record<string, unknown>) => {
@@ -340,18 +328,6 @@ export const agentController = (app: Elysia) =>
               break;
             case "text-end":
               await flushTextBlock(event.id);
-              break;
-            case "reasoning-start":
-              reasoningBlocks.set(event.id, "");
-              break;
-            case "reasoning-delta":
-              reasoningBlocks.set(
-                event.id,
-                (reasoningBlocks.get(event.id) ?? "") + event.text,
-              );
-              break;
-            case "reasoning-end":
-              await flushReasoningBlock(event.id);
               break;
             case "tool-call":
               await flushAllBlocks();

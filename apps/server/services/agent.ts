@@ -315,16 +315,8 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
           emit(opts.onEvent, { type: "text-end", id: (chunk as any).id });
           break;
         case "reasoning-start" as any:
-          emit(opts.onEvent, { type: "reasoning-start", id: (chunk as any).id });
-          break;
-        case "reasoning-delta" as any: {
-          const text = (chunk as any).delta ?? (chunk as any).text ?? "";
-          if (text)
-            emit(opts.onEvent, { type: "reasoning-delta", id: (chunk as any).id, text });
-          break;
-        }
+        case "reasoning-delta" as any:
         case "reasoning-end" as any:
-          emit(opts.onEvent, { type: "reasoning-end", id: (chunk as any).id });
           break;
         case "tool-call":
           emit(opts.onEvent, {

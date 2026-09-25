@@ -15,7 +15,6 @@
   type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
   type RenderGroup =
     | { kind: "text"; text: string; lastIndex: number }
-    | { kind: "reasoning"; text: string; lastIndex: number }
     | { kind: "tools"; calls: ToolPart[]; lastIndex: number }
     | { kind: "chip"; label: string; tone: ChipTone; lastIndex: number };
 
@@ -33,7 +32,7 @@
       } else if (part.kind === "chip") {
         out.push({ kind: "chip", label: part.label, tone: part.tone, lastIndex: i });
       } else {
-        out.push({ kind: part.kind, text: part.text, lastIndex: i });
+        out.push({ kind: "text", text: part.text, lastIndex: i });
       }
     });
     return out;
@@ -62,24 +61,11 @@
     !parts.some(
       (p) =>
         (p.kind === "text" && p.text.length > 0) ||
-        (p.kind === "reasoning" && p.text.length > 0) ||
         p.kind === "tool" ||
         p.kind === "chip",
     );
   $: meta = toolCount > 0 ? `ran ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
 
-  // Reasoning collapse state, keyed by part index. A reasoning part is
-  // considered "active" (streaming, inline) when it's the last group in the
-  // message; once anything follows, it collapses to a pill with a toggle.
-  let manualExpanded: Record<number, boolean> = {};
-  const toggleReasoning = (partIndex: number) => {
-    const idx = groups.findIndex(
-      (g) => g.kind === "reasoning" && g.lastIndex === partIndex,
-    );
-    const isLast = idx === groups.length - 1;
-    const current = partIndex in manualExpanded ? manualExpanded[partIndex] : isLast;
-    manualExpanded = { ...manualExpanded, [partIndex]: !current };
-  };
 </script>
 
 <div class="flex flex-col gap-2.5 message-rise">
@@ -110,7 +96,6 @@
   {/if}
 
   {#each groups as group, gi (gi)}
-    {@const isLastGroup = gi === groups.length - 1}
     {#if group.kind === "text"}
       {#if group.text}
         <div
@@ -120,37 +105,6 @@
           {group.text}
         </div>
       {/if}
-    {:else if group.kind === "reasoning" && group.text}
-      {@const partIndex = group.lastIndex}
-      {@const expanded = partIndex in manualExpanded ? manualExpanded[partIndex] : isLastGroup}
-      <button
-        type="button"
-        class="reasoning-toggle flex items-start gap-1.5 text-left italic w-full min-w-0"
-        style="color: var(--text-tertiary); font-size: 13.5px; line-height: 1.7; letter-spacing: -0.003em;"
-        on:click|preventDefault|stopPropagation={() => toggleReasoning(partIndex)}
-        aria-expanded={expanded}
-      >
-        <svg
-          class="shrink-0"
-          width="10"
-          height="10"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="margin-top: 7px; transform: rotate({expanded ? 90 : 0}deg); transition: transform 150ms;"
-          aria-hidden="true"
-        >
-          <polyline points="4 2 8 6 4 10" />
-        </svg>
-        {#if expanded}
-          <span class="whitespace-pre-wrap break-words flex-1 min-w-0">{group.text}</span>
-        {:else}
-          <span class="truncate flex-1 min-w-0">{group.text}</span>
-        {/if}
-      </button>
     {:else if group.kind === "tools"}
       <ToolCallList calls={group.calls} />
     {:else if group.kind === "chip"}
@@ -207,18 +161,6 @@
   @keyframes rise {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
-  }
-  .reasoning-toggle {
-    background: transparent;
-    border: 0;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    cursor: pointer;
-    appearance: none;
-  }
-  .reasoning-toggle:hover {
-    color: var(--text-secondary);
   }
   .retry-btn {
     transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;

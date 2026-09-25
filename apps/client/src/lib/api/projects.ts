@@ -100,7 +100,6 @@ export const deleteProject = (id: string) =>
 
 export type HistoryPart =
   | { kind: "text"; text: string }
-  | { kind: "reasoning"; text: string }
   | { kind: "tool"; id: string; name: string; input: unknown; output?: unknown };
 
 export type HistoryMessage = {
