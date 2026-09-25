@@ -97,11 +97,13 @@ Narration:
 
 Deciding what to do:
 - BUILD or CHANGE request when NO plan exists yet: call plan_task first with a one-sentence description, then work through the returned todos.
-- SMALL EXTENSION while a plan is already active (user asks for something that naturally fits current scope — "also add X to the list", "handle the empty state too", "put a reject button on each row"): call add_todo to append a single new todo, then do the work. Do NOT call plan_task — that would regenerate the whole plan unnecessarily.
-- LARGER NEW WORK or a shift in direction ("now let's add auth", "redesign the whole app"): call plan_task. Carry-forward will preserve any unfinished todos from the current plan.
-- CONTINUE or RESUME request ("continue", "keep going", "go on", "proceed", "next", "sry my bad continue", any synonym or filler variant): do NOT call plan_task or add_todo. Read the plan in your system context, find the first unfinished todo, resume.
-- MIXED continue + new work ("continue and also add X", "keep going but also do Y", "go on, plus add Z"): recognize the mixed intent. Call add_todo FIRST to track the new item (so it appears in the plan tray immediately), THEN resume the existing plan as normal. Do NOT silently bundle the new work into an existing todo — the user asked for a distinct addition, track it distinctly. This applies to any continue synonym paired with any new-work signal (also / plus / and / a new imperative like "add" / "make" / "fix").
-- PURE QUESTION with no code intent ("what does src/App.tsx do?"): read the relevant files, respond in text, do not modify anything.
+- SMALL EXTENSION while a plan is UNFINISHED (user asks for something that naturally fits current scope — "also add X to the list", "handle the empty state too", "put a reject button on each row"): call add_todo to append a single new todo, then do the work. Do NOT call plan_task — that would regenerate the whole plan unnecessarily.
+- LARGER NEW WORK or a shift in direction while a plan is UNFINISHED ("now let's add auth", "redesign the whole app"): call plan_task. Carry-forward will preserve any unfinished todos from the current plan.
+- ANY build/change request when the current plan is COMPLETE (every todo [done] or [skipped]): call plan_task for a fresh scope. Do NOT call add_todo — the existing plan is closed and add_todo will be rejected. Complete plans do not accept extensions.
+- CONTINUE or RESUME request ("continue", "keep going", "go on", "proceed", "next", "sry my bad continue", any synonym or filler variant) while a plan is UNFINISHED: do NOT call plan_task or add_todo. Read the plan in your system context, find the first unfinished todo, resume.
+- CONTINUE request when the current plan is COMPLETE, OR when NO plan exists: do NOT call any tool. Respond briefly that there is nothing in progress and ask the user what they want to build or change next.
+- MIXED continue + new work ("continue and also add X", "keep going but also do Y", "go on, plus add Z"): recognize the mixed intent. If the plan is unfinished, call add_todo FIRST to track the new item (so it appears in the plan tray immediately), THEN resume as normal. If the plan is complete, ignore the "continue" — treat it as a fresh build request and call plan_task. Do NOT silently bundle the new work into an existing todo.
+- PURE QUESTION with no code intent ("what does src/App.tsx do?", "does anything look broken?"): read the relevant files, respond in text, do not modify anything. You may call verify_task if the user explicitly asks for a review.
 - After a substantial multi-file change, you MAY call verify_task once to sanity-check. Skip it for single-line tweaks — verification isn't free.
 - If verify_task reports blocking issues, fix them, then stop.
 
@@ -121,6 +123,17 @@ Tools:
 - verify_task — sanity-check the last change (call at most once per turn)
 Do not use run_command.`;
 
+const isPlanComplete = (
+  plan: Plan,
+  statuses?: Record<string, PlanTodoStatus>,
+): boolean => {
+  if (!plan.todos.length) return false;
+  return plan.todos.every((t) => {
+    const s = statuses?.[t.id] ?? "pending";
+    return s === "done" || s === "skipped";
+  });
+};
+
 const buildPlanAppendix = (
   plan: Plan,
   statuses?: Record<string, PlanTodoStatus>,
@@ -132,11 +145,17 @@ const buildPlanAppendix = (
       return `- [${status}] ${t.id}: ${t.title}${rationale}`;
     })
     .join("\n");
+  const complete = isPlanComplete(plan, statuses);
+  const banner = complete
+    ? "\n\n>>> PLAN COMPLETE — every todo is [done] or [skipped]. This plan is closed. Any new build/change request must call plan_task for a fresh plan; add_todo will be rejected. A bare 'continue' should be answered in text — there is nothing in progress. <<<"
+    : "";
   const carryForwardNote =
-    statuses && Object.values(statuses).some((s) => s === "done" || s === "skipped")
+    !complete &&
+    statuses &&
+    Object.values(statuses).some((s) => s === "done" || s === "skipped")
       ? "\n\nSome todos are already [done] or [skipped] from prior turns — do NOT re-execute them. Start from the first [pending] or [active] todo."
       : "";
-  return `\n\nA plan is active for this project.\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
+  return `\n\nA plan is active for this project.${banner}\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
 };
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
@@ -218,6 +237,15 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
       execute: async ({ title, rationale }) => {
         if (!opts.toolContext.dbProjectId) {
           return { error: "no project — cannot add todo" };
+        }
+        if (
+          opts.existingPlan &&
+          isPlanComplete(opts.existingPlan, opts.existingPlanStatuses)
+        ) {
+          return {
+            error:
+              "current plan is complete — call plan_task to start a fresh plan for the new work",
+          };
         }
         try {
           const added = await addTodoToLatestPlan(opts.toolContext.dbProjectId, {
