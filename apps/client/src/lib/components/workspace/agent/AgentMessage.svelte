@@ -154,13 +154,17 @@
     {:else if group.kind === "tools"}
       <ToolCallList calls={group.calls} />
     {:else if group.kind === "chip"}
-      <span
-        class="phase-chip self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider"
-        style={chipStyle(group.tone)}
-      >
-        <span class="chip-dot" aria-hidden="true"></span>
-        {group.label}
-      </span>
+      {#if group.tone === "planner" || group.tone === "coder"}
+        <ThinkingIndicator label={group.label} />
+      {:else}
+        <span
+          class="phase-chip self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider"
+          style={chipStyle(group.tone)}
+        >
+          <span class="chip-dot" aria-hidden="true"></span>
+          {group.label}
+        </span>
+      {/if}
     {/if}
   {/each}
 
