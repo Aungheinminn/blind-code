@@ -20,7 +20,6 @@ export type ChipTone = "planner" | "coder" | "router" | "verifier" | "error";
 
 export type MessagePart =
   | { kind: "text"; id?: string; text: string }
-  | { kind: "reasoning"; id?: string; text: string }
   | { kind: "chip"; label: string; tone: ChipTone }
   | ToolPart;
 
@@ -295,61 +294,42 @@ const updateAgentMessage = (mutate: (m: AgentMessage) => AgentMessage) => {
 
 const mergeStreamPart = (
   parts: MessagePart[],
-  kind: "text" | "reasoning",
   id: string | undefined,
   delta: string,
 ): MessagePart[] => {
   if (id) {
-    const existingIdx = parts.findIndex((p) => p.kind === kind && p.id === id);
+    const existingIdx = parts.findIndex((p) => p.kind === "text" && p.id === id);
     if (existingIdx >= 0) {
-      const existing = parts[existingIdx] as { kind: typeof kind; id?: string; text: string };
-      const updated: MessagePart = { kind, id, text: existing.text + delta };
+      const existing = parts[existingIdx] as { kind: "text"; id?: string; text: string };
+      const updated: MessagePart = { kind: "text", id, text: existing.text + delta };
       return [...parts.slice(0, existingIdx), updated, ...parts.slice(existingIdx + 1)];
     }
-    return [...parts, { kind, id, text: delta }];
+    return [...parts, { kind: "text", id, text: delta }];
   }
   const last = parts[parts.length - 1];
-  if (last && last.kind === kind && !last.id) {
-    return [...parts.slice(0, -1), { kind, text: last.text + delta }];
+  if (last && last.kind === "text" && !last.id) {
+    return [...parts.slice(0, -1), { kind: "text", text: last.text + delta }];
   }
-  return [...parts, { kind, text: delta }];
+  return [...parts, { kind: "text", text: delta }];
 };
 
-const startStreamPart = (
-  parts: MessagePart[],
-  kind: "text" | "reasoning",
-  id: string,
-): MessagePart[] => {
-  if (parts.some((p) => p.kind === kind && p.id === id)) return parts;
-  return [...parts, { kind, id, text: "" }];
+const startStreamPart = (parts: MessagePart[], id: string): MessagePart[] => {
+  if (parts.some((p) => p.kind === "text" && p.id === id)) return parts;
+  return [...parts, { kind: "text", id, text: "" }];
 };
 
 const appendText = (id: string | undefined, delta: string) => {
   updateAgentMessage((m) => ({
     ...m,
     content: m.content + delta,
-    parts: mergeStreamPart(m.parts ?? [], "text", id, delta),
-  }));
-};
-
-const appendReasoning = (id: string | undefined, delta: string) => {
-  updateAgentMessage((m) => ({
-    ...m,
-    parts: mergeStreamPart(m.parts ?? [], "reasoning", id, delta),
+    parts: mergeStreamPart(m.parts ?? [], id, delta),
   }));
 };
 
 const startTextPart = (id: string) => {
   updateAgentMessage((m) => ({
     ...m,
-    parts: startStreamPart(m.parts ?? [], "text", id),
-  }));
-};
-
-const startReasoningPart = (id: string) => {
-  updateAgentMessage((m) => ({
-    ...m,
-    parts: startStreamPart(m.parts ?? [], "reasoning", id),
+    parts: startStreamPart(m.parts ?? [], id),
   }));
 };
 
@@ -508,14 +488,7 @@ const handleEvent = (raw: unknown) => {
     case "text-end":
       break;
     case "reasoning-start":
-      if (typeof event.id === "string") startReasoningPart(event.id);
-      break;
     case "reasoning-delta":
-      appendReasoning(
-        typeof event.id === "string" ? event.id : undefined,
-        event.text ?? "",
-      );
-      break;
     case "reasoning-end":
       break;
     case "tool-call":

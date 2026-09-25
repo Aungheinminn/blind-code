@@ -12,9 +12,6 @@ export type CoderEvent =
   | { type: "text-start"; id: string }
   | { type: "text-delta"; id: string; text: string }
   | { type: "text-end"; id: string }
-  | { type: "reasoning-start"; id: string }
-  | { type: "reasoning-delta"; id: string; text: string }
-  | { type: "reasoning-end"; id: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
   | { type: "tool-result"; toolCallId: string; toolName: string; output: unknown }
   | { type: "step-finish"; finishReason: string }
@@ -162,16 +159,8 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
           opts.onEvent({ type: "text-end", id: (chunk as any).id });
           break;
         case "reasoning-start" as any:
-          opts.onEvent({ type: "reasoning-start", id: (chunk as any).id });
-          break;
-        case "reasoning-delta" as any: {
-          const text = (chunk as any).delta ?? (chunk as any).text ?? "";
-          if (text)
-            opts.onEvent({ type: "reasoning-delta", id: (chunk as any).id, text });
-          break;
-        }
+        case "reasoning-delta" as any:
         case "reasoning-end" as any:
-          opts.onEvent({ type: "reasoning-end", id: (chunk as any).id });
           break;
         case "tool-call":
           opts.onEvent({
