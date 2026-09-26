@@ -18,7 +18,11 @@ import {
   listAttachedSupabaseRefsForOwner,
   resolveProjectId,
   getUserById,
+  getActiveDesignTemplateForProject,
+  setDesignTemplateForProject,
 } from "../db/repo";
+import { templateToCss } from "../services/designTemplate";
+import type { DesignTemplateFrontmatter } from "@vibe/shared";
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
 import { generateProjectTitle } from "../services/titler";
@@ -372,6 +376,48 @@ export const projectController = (app: Elysia) =>
         files[f.path] = f.content;
       }
       return { data: files };
+    })
+    .get("/projects/:id/design-template", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const tpl = await getActiveDesignTemplateForProject(params.id, user.id);
+      if (!tpl) {
+        set.status = 404;
+        return { error: "project or design template not found" };
+      }
+      const tokens = (tpl.parsedTokens ?? {}) as DesignTemplateFrontmatter;
+      const css = templateToCss(tokens);
+      return {
+        data: {
+          id: tpl.id,
+          slug: tpl.slug,
+          name: tpl.name,
+          description: tpl.description,
+          origin: tpl.origin,
+          css,
+          tokens,
+        },
+      };
+    })
+    .put("/projects/:id/design-template", async ({ params, body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const raw = (body as Record<string, unknown>) ?? {};
+      const rawId = raw.designTemplateId;
+      const designTemplateId =
+        rawId === null || rawId === "" ? null : typeof rawId === "string" ? rawId : undefined;
+      if (designTemplateId === undefined) {
+        set.status = 400;
+        return { error: "designTemplateId must be a uuid string or null" };
+      }
+      const ok = await setDesignTemplateForProject(params.id, user.id, designTemplateId);
+      if (!ok) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: { id: params.id, designTemplateId } };
     })
     .delete("/projects/:id", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

@@ -4,6 +4,7 @@ import { loadConnect, providersState } from "./connect";
 import { TIER_MODELS, providerForModel } from "$lib/tierModels";
 import { getWsTicket } from "$lib/api/auth";
 import {
+  getProjectDesignTemplate,
   getProjectFiles,
   getProjectHistory,
   type PublicSupabaseIntegration,
@@ -104,16 +105,19 @@ selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
 export const projectIntegration = writable<PublicSupabaseIntegration | null>(null);
+export const activeDesignTemplateCss = writable<string | null>(null);
+export const activeDesignTemplateName = writable<string | null>(null);
 
 export const assembledFiles = derived(
-  [projectFiles, projectIntegration],
-  ([$files, $integration]) =>
+  [projectFiles, projectIntegration, activeDesignTemplateCss],
+  ([$files, $integration, $designCss]) =>
     Object.keys($files).length === 0
       ? {}
       : assembleReactProject($files, {
           supabase: $integration
             ? { url: $integration.url, anonKey: $integration.anonKey }
             : null,
+          designCss: $designCss,
         }),
 );
 
@@ -142,6 +146,23 @@ export const loadProjectFiles = async (projectId: string): Promise<void> => {
   } catch (e) {
     console.warn("Failed to load project files", e);
     projectFiles.set({});
+  }
+};
+
+export const loadDesignTemplate = async (projectId: string): Promise<void> => {
+  try {
+    const tpl = await getProjectDesignTemplate(projectId);
+    if (tpl) {
+      activeDesignTemplateCss.set(tpl.css);
+      activeDesignTemplateName.set(tpl.name);
+    } else {
+      activeDesignTemplateCss.set(null);
+      activeDesignTemplateName.set(null);
+    }
+  } catch (e) {
+    console.warn("Failed to load design template", e);
+    activeDesignTemplateCss.set(null);
+    activeDesignTemplateName.set(null);
   }
 };
 
@@ -200,6 +221,8 @@ export const resetWorkspace = () => {
   resetPlan();
   projectFiles.set({});
   projectIntegration.set(null);
+  activeDesignTemplateCss.set(null);
+  activeDesignTemplateName.set(null);
   currentAgentMessageId = null;
   activeTurnId = null;
   activeProjectId = null;

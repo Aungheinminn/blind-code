@@ -96,6 +96,7 @@ export type SupabaseInject = {
 
 export type AssembleOptions = {
   supabase?: SupabaseInject | null;
+  designCss?: string | null;
 };
 
 const escapeJsString = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -114,6 +115,10 @@ export const assembleReactProject = (
   opts: AssembleOptions = {},
 ): Record<string, string> => {
   const files: Record<string, string> = { ...SCAFFOLD_FILES };
+
+  if (opts.designCss) {
+    files["/src/index.css"] = opts.designCss;
+  }
 
   for (const [path, content] of Object.entries(raw)) {
     if (!path) continue;
