@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from "svelte";
 
   export let placement: "up" | "down" = "up";
+  export let align: "left" | "right" = "right";
   export let disabled = false;
   export let menuMinWidth = 220;
 
@@ -54,6 +55,8 @@
       class="menu"
       class:menu--up={placement === "up"}
       class:menu--down={placement === "down"}
+      class:menu--left={align === "left"}
+      class:menu--right={align === "right"}
       style="min-width: {menuMinWidth}px;"
       role="listbox"
     >
@@ -70,7 +73,6 @@
   }
   .menu {
     position: absolute;
-    right: 0;
     padding: 6px;
     border-radius: 10px;
     border: 1px solid var(--border);
@@ -80,6 +82,12 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+  }
+  .menu--right {
+    right: 0;
+  }
+  .menu--left {
+    left: 0;
   }
   .menu--up {
     bottom: calc(100% + 6px);

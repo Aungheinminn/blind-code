@@ -89,7 +89,7 @@
   });
 </script>
 
-<Dropdown placement="up" {disabled} menuMinWidth={200}>
+<Dropdown placement="up" align="left" {disabled} menuMinWidth={200}>
   <button
     slot="trigger"
     let:open

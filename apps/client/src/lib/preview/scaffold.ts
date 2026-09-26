@@ -61,19 +61,75 @@ createRoot(document.getElementById("root")!).render(
 );
 `;
 
-export const DEFAULT_APP_TSX = `import { Card, CardContent } from "@/components/ui/card";
+export const DEFAULT_APP_TSX = `import { useState } from "react";
+import { Button } from "@/components/ui/button";
+
+const ViteLogo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 256 257" aria-label="Vite logo">
+    <defs>
+      <linearGradient id="vite-a" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%">
+        <stop offset="0%" stopColor="#41D1FF" />
+        <stop offset="100%" stopColor="#BD34FE" />
+      </linearGradient>
+      <linearGradient id="vite-b" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%">
+        <stop offset="0%" stopColor="#FFEA83" />
+        <stop offset="8.333%" stopColor="#FFDD35" />
+        <stop offset="100%" stopColor="#FFA800" />
+      </linearGradient>
+    </defs>
+    <path fill="url(#vite-a)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z" />
+    <path fill="url(#vite-b)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.607c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028 72.516-144.72c1.215-2.423-.88-5.184-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z" />
+  </svg>
+);
+
+const ReactLogo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="-11.5 -10.23174 23 20.46348" aria-label="React logo">
+    <circle cx="0" cy="0" r="2.05" fill="#61dafb" />
+    <g stroke="#61dafb" strokeWidth="1" fill="none">
+      <ellipse rx="11" ry="4.2" />
+      <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+      <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+    </g>
+  </svg>
+);
 
 export default function App() {
+  const [count, setCount] = useState(0);
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="max-w-md w-full">
-        <CardContent className="pt-6 text-center space-y-2">
-          <h1 className="text-lg font-semibold text-foreground">Preview ready</h1>
-          <p className="text-sm text-muted-foreground">
-            Ask the agent to build something.
-          </p>
-        </CardContent>
-      </Card>
+    <main className="min-h-screen flex flex-col items-center justify-center gap-8 bg-background text-foreground p-8">
+      <div className="flex items-center gap-10">
+        <a
+          href="https://vite.dev"
+          target="_blank"
+          rel="noreferrer"
+          className="transition-opacity hover:opacity-80"
+        >
+          <ViteLogo />
+        </a>
+        <a
+          href="https://react.dev"
+          target="_blank"
+          rel="noreferrer"
+          className="transition-opacity hover:opacity-80"
+        >
+          <ReactLogo />
+        </a>
+      </div>
+
+      <h1 className="text-4xl font-bold tracking-tight">Vite + React</h1>
+
+      <div className="flex flex-col items-center gap-3">
+        <Button onClick={() => setCount((c) => c + 1)}>
+          count is {count}
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          Edit <code className="font-mono text-foreground">src/App.tsx</code> and save to test HMR
+        </p>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Click on the Vite and React logos to learn more
+      </p>
     </main>
   );
 }
