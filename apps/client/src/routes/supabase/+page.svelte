@@ -88,7 +88,7 @@
   };
 </script>
 
-<div class="mx-auto max-w-5xl px-6 py-8">
+<div class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20">
   <div class="mb-6 flex items-start justify-between gap-4">
     <div>
       <h1 class="text-xl font-semibold">Supabase</h1>

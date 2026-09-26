@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Dropdown from "$lib/components/ui/Dropdown.svelte";
+  import { portal } from "$lib/actions/portal";
   import {
     listDesignTemplates,
     setProjectDesignTemplate,
@@ -13,7 +15,7 @@
   export let projectId = "";
   export let disabled = false;
 
-  let open = false;
+  let modalOpen = false;
   let templates: DesignTemplateSummary[] = [];
   let loading = false;
   let loaded = false;
@@ -47,29 +49,29 @@
     }
   };
 
-  const openPicker = async () => {
-    if (disabled || !projectId) return;
-    open = true;
+  const openModal = async (close: () => void) => {
+    close();
+    modalOpen = true;
     await ensureLoaded();
   };
 
-  const closePicker = () => {
+  const closeModal = () => {
     if (saving) return;
-    open = false;
+    modalOpen = false;
     error = "";
   };
 
   const pick = async (t: DesignTemplateSummary) => {
     if (!projectId || saving) return;
     if (t.name === $activeDesignTemplateName) {
-      closePicker();
+      closeModal();
       return;
     }
     saving = true;
     try {
       await setProjectDesignTemplate(projectId, t.id);
       await loadDesignTemplate(projectId);
-      open = false;
+      modalOpen = false;
     } catch (e) {
       error = e instanceof Error ? e.message : "failed to save";
     } finally {
@@ -78,7 +80,7 @@
   };
 
   const onKey = (e: KeyboardEvent) => {
-    if (open && e.key === "Escape") closePicker();
+    if (modalOpen && e.key === "Escape") closeModal();
   };
 
   onMount(() => {
@@ -87,35 +89,68 @@
   });
 </script>
 
-<button
-  type="button"
-  class="trigger"
-  on:click={openPicker}
-  {disabled}
-  aria-haspopup="dialog"
-  aria-label="Choose design template"
-  title="Choose design template"
->
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2.2"
-    stroke-linecap="round"
-    aria-hidden="true"
+<Dropdown placement="up" {disabled} menuMinWidth={200}>
+  <button
+    slot="trigger"
+    let:open
+    let:toggle
+    type="button"
+    class="trigger"
+    class:trigger--open={open}
+    on:click={toggle}
+    {disabled}
+    aria-haspopup="listbox"
+    aria-expanded={open}
+    aria-label="Choose design template"
+    title="Choose design template"
   >
-    <path d="M12 5v14" />
-    <path d="M5 12h14" />
-  </svg>
-</button>
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  </button>
 
-{#if open}
+  <svelte:fragment let:close>
+    <button
+      type="button"
+      class="dropdown-row"
+      on:click={() => openModal(close)}
+    >
+      <span class="dropdown-row-label plus-label">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+        </svg>
+        Choose design template
+      </span>
+    </button>
+  </svelte:fragment>
+</Dropdown>
+
+{#if modalOpen}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
   <div
+    use:portal
     class="backdrop"
-    on:click|self={closePicker}
+    on:click|self={closeModal}
     role="dialog"
     aria-modal="true"
     aria-labelledby="design-picker-title"
@@ -127,7 +162,7 @@
         <button
           type="button"
           class="close"
-          on:click={closePicker}
+          on:click={closeModal}
           disabled={saving}
           aria-label="Close"
           title="Close"
@@ -245,9 +280,9 @@
     height: 22px;
     padding: 0;
     border-radius: 6px;
-    border: 1px solid var(--border);
-    background-color: var(--bg-tertiary);
-    color: var(--text-secondary);
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text-tertiary);
     cursor: pointer;
     outline: none;
     transition:
@@ -255,19 +290,28 @@
       border-color 150ms ease,
       background-color 150ms ease;
   }
-  .trigger:hover:not(:disabled) {
+  .trigger:hover:not(:disabled),
+  .trigger--open {
     color: var(--text-primary);
-    border-color: var(--border-strong);
+    background-color: var(--bg-tertiary);
+    border-color: var(--border);
   }
   .trigger:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
+  .plus-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: inherit;
+  }
+
   .backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;

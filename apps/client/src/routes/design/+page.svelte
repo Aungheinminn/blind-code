@@ -44,7 +44,7 @@
   <title>Design — Blind Code</title>
 </svelte:head>
 
-<section class="page">
+<section class="page w-full max-w-[900px] mx-auto px-6 pt-14 pb-20">
   <header class="header">
     <h1>Design templates</h1>
     <p>
@@ -102,9 +102,6 @@
 
 <style>
   .page {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 48px 24px 64px;
     color: var(--text-primary);
   }
   .header h1 {

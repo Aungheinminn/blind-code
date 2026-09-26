@@ -11,6 +11,12 @@
   const items: NavItem[] = [
     { label: "Home", href: "/", icon: "home", isActive: (p) => p === "/" },
     {
+      label: "Design",
+      href: "/design",
+      icon: "design",
+      isActive: (p) => p === "/design" || p.startsWith("/design/"),
+    },
+    {
       label: "Projects",
       href: "/projects",
       icon: "projects",
@@ -21,12 +27,6 @@
       href: "/supabase",
       icon: "supabase",
       isActive: (p) => p === "/supabase" || p.startsWith("/supabase/"),
-    },
-    {
-      label: "Design",
-      href: "/design",
-      icon: "design",
-      isActive: (p) => p === "/design" || p.startsWith("/design/"),
     },
     {
       label: "Settings",
