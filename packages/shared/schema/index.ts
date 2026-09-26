@@ -4,5 +4,6 @@ export * from "./projects";
 export * from "./fs";
 export * from "./agent";
 export * from "./sampleBuilds";
+export * from "./designTemplates";
 export * from "./relations";
 export * from "./models";
