@@ -18,7 +18,7 @@
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
-  export let template: SandpackTemplate = "vite-react-ts";
+  export let template: SandpackTemplate = "react-ts";
   export let framed: boolean = true;
   export let loading: boolean = false;
 

@@ -1,80 +1,3 @@
-export const VITE_CONFIG = `import path from "path";
-import { fileURLToPath } from "url";
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-});
-`;
-
-export const POSTCSS_CONFIG = `export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-`;
-
-export const TAILWIND_CONFIG = `/** @type {import('tailwindcss').Config} */
-export default {
-  darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-    },
-  },
-  plugins: [],
-};
-`;
-
 export const TSCONFIG = JSON.stringify(
   {
     compilerOptions: {
@@ -88,33 +11,17 @@ export const TSCONFIG = JSON.stringify(
       resolveJsonModule: true,
       isolatedModules: true,
       lib: ["ES2020", "DOM", "DOM.Iterable"],
-      baseUrl: ".",
-      paths: { "@/*": ["./src/*"] },
     },
-    include: ["src"],
+    include: ["./**/*"],
   },
   null,
   2,
 );
 
-export const INDEX_HTML = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preview</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-`;
-
-export const MAIN_TSX = `import { StrictMode } from "react";
+export const INDEX_TSX = `import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import "./index.css";
+import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -124,7 +31,7 @@ createRoot(document.getElementById("root")!).render(
 `;
 
 export const DEFAULT_APP_TSX = `import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "./components/ui/button";
 
 const ViteLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 256 257" aria-label="Vite logo">
@@ -185,7 +92,7 @@ export default function App() {
           count is {count}
         </Button>
         <p className="text-sm text-muted-foreground">
-          Edit <code className="font-mono text-foreground">src/App.tsx</code> and save to test HMR
+          Edit <code className="font-mono text-foreground">App.tsx</code> and save to test HMR
         </p>
       </div>
 
@@ -197,7 +104,7 @@ export default function App() {
 }
 `;
 
-export const INDEX_CSS = `@tailwind base;
+export const STYLES_CSS = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -232,6 +139,58 @@ export const INDEX_CSS = `@tailwind base;
 }
 `;
 
+export const TAILWIND_CONFIG = `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: ["class"],
+  content: ["./**/*.{js,ts,jsx,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
+  },
+  plugins: [],
+};
+`;
+
 export const LIB_UTILS_TS = `import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -243,7 +202,7 @@ export function cn(...inputs: ClassValue[]) {
 export const UI_BUTTON_TSX = `import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -292,7 +251,7 @@ export { Button, buttonVariants };
 `;
 
 export const UI_CARD_TSX = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -348,7 +307,7 @@ export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 `;
 
 export const UI_INPUT_TSX = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, type, ...props }, ref) => (
@@ -371,7 +330,7 @@ export { Input };
 export const UI_LABEL_TSX = `import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 const labelVariants = cva(
   "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
@@ -390,16 +349,13 @@ export { Label };
 `;
 
 export const SCAFFOLD_FILES: Record<string, string> = {
-  "/vite.config.ts": VITE_CONFIG,
-  "/postcss.config.js": POSTCSS_CONFIG,
-  "/tailwind.config.js": TAILWIND_CONFIG,
   "/tsconfig.json": TSCONFIG,
-  "/index.html": INDEX_HTML,
-  "/src/main.tsx": MAIN_TSX,
-  "/src/index.css": INDEX_CSS,
-  "/src/lib/utils.ts": LIB_UTILS_TS,
-  "/src/components/ui/button.tsx": UI_BUTTON_TSX,
-  "/src/components/ui/card.tsx": UI_CARD_TSX,
-  "/src/components/ui/input.tsx": UI_INPUT_TSX,
-  "/src/components/ui/label.tsx": UI_LABEL_TSX,
+  "/index.tsx": INDEX_TSX,
+  "/styles.css": STYLES_CSS,
+  "/tailwind.config.js": TAILWIND_CONFIG,
+  "/lib/utils.ts": LIB_UTILS_TS,
+  "/components/ui/button.tsx": UI_BUTTON_TSX,
+  "/components/ui/card.tsx": UI_CARD_TSX,
+  "/components/ui/input.tsx": UI_INPUT_TSX,
+  "/components/ui/label.tsx": UI_LABEL_TSX,
 };

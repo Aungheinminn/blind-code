@@ -1,24 +1,19 @@
 import { DEFAULT_APP_TSX, SCAFFOLD_FILES } from "./scaffold";
 
 const BASE_DEPS: Record<string, string> = {
-  react: "^19.0.0",
-  "react-dom": "^19.0.0",
+  react: "^18.3.1",
+  "react-dom": "^18.3.1",
   clsx: "^2.1.1",
   "tailwind-merge": "^2.6.0",
   "class-variance-authority": "^0.7.1",
   "@radix-ui/react-slot": "^1.1.0",
   "@radix-ui/react-label": "^2.1.0",
   tailwindcss: "^3.4.17",
-  postcss: "^8.4.49",
-  autoprefixer: "^10.4.20",
-  vite: "^5.4.0",
-  "@vitejs/plugin-react": "^4.3.0",
 };
 
 const BASE_DEV_DEPS: Record<string, string> = {
-  "@types/react": "^19.0.0",
-  "@types/react-dom": "^19.0.0",
-  "@types/node": "^22.0.0",
+  "@types/react": "^18.3.12",
+  "@types/react-dom": "^18.3.1",
   typescript: "^5.5.0",
 };
 
@@ -73,23 +68,20 @@ const RESERVED_PATHS = new Set([
   "/package.json",
   "tsconfig.json",
   "/tsconfig.json",
-  "vite.config.ts",
-  "/vite.config.ts",
-  "postcss.config.js",
-  "/postcss.config.js",
   "tailwind.config.js",
   "/tailwind.config.js",
-  "index.html",
-  "/index.html",
+  "index.tsx",
+  "/index.tsx",
+  "styles.css",
+  "/styles.css",
 ]);
 
 const normalizePath = (raw: string): string => {
   const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
-  if (withSlash.startsWith("/src/") || withSlash.startsWith("/public/")) {
-    return withSlash;
-  }
-  if (/\.(tsx?|jsx?|css)$/.test(withSlash)) {
-    return `/src${withSlash}`;
+  // Strip a legacy /src/ prefix the agent may still emit — classic-bundler
+  // template expects files at root.
+  if (withSlash.startsWith("/src/")) {
+    return withSlash.slice(4);
   }
   return withSlash;
 };
@@ -122,7 +114,7 @@ export const assembleReactProject = (
   const files: Record<string, string> = { ...SCAFFOLD_FILES };
 
   if (opts.designCss) {
-    files["/src/index.css"] = opts.designCss;
+    files["/styles.css"] = opts.designCss;
   }
 
   for (const [path, content] of Object.entries(raw)) {
@@ -132,16 +124,16 @@ export const assembleReactProject = (
   }
 
   if (
-    !files["/src/App.tsx"] &&
-    !files["/src/App.jsx"] &&
-    !files["/src/App.js"] &&
-    !files["/src/App.ts"]
+    !files["/App.tsx"] &&
+    !files["/App.jsx"] &&
+    !files["/App.js"] &&
+    !files["/App.ts"]
   ) {
-    files["/src/App.tsx"] = DEFAULT_APP_TSX;
+    files["/App.tsx"] = DEFAULT_APP_TSX;
   }
 
   if (opts.supabase) {
-    files["/src/lib/supabase.ts"] = generateSupabaseClient(opts.supabase);
+    files["/lib/supabase.ts"] = generateSupabaseClient(opts.supabase);
   }
 
   const detected = detectDeps(files);
@@ -155,12 +147,6 @@ export const assembleReactProject = (
       name: "vibe-preview",
       private: true,
       version: "0.0.0",
-      type: "module",
-      scripts: {
-        dev: "vite",
-        build: "vite build",
-        preview: "vite preview",
-      },
       dependencies: { ...BASE_DEPS, ...detected },
       devDependencies: BASE_DEV_DEPS,
     },
