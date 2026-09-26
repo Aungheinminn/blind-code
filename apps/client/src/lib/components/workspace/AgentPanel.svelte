@@ -2,7 +2,6 @@
   import { createEventDispatcher } from "svelte";
   import type { AgentMessage, Plan, ProviderInfo, TodoStatus } from "$lib/stores/agent";
   import AgentPanelHeader from "./agent/AgentPanelHeader.svelte";
-  import ProviderSelector from "./agent/ProviderSelector.svelte";
   import MessageList from "./agent/MessageList.svelte";
   import PromptComposer from "./agent/PromptComposer.svelte";
   import TodoTray from "./TodoTray.svelte";
@@ -13,9 +12,7 @@
   export let messages: AgentMessage[] = [];
   export let isRunning = false;
   export let providers: ProviderInfo[] = [];
-  export let selectedProvider = "";
   export let selectedModel = "";
-  export let modelPlaceholder = "";
   export let statusText = "idle";
   export let plan: Plan | null = null;
   export let todoStatuses: Record<string, TodoStatus> = {};
@@ -29,7 +26,6 @@
     cancel: void;
     retry: void;
     back: void;
-    "provider-change": string;
     "model-change": string;
   }>();
 
@@ -50,18 +46,10 @@
   aria-hidden={!open}
 >
   <AgentPanelHeader
-    {statusText}
     {projectId}
     {projectName}
     on:close={() => dispatch("close")}
     on:back={() => dispatch("back")}
-  />
-
-  <ProviderSelector
-    {providers}
-    {modelPlaceholder}
-    bind:selectedProvider
-    bind:selectedModel
   />
 
   <div class="flex-1 relative flex flex-col min-h-0">
@@ -74,7 +62,10 @@
   <PromptComposer
     {isRunning}
     {statusText}
+    {selectedModel}
+    {providers}
     on:submit={onSubmit}
     on:cancel={() => dispatch("cancel")}
+    on:model-change={(e) => dispatch("model-change", e.detail)}
   />
 </div>

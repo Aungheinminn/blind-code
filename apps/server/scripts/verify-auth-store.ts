@@ -3,12 +3,10 @@ import { tmpdir } from "os";
 import { join } from "path";
 import {
   authFilePath,
-  getStoredEnabledModels,
   getStoredKey,
   last4,
   readAuth,
   removeStoredKey,
-  setStoredEnabledModels,
   setStoredKey,
 } from "../services/authStore";
 
@@ -23,7 +21,6 @@ console.log("initial read (missing file):", empty);
 
 await setStoredKey("anthropic", "  sk-ant-testkey1234  ");
 await setStoredKey("openai", "sk-openai-abcd");
-await setStoredEnabledModels("anthropic", ["claude-sonnet-4-5", "claude-haiku-4-5"]);
 
 const st = await stat(file);
 console.log("mode (want 0600):", (st.mode & 0o777).toString(8));
@@ -36,8 +33,6 @@ console.log("after writes:", JSON.stringify(stored, null, 2));
 
 console.log("getStoredKey anthropic:", await getStoredKey("anthropic"));
 console.log("last4 mask:", last4((await getStoredKey("anthropic"))!));
-console.log("enabled anthropic:", await getStoredEnabledModels("anthropic"));
-console.log("enabled openai (unset):", await getStoredEnabledModels("openai"));
 
 const removed = await removeStoredKey("openai");
 console.log("removed openai:", removed);

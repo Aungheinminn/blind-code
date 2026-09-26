@@ -5,3 +5,4 @@ export * from "./fs";
 export * from "./agent";
 export * from "./sampleBuilds";
 export * from "./relations";
+export * from "./models";

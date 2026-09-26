@@ -6,7 +6,7 @@
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
   import { createProjectFromPrompt } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
-  import { selectedProvider, selectedModel } from "$lib/stores/agent";
+  import { selectedModel } from "$lib/stores/agent";
 
   const PENDING_PROMPT_PREFIX = "vibe-pending-prompt:";
 
@@ -29,9 +29,9 @@
       return;
     }
 
-    const provider = get(selectedProvider);
-    if (!provider) {
-      error = "Pick a provider first.";
+    const model = get(selectedModel);
+    if (!model) {
+      error = "Pick a model first.";
       return;
     }
 
@@ -40,8 +40,7 @@
     try {
       const project = await createProjectFromPrompt({
         prompt: trimmed,
-        provider,
-        model: get(selectedModel) || undefined,
+        model,
         ...(preset ? { name: preset.name, description: preset.description ?? "" } : {}),
       });
       if (!project?.id) throw new Error("Failed to create project.");

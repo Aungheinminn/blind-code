@@ -1,6 +1,7 @@
 import { writable, derived, get } from "svelte/store";
 import { assembleReactProject } from "$lib/preview/reactAssembler";
-import { enabledModels, loadConnect, providersState } from "./connect";
+import { loadConnect, providersState } from "./connect";
+import { TIER_MODELS, providerForModel } from "$lib/tierModels";
 import { getWsTicket } from "$lib/api/auth";
 import {
   getProjectFiles,
@@ -61,7 +62,7 @@ export const messages = writable<AgentMessage[]>([
     id: "welcome",
     role: "agent",
     content:
-      "Hi. Pick a provider on the right, describe what you want to build, and I'll write the files into your sandbox.",
+      "Hi. Describe what you want to build and I'll write the files into your sandbox.",
     timestamp: new Date(),
   },
 ]);
@@ -69,7 +70,6 @@ export const messages = writable<AgentMessage[]>([
 export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
 
-const PROVIDER_KEY = "vibe-selected-provider";
 const MODEL_KEY = "vibe-selected-model";
 
 const readStored = (key: string, fallback: string): string => {
@@ -89,10 +89,17 @@ const writeStored = (key: string, value: string) => {
   } catch {}
 };
 
-export const selectedProvider = writable<string>(readStored(PROVIDER_KEY, "anthropic"));
-export const selectedModel = writable<string>(readStored(MODEL_KEY, ""));
+// Default to the first medium-tier model if nothing is stored.
+const DEFAULT_MODEL =
+  TIER_MODELS.find((m) => m.tier === "medium")?.id ?? TIER_MODELS[0]?.id ?? "";
 
-selectedProvider.subscribe((v) => writeStored(PROVIDER_KEY, v));
+const validateStoredModel = (v: string): string =>
+  TIER_MODELS.some((m) => m.id === v) ? v : DEFAULT_MODEL;
+
+export const selectedModel = writable<string>(
+  validateStoredModel(readStored(MODEL_KEY, DEFAULT_MODEL)),
+);
+
 selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
@@ -204,18 +211,14 @@ export const loadProviders = async () => {
   const list = get(providersState);
   providers.set(list);
 
-  const stored = get(selectedProvider);
-  const configuredMatch = list.find((p) => p.name === stored && p.configured);
-  const fallback = list.find((p) => p.configured);
-  const active = configuredMatch ?? fallback;
-  if (active) {
-    if (active.name !== stored) selectedProvider.set(active.name);
-    const enabled = get(enabledModels)[active.name] ?? [];
-    const currentModel = get(selectedModel);
-    if (enabled.length > 0 && !enabled.includes(currentModel)) {
-      selectedModel.set(enabled[0]);
-    }
-  }
+  // If the currently-selected model's provider has no key configured, pick the
+  // first tier model whose provider IS configured — keeps the composer usable.
+  const configuredNames = new Set(list.filter((p) => p.configured).map((p) => p.name));
+  const currentModel = get(selectedModel);
+  const currentProvider = providerForModel(currentModel);
+  if (currentProvider && configuredNames.has(currentProvider)) return;
+  const fallback = TIER_MODELS.find((m) => configuredNames.has(m.provider));
+  if (fallback) selectedModel.set(fallback.id);
 };
 
 let socket: WebSocket | null = null;
@@ -579,8 +582,7 @@ export const sendPrompt = async (
     ws.send(
       JSON.stringify({
         type: "run",
-        provider: get(selectedProvider),
-        model: get(selectedModel) || undefined,
+        model: get(selectedModel),
         projectId,
         prompt: prompt.trim(),
         history,

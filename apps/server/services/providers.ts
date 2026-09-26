@@ -12,36 +12,18 @@ type StreamTextProviderOptions = NonNullable<
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createMistral } from "@ai-sdk/mistral";
-import { createGroq } from "@ai-sdk/groq";
-import { createXai } from "@ai-sdk/xai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
-import { createCohere } from "@ai-sdk/cohere";
-import { createPerplexity } from "@ai-sdk/perplexity";
-import { createTogetherAI } from "@ai-sdk/togetherai";
-import { createFireworks } from "@ai-sdk/fireworks";
-import { createCerebras } from "@ai-sdk/cerebras";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getStoredKey, last4 } from "./authStore";
 
 const thinkTagMiddleware = extractReasoningMiddleware({ tagName: "think" });
 
+// OpenRouter sometimes proxies models (DeepSeek-R1, Qwen-thinking, GLM) that
+// emit reasoning inside <think>...</think> tags in the plain text stream.
+// Strip those so the transcript doesn't get a wall of think-tag text.
 const emitsThinkTag = (provider: ProviderName, modelId: string): boolean => {
+  if (provider !== "openrouter") return false;
   const id = modelId.toLowerCase();
-  switch (provider) {
-    case "perplexity":
-      return id.startsWith("sonar-reasoning") || id.startsWith("sonar-deep-research");
-    case "openrouter":
-      return id.includes("deepseek-r1") || id.includes("qwen");
-    case "togetherai":
-      return id.includes("deepseek-r1") || id.includes("qwen");
-    case "fireworks":
-      return id.includes("deepseek-r1");
-    case "cerebras":
-      return id.startsWith("qwen") || id.startsWith("deepseek");
-    default:
-      return false;
-  }
+  return id.includes("deepseek-r1") || id.includes("qwen") || id.includes("glm");
 };
 
 const wrapIfThinkTag = (
@@ -53,20 +35,7 @@ const wrapIfThinkTag = (
     ? wrapLanguageModel({ model, middleware: thinkTagMiddleware })
     : model;
 
-export type ProviderName =
-  | "anthropic"
-  | "openai"
-  | "google"
-  | "mistral"
-  | "groq"
-  | "xai"
-  | "deepseek"
-  | "cohere"
-  | "perplexity"
-  | "togetherai"
-  | "fireworks"
-  | "cerebras"
-  | "openrouter";
+export type ProviderName = "anthropic" | "openai" | "google" | "openrouter";
 
 type ProviderEntry = {
   envVar: string;
@@ -77,67 +46,18 @@ type ProviderEntry = {
 export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
   anthropic: {
     envVar: "ANTHROPIC_API_KEY",
-    defaultModel: "claude-sonnet-4-5",
+    defaultModel: "claude-sonnet-4-6",
     build: (id, apiKey) => createAnthropic({ apiKey })(id),
   },
   openai: {
     envVar: "OPENAI_API_KEY",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.6-terra",
     build: (id, apiKey) => createOpenAI({ apiKey }).responses(id),
   },
   google: {
     envVar: "GOOGLE_GENERATIVE_AI_API_KEY",
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     build: (id, apiKey) => createGoogleGenerativeAI({ apiKey })(id),
-  },
-  mistral: {
-    envVar: "MISTRAL_API_KEY",
-    defaultModel: "mistral-large-latest",
-    build: (id, apiKey) => createMistral({ apiKey })(id),
-  },
-  groq: {
-    envVar: "GROQ_API_KEY",
-    defaultModel: "llama-3.3-70b-versatile",
-    build: (id, apiKey) => createGroq({ apiKey })(id),
-  },
-  xai: {
-    envVar: "XAI_API_KEY",
-    defaultModel: "grok-2-latest",
-    build: (id, apiKey) => createXai({ apiKey })(id),
-  },
-  deepseek: {
-    envVar: "DEEPSEEK_API_KEY",
-    defaultModel: "deepseek-chat",
-    build: (id, apiKey) => createDeepSeek({ apiKey })(id),
-  },
-  cohere: {
-    envVar: "COHERE_API_KEY",
-    defaultModel: "command-r-plus",
-    build: (id, apiKey) => createCohere({ apiKey })(id),
-  },
-  perplexity: {
-    envVar: "PERPLEXITY_API_KEY",
-    defaultModel: "sonar-pro",
-    build: (id, apiKey) =>
-      wrapIfThinkTag("perplexity", id, createPerplexity({ apiKey })(id)),
-  },
-  togetherai: {
-    envVar: "TOGETHER_AI_API_KEY",
-    defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    build: (id, apiKey) =>
-      wrapIfThinkTag("togetherai", id, createTogetherAI({ apiKey })(id)),
-  },
-  fireworks: {
-    envVar: "FIREWORKS_API_KEY",
-    defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct",
-    build: (id, apiKey) =>
-      wrapIfThinkTag("fireworks", id, createFireworks({ apiKey })(id)),
-  },
-  cerebras: {
-    envVar: "CEREBRAS_API_KEY",
-    defaultModel: "llama3.3-70b",
-    build: (id, apiKey) =>
-      wrapIfThinkTag("cerebras", id, createCerebras({ apiKey })(id)),
   },
   openrouter: {
     envVar: "OPENROUTER_API_KEY",
@@ -223,16 +143,6 @@ export const getReasoningProviderOptions = (
         return {
           providerOptions: { google: { thinkingConfig: { includeThoughts: true } } },
         };
-      }
-      return {};
-    case "xai":
-      if (id === "grok-3-mini" || id.startsWith("grok-4")) {
-        return { providerOptions: { xai: { reasoningEffort: "medium" } } };
-      }
-      return {};
-    case "groq":
-      if (id.startsWith("deepseek-r1") || id.startsWith("qwen")) {
-        return { providerOptions: { groq: { reasoningFormat: "parsed" } } };
       }
       return {};
     default:
