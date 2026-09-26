@@ -8,8 +8,9 @@ const BASE_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "@radix-ui/react-slot": "^1.1.0",
   "@radix-ui/react-label": "^2.1.0",
-  tailwindcss: "^4.1.0",
-  "@tailwindcss/vite": "^4.1.0",
+  tailwindcss: "^3.4.17",
+  postcss: "^8.4.49",
+  autoprefixer: "^10.4.20",
   vite: "^5.4.0",
   "@vitejs/plugin-react": "^4.3.0",
 };
@@ -74,6 +75,10 @@ const RESERVED_PATHS = new Set([
   "/tsconfig.json",
   "vite.config.ts",
   "/vite.config.ts",
+  "postcss.config.js",
+  "/postcss.config.js",
+  "tailwind.config.js",
+  "/tailwind.config.js",
   "index.html",
   "/index.html",
 ]);
@@ -147,6 +152,9 @@ export const assembleReactProject = (
 
   files["/package.json"] = JSON.stringify(
     {
+      name: "vibe-preview",
+      private: true,
+      version: "0.0.0",
       type: "module",
       scripts: {
         dev: "vite",

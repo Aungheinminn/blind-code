@@ -1,16 +1,78 @@
 export const VITE_CONFIG = `import path from "path";
-import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
 });
+`;
+
+export const POSTCSS_CONFIG = `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+`;
+
+export const TAILWIND_CONFIG = `/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: ["class"],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
+  },
+  plugins: [],
+};
 `;
 
 export const TSCONFIG = JSON.stringify(
@@ -135,8 +197,9 @@ export default function App() {
 }
 `;
 
-export const INDEX_CSS = `@import "tailwindcss";
-@source "./**/*.{ts,tsx,js,jsx,html}";
+export const INDEX_CSS = `@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
@@ -166,29 +229,6 @@ export const INDEX_CSS = `@import "tailwindcss";
     margin: 0;
     font-family: system-ui, -apple-system, sans-serif;
   }
-}
-
-@theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --radius: var(--radius);
 }
 `;
 
@@ -351,6 +391,8 @@ export { Label };
 
 export const SCAFFOLD_FILES: Record<string, string> = {
   "/vite.config.ts": VITE_CONFIG,
+  "/postcss.config.js": POSTCSS_CONFIG,
+  "/tailwind.config.js": TAILWIND_CONFIG,
   "/tsconfig.json": TSCONFIG,
   "/index.html": INDEX_HTML,
   "/src/main.tsx": MAIN_TSX,

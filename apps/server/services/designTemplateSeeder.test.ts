@@ -15,7 +15,7 @@ describe("builtin design templates", () => {
         const parsed = parseTemplate(source);
         expect(parsed.tokens.name).toBeTruthy();
         const css = templateToCss(parsed.tokens);
-        expect(css).toContain("@theme inline");
+        expect(css).toContain("@tailwind base;");
       } catch (err) {
         throw new Error(
           `${file} failed to parse: ${err instanceof Error ? err.message : String(err)}`,

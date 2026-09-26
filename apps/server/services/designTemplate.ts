@@ -296,8 +296,9 @@ export const sanitizeTemplateBody = (body: string): string => {
 
 export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   const lines: string[] = [];
-  lines.push(`@import "tailwindcss";`);
-  lines.push(`@source "./**/*.{ts,tsx,js,jsx,html}";`, "");
+  lines.push(`@tailwind base;`);
+  lines.push(`@tailwind components;`);
+  lines.push(`@tailwind utilities;`, "");
   lines.push("@layer base {", "  :root {");
 
   const shadcn = buildShadcnMap(tokens);
@@ -308,31 +309,17 @@ export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   const radius = tokens.rounded?.md ?? tokens.rounded?.default ?? "0.5rem";
   lines.push(`    --radius: ${dimensionToCss(radius)};`);
 
-  if (tokens.rounded) {
-    for (const [name, value] of Object.entries(tokens.rounded)) {
-      lines.push(`    --radius-${name}: ${dimensionToCss(value)};`);
-    }
-  }
-
   if (tokens.colors) {
     for (const [name, value] of Object.entries(tokens.colors)) {
       lines.push(`    --token-${name}: ${value};`);
     }
   }
 
-  lines.push("", "    font-family: system-ui, -apple-system, sans-serif;");
-  lines.push("  }", "}", "");
-
-  lines.push("@theme inline {");
-  for (const name of Object.keys(shadcn)) {
-    lines.push(`  --color-${name}: var(--${name});`);
-  }
-  lines.push(`  --radius: var(--radius);`);
-  if (tokens.rounded) {
-    for (const name of Object.keys(tokens.rounded)) {
-      lines.push(`  --radius-${name}: var(--radius-${name});`);
-    }
-  }
+  lines.push("  }", "");
+  lines.push("  body {");
+  lines.push("    margin: 0;");
+  lines.push("    font-family: system-ui, -apple-system, sans-serif;");
+  lines.push("  }");
   lines.push("}", "");
 
   return lines.join("\n");
