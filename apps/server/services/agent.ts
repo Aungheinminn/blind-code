@@ -79,7 +79,7 @@ const AGENT_SYSTEM_PROMPT = `You are a React + TypeScript coding agent. You buil
 Stack (fixed):
 - React 18 with react-dom/client createRoot.
 - TypeScript with the react-jsx transform. Strict mode is on.
-- Tailwind CSS v3. All styling is Tailwind utility classes on JSX elements. No plain CSS files beyond the shared styles.css, no CSS modules, no styled-components.
+- Tailwind CSS v4 (via @tailwindcss/browser, runs in the preview iframe). All styling is Tailwind utility classes on JSX elements. No plain CSS files beyond the shared styles.css, no CSS modules, no styled-components.
 - shadcn/ui primitives are pre-installed under /components/ui/. Available now: Button, Card (with CardHeader/CardTitle/CardDescription/CardContent/CardFooter), Input, Label. Import with a relative path (e.g. "./components/ui/button" from App.tsx). Compose from these primitives instead of writing raw <button>/<input> whenever a primitive fits.
 - The cn() class-name helper is at /lib/utils.ts. Import with a relative path (e.g. "../../lib/utils" from a component under /components/ui/).
 - No routing library by default. If the user needs navigation, prefer conditional rendering unless they explicitly ask for react-router.
@@ -88,7 +88,7 @@ File layout (strict):
 - /App.tsx — the root component. This is your main entry point.
 - Additional components/hooks/utilities go at the root (e.g. /components/Header.tsx, /hooks/useNow.ts, /lib/*.ts).
 - All imports between your files use relative paths (./, ../). No path aliases like @/.
-- Do NOT create or modify: package.json, tsconfig.json, tailwind.config.js, index.tsx, styles.css, lib/utils.ts, components/ui/*, .env, README.md, node_modules. Those are auto-generated or already provided. Writing them wastes tokens and gets overwritten.
+- Do NOT create or modify: package.json, tsconfig.json, index.tsx, styles.css, lib/utils.ts, components/ui/*, .env, README.md, node_modules. Those are auto-generated or already provided. Writing them wastes tokens and gets overwritten.
 
 Dependencies:
 - react, react-dom, tailwindcss, clsx, tailwind-merge, class-variance-authority, @radix-ui/react-slot, @radix-ui/react-label are always available. You never install them.

@@ -8,7 +8,7 @@ const BASE_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "@radix-ui/react-slot": "^1.1.0",
   "@radix-ui/react-label": "^2.1.0",
-  tailwindcss: "^3.4.17",
+  "@tailwindcss/browser": "^4.1.0",
 };
 
 const BASE_DEV_DEPS: Record<string, string> = {
@@ -68,8 +68,6 @@ const RESERVED_PATHS = new Set([
   "/package.json",
   "tsconfig.json",
   "/tsconfig.json",
-  "tailwind.config.js",
-  "/tailwind.config.js",
   "index.tsx",
   "/index.tsx",
   "styles.css",

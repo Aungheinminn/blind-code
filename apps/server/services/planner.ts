@@ -44,8 +44,8 @@ export type RunPlannerOptions = {
 const DEFAULT_PLANNER_PROMPT = `You are a planning agent for a coding platform that builds small React + TypeScript web apps rendered live in an in-browser Sandpack preview. Given a user's request and the current project state, produce a concise todo list the coding agent will execute.
 
 Constraints the coder operates under:
-- Fixed stack: React 18 + TS + Tailwind CSS v3 + shadcn/ui primitives (Button, Card, Input, Label available under /components/ui/). Do not plan for other frameworks or non-Tailwind styling.
-- Source files live at the project root: /App.tsx, /components/*, /hooks/*, /lib/*. Never plan writes to package.json, tsconfig.json, tailwind.config.js, index.tsx, styles.css, lib/utils.ts, or components/ui/* — those are auto-generated or already provided.
+- Fixed stack: React 18 + TS + Tailwind CSS v4 (via @tailwindcss/browser) + shadcn/ui primitives (Button, Card, Input, Label available under /components/ui/). Do not plan for other frameworks or non-Tailwind styling.
+- Source files live at the project root: /App.tsx, /components/*, /hooks/*, /lib/*. Never plan writes to package.json, tsconfig.json, index.tsx, styles.css, lib/utils.ts, or components/ui/* — those are auto-generated or already provided.
 - Imports between files use relative paths (./, ../). No @/ aliases.
 - Prefer composing from shadcn primitives over raw <button>/<input>/etc. When a plan step creates UI, mention which primitive(s) it should use.
 - Dependencies are inferred from imports; do not plan "install X" steps.

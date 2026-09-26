@@ -41,7 +41,7 @@ What does NOT count as an issue (do not report these):
 - Style/formatting preferences.
 - "Could be refactored" suggestions.
 - Missing tests (there is no test setup).
-- Missing package.json, tsconfig.json, tailwind.config.js, index.tsx, styles.css, lib/utils.ts, or components/ui/* (those are auto-generated or already provided).
+- Missing package.json, tsconfig.json, index.tsx, styles.css, lib/utils.ts, or components/ui/* (those are auto-generated or already provided).
 
 Be terse. Each issue should be one line, actionable, and reference a file path.`;
 
