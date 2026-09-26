@@ -23,8 +23,11 @@ import {
   listProjectFiles,
   getProjectForOwner,
   getUserById,
+  getActiveDesignTemplateForProject,
   hasDb,
 } from "../db/repo";
+import { sanitizeTemplateBody } from "../services/designTemplate";
+import matter from "gray-matter";
 import type { Plan } from "../services/planner";
 import { resolveAgentToolPermissions, type PlanTodoStatus } from "@vibe/shared";
 
@@ -145,10 +148,17 @@ export const agentController = (app: Elysia) =>
 
         await hydrateSandbox(msg.projectId, dbProjectId);
 
-        const [projectRow, userRow] = await Promise.all([
+        const [projectRow, userRow, activeTemplate] = await Promise.all([
           dbProjectId ? getProjectForOwner(dbProjectId, userId) : Promise.resolve(null),
           getUserById(userId),
+          dbProjectId
+            ? getActiveDesignTemplateForProject(dbProjectId, userId)
+            : Promise.resolve(null),
         ]);
+        const templateName = activeTemplate?.name ?? null;
+        const templateBody = activeTemplate?.content
+          ? sanitizeTemplateBody(matter(activeTemplate.content).content)
+          : null;
         const supabase = projectRow?.integrations?.supabase ?? null;
         const supabaseConnected = Boolean(supabase);
         const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
@@ -419,6 +429,8 @@ export const agentController = (app: Elysia) =>
             supabaseCanRunSql,
             userSupabasePatConnected: canAutoProvisionSupabase,
             agentToolPermissions: resolvedPerms,
+            designTemplateName: templateName,
+            designTemplateBody: templateBody,
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,

@@ -248,6 +248,52 @@ const buildShadcnMap = (tokens: DesignTemplateFrontmatter): ShadcnDefaults => {
   };
 };
 
+const CANONICAL_BODY_SECTIONS = new Set<string>([
+  "Overview",
+  "Colors",
+  "Typography",
+  "Layout",
+  "Elevation",
+  "Shapes",
+  "Components",
+  "Do's and Don'ts",
+]);
+
+export const sanitizeTemplateBody = (body: string): string => {
+  const lines = body.split(/\r?\n/);
+  const kept: string[] = [];
+  let dropping = false;
+  let inFence = false;
+
+  const isKeptHeading = (raw: string): boolean => {
+    const m = /^##\s+(.+?)\s*$/.exec(raw);
+    if (!m) return false;
+    const canonical = canonicaliseSectionName(m[1]);
+    return CANONICAL_BODY_SECTIONS.has(canonical);
+  };
+
+  const isSectionHeading = (raw: string): boolean =>
+    /^##\s+/.test(raw) || /^#\s+/.test(raw);
+
+  for (const line of lines) {
+    if (/^```/.test(line)) {
+      inFence = !inFence;
+      if (!dropping) kept.push(line);
+      continue;
+    }
+    if (!inFence && isSectionHeading(line)) {
+      if (/^#\s+/.test(line)) {
+        dropping = false;
+        continue;
+      }
+      dropping = !isKeptHeading(line);
+    }
+    if (!dropping) kept.push(line);
+  }
+
+  return kept.join("\n").trim();
+};
+
 export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   const lines: string[] = [];
   lines.push(`@import "tailwindcss";`, "");
