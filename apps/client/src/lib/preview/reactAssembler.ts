@@ -1,20 +1,28 @@
+import { DEFAULT_APP_TSX, SCAFFOLD_FILES } from "./scaffold";
+
 const BASE_DEPS: Record<string, string> = {
   react: "^19.0.0",
   "react-dom": "^19.0.0",
-  "react-scripts": "^4.0.0",
+  clsx: "^2.1.1",
+  "tailwind-merge": "^2.6.0",
+  "class-variance-authority": "^0.7.1",
+  "@radix-ui/react-slot": "^1.1.0",
+  "@radix-ui/react-label": "^2.1.0",
+  tailwindcss: "^4.0.0",
+  "@tailwindcss/vite": "^4.0.0",
+  vite: "^5.4.0",
+  "@vitejs/plugin-react": "^4.3.0",
 };
 
 const BASE_DEV_DEPS: Record<string, string> = {
   "@types/react": "^19.0.0",
   "@types/react-dom": "^19.0.0",
-  typescript: "^4.0.0",
+  "@types/node": "^22.0.0",
+  typescript: "^5.5.0",
 };
 
 const VERSION_HINTS: Record<string, string> = {
   "lucide-react": "^0.454.0",
-  clsx: "^2.1.1",
-  "tailwind-merge": "^2.6.0",
-  "class-variance-authority": "^0.7.1",
   "framer-motion": "^11.15.0",
   "date-fns": "^4.1.0",
   zustand: "^5.0.2",
@@ -28,7 +36,11 @@ const IMPORT_RE =
   /(?:import\s+(?:[^'"`;]+?\s+from\s+)?['"]([^'"`]+)['"]|require\s*\(\s*['"]([^'"`]+)['"]\s*\))/g;
 
 const isBarePackage = (spec: string): boolean =>
-  !!spec && !spec.startsWith(".") && !spec.startsWith("/") && !spec.startsWith("http");
+  !!spec &&
+  !spec.startsWith(".") &&
+  !spec.startsWith("/") &&
+  !spec.startsWith("@/") &&
+  !spec.startsWith("http");
 
 const packageNameOf = (spec: string): string => {
   const parts = spec.split("/");
@@ -46,8 +58,8 @@ const detectDeps = (files: Record<string, string>): Record<string, string> => {
       const spec = m[1] || m[2];
       if (!spec || !isBarePackage(spec)) continue;
       const name = packageNameOf(spec);
-      if (name === "react" || name === "react-dom") continue;
-      if (name.startsWith("react-dom/")) continue;
+      if (name in BASE_DEPS) continue;
+      if (name === "react-dom" || name.startsWith("react-dom/")) continue;
       if (deps[name]) continue;
       deps[name] = VERSION_HINTS[name] ?? "latest";
     }
@@ -55,59 +67,27 @@ const detectDeps = (files: Record<string, string>): Record<string, string> => {
   return deps;
 };
 
+const RESERVED_PATHS = new Set([
+  "package.json",
+  "/package.json",
+  "tsconfig.json",
+  "/tsconfig.json",
+  "vite.config.ts",
+  "/vite.config.ts",
+  "index.html",
+  "/index.html",
+]);
+
 const normalizePath = (raw: string): string => {
-  const p = raw.startsWith("/") ? raw.slice(1) : raw;
-  return `/${p}`;
+  const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  if (withSlash.startsWith("/src/") || withSlash.startsWith("/public/")) {
+    return withSlash;
+  }
+  if (/\.(tsx?|jsx?|css)$/.test(withSlash)) {
+    return `/src${withSlash}`;
+  }
+  return withSlash;
 };
-
-const DEFAULT_APP = `export default function App() {
-  return null;
-}
-`;
-
-const DEFAULT_INDEX_TSX = `import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App";
-import "./styles.css";
-
-const root = createRoot(document.getElementById("root")!);
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
-`;
-
-const DEFAULT_INDEX_HTML = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preview</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-`;
-
-const DEFAULT_STYLES_CSS = `:root { color-scheme: light; }
-body { margin: 0; font-family: system-ui, sans-serif; color: #1a1a1a; }
-`;
-
-const DEFAULT_TSCONFIG = JSON.stringify(
-  {
-    include: ["./**/*"],
-    compilerOptions: {
-      strict: true,
-      esModuleInterop: true,
-      lib: ["dom", "es2015"],
-      jsx: "react-jsx",
-    },
-  },
-  null,
-  2,
-);
 
 export type SupabaseInject = {
   url: string;
@@ -133,25 +113,21 @@ export const assembleReactProject = (
   raw: Record<string, string>,
   opts: AssembleOptions = {},
 ): Record<string, string> => {
-  const files: Record<string, string> = {};
+  const files: Record<string, string> = { ...SCAFFOLD_FILES };
+
   for (const [path, content] of Object.entries(raw)) {
     if (!path) continue;
-    if (path === "package.json" || path === "/package.json") continue;
-    if (path === "tsconfig.json" || path === "/tsconfig.json") continue;
+    if (RESERVED_PATHS.has(path)) continue;
     files[normalizePath(path)] = content;
   }
 
-  if (!files["/App.tsx"] && !files["/App.jsx"] && !files["/App.js"] && !files["/App.ts"]) {
-    files["/App.tsx"] = DEFAULT_APP;
-  }
-  if (!files["/index.tsx"] && !files["/index.jsx"] && !files["/index.js"]) {
-    files["/index.tsx"] = DEFAULT_INDEX_TSX;
-  }
-  if (!files["/public/index.html"]) {
-    files["/public/index.html"] = DEFAULT_INDEX_HTML;
-  }
-  if (!files["/styles.css"]) {
-    files["/styles.css"] = DEFAULT_STYLES_CSS;
+  if (
+    !files["/src/App.tsx"] &&
+    !files["/src/App.jsx"] &&
+    !files["/src/App.js"] &&
+    !files["/src/App.ts"]
+  ) {
+    files["/src/App.tsx"] = DEFAULT_APP_TSX;
   }
 
   if (opts.supabase) {
@@ -163,10 +139,15 @@ export const assembleReactProject = (
     detected["@supabase/supabase-js"] =
       VERSION_HINTS["@supabase/supabase-js"] ?? "^2.45.0";
   }
-  files["/tsconfig.json"] = DEFAULT_TSCONFIG;
+
   files["/package.json"] = JSON.stringify(
     {
-      main: "/index.tsx",
+      type: "module",
+      scripts: {
+        dev: "vite",
+        build: "vite build",
+        preview: "vite preview",
+      },
       dependencies: { ...BASE_DEPS, ...detected },
       devDependencies: BASE_DEV_DEPS,
     },

@@ -14,10 +14,11 @@
     selectedDevice,
     viewMode,
   } from "$lib/stores/preview";
+  import { assembleReactProject } from "$lib/preview/reactAssembler";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
-  export let template: SandpackTemplate = "create-react-app-typescript";
+  export let template: SandpackTemplate = "vite-react-ts";
   export let framed: boolean = true;
   export let loading: boolean = false;
 
@@ -41,95 +42,6 @@
   $: wrapH = deviceH * scale;
   $: previewScale.set(scale);
 
-  const STARTER_FILES: Record<string, string> = {
-    "/public/index.html": `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preview</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-`,
-    "/index.tsx": `import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App";
-import "./styles.css";
-
-const root = createRoot(document.getElementById("root")!);
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
-`,
-    "/App.tsx": `import { useState } from "react";
-
-export default function App() {
-  const [count, setCount] = useState(0);
-  return (
-    <main>
-      <h1>Hello from Sandpack + React 19</h1>
-      <p>Ask the agent to build something.</p>
-      <button onClick={() => setCount((c) => c + 1)}>
-        Clicked {count} times
-      </button>
-    </main>
-  );
-}
-`,
-    "/styles.css": `:root { color-scheme: light; }
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  color: #1a1a1a;
-}
-main { padding: 2rem; }
-h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-p { color: #666; margin: 0 0 1rem; }
-button {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid #d4d4d4;
-  background: white;
-  cursor: pointer;
-}
-`,
-    "/tsconfig.json": JSON.stringify(
-      {
-        include: ["./**/*"],
-        compilerOptions: {
-          strict: true,
-          esModuleInterop: true,
-          lib: ["dom", "es2015"],
-          jsx: "react-jsx",
-        },
-      },
-      null,
-      2,
-    ),
-    "/package.json": JSON.stringify(
-      {
-        main: "/index.tsx",
-        dependencies: {
-          react: "^19.0.0",
-          "react-dom": "^19.0.0",
-          "react-scripts": "^4.0.0",
-        },
-        devDependencies: {
-          "@types/react": "^19.0.0",
-          "@types/react-dom": "^19.0.0",
-          typescript: "^4.0.0",
-        },
-      },
-      null,
-      2,
-    ),
-  };
-
   const toBundlerFiles = (map: Record<string, string>): SandpackBundlerFiles => {
     const out: SandpackBundlerFiles = {};
     for (const [path, code] of Object.entries(map)) {
@@ -139,7 +51,8 @@ button {
     return out;
   };
 
-  $: activeFiles = Object.keys(files).length > 0 ? files : STARTER_FILES;
+  $: activeFiles =
+    Object.keys(files).length > 0 ? files : assembleReactProject({});
 
   export const refresh = () => {
     client?.dispatch({ type: "refresh" });
