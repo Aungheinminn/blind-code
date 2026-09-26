@@ -145,6 +145,24 @@ export type ProjectDesignTemplate = {
   tokens: Record<string, unknown>;
 };
 
+export type DesignTemplateSummary = {
+  id: string;
+  slug: string | null;
+  name: string;
+  description: string | null;
+  origin: "builtin" | "user" | "agent";
+  parsedTokens: {
+    colors?: Record<string, string>;
+    [k: string]: unknown;
+  } | null;
+  isReadOnly: boolean;
+  sortOrder: number;
+  updatedAt: string;
+};
+
+export const listDesignTemplates = () =>
+  fetchJson<DesignTemplateSummary[]>(`/design-templates`);
+
 export const getProjectDesignTemplate = (id: string) =>
   fetchJson<ProjectDesignTemplate>(`/projects/${id}/design-template`);
 
