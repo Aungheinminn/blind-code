@@ -296,7 +296,6 @@ export const sanitizeTemplateBody = (body: string): string => {
 
 export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   const lines: string[] = [];
-  lines.push(`@import "tailwindcss";`, "");
   lines.push(":root {");
 
   const shadcn = buildShadcnMap(tokens);
@@ -317,13 +316,6 @@ export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   lines.push("body {");
   lines.push("  margin: 0;");
   lines.push("  font-family: system-ui, -apple-system, sans-serif;");
-  lines.push("}", "");
-
-  lines.push("@theme inline {");
-  for (const name of Object.keys(shadcn)) {
-    lines.push(`  --color-${name}: hsl(var(--${name}));`);
-  }
-  lines.push(`  --radius: var(--radius);`);
   lines.push("}", "");
 
   return lines.join("\n");

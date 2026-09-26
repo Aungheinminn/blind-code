@@ -24,6 +24,39 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 
+// Register the Tailwind v4 theme mapping so shadcn utilities
+// (bg-primary, text-muted-foreground, ...) resolve to our runtime CSS vars.
+// Uses a <style type="text/tailwindcss"> element which @tailwindcss/browser
+// reads at runtime — kept out of styles.css so the classic bundler's PostCSS
+// pass doesn't try to interpret it and blow up.
+const themeTag = document.createElement("style");
+themeTag.setAttribute("type", "text/tailwindcss");
+themeTag.textContent = \`
+  @theme inline {
+    --color-background: hsl(var(--background));
+    --color-foreground: hsl(var(--foreground));
+    --color-card: hsl(var(--card));
+    --color-card-foreground: hsl(var(--card-foreground));
+    --color-popover: hsl(var(--popover));
+    --color-popover-foreground: hsl(var(--popover-foreground));
+    --color-primary: hsl(var(--primary));
+    --color-primary-foreground: hsl(var(--primary-foreground));
+    --color-secondary: hsl(var(--secondary));
+    --color-secondary-foreground: hsl(var(--secondary-foreground));
+    --color-muted: hsl(var(--muted));
+    --color-muted-foreground: hsl(var(--muted-foreground));
+    --color-accent: hsl(var(--accent));
+    --color-accent-foreground: hsl(var(--accent-foreground));
+    --color-destructive: hsl(var(--destructive));
+    --color-destructive-foreground: hsl(var(--destructive-foreground));
+    --color-border: hsl(var(--border));
+    --color-input: hsl(var(--input));
+    --color-ring: hsl(var(--ring));
+    --radius: var(--radius);
+  }
+\`;
+document.head.appendChild(themeTag);
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
@@ -105,9 +138,7 @@ export default function App() {
 }
 `;
 
-export const STYLES_CSS = `@import "tailwindcss";
-
-:root {
+export const STYLES_CSS = `:root {
   --background: 0 0% 100%;
   --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
@@ -133,29 +164,6 @@ export const STYLES_CSS = `@import "tailwindcss";
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
-}
-
-@theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --radius: var(--radius);
 }
 `;
 

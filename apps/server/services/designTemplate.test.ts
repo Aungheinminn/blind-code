@@ -103,16 +103,17 @@ describe("parseTemplate", () => {
 });
 
 describe("templateToCss", () => {
-  test("emits @import + shadcn semantic tokens as :root vars + @theme inline mapping", () => {
+  test("emits shadcn semantic tokens as plain :root CSS vars (no @import, no @theme)", () => {
     const { tokens } = parseTemplate(validTemplate);
     const css = templateToCss(tokens);
-    expect(css).toContain('@import "tailwindcss";');
     expect(css).toContain(":root");
     expect(css).toContain("--primary: #1A1C1E");
     expect(css).toContain("--card:");
     expect(css).toContain("--radius: 8px");
-    expect(css).toContain("@theme inline");
-    expect(css).toContain("--color-primary: hsl(var(--primary));");
+    // Tailwind directives are injected at runtime from the client scaffold,
+    // not in the design-template CSS itself.
+    expect(css).not.toContain('@import "tailwindcss"');
+    expect(css).not.toContain("@theme");
   });
 
   test("falls back to shadcn defaults when a semantic token is missing", () => {
