@@ -15,6 +15,7 @@
     viewMode,
   } from "$lib/stores/preview";
   import { assembleReactProject } from "$lib/preview/reactAssembler";
+  import { activeDesignTemplateCss } from "$lib/stores/agent";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
@@ -52,7 +53,9 @@
   };
 
   $: activeFiles =
-    Object.keys(files).length > 0 ? files : assembleReactProject({});
+    Object.keys(files).length > 0
+      ? files
+      : assembleReactProject({}, { designCss: $activeDesignTemplateCss });
 
   export const refresh = () => {
     client?.dispatch({ type: "refresh" });
