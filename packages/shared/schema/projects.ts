@@ -69,6 +69,7 @@ export const projects = pgTable("projects", {
   }>(),
   integrations: jsonb("integrations").$type<ProjectIntegrations>(),
   agentToolPermissions: jsonb("agent_tool_permissions").$type<AgentToolPermissions>(),
+  designTemplateId: uuid("design_template_id"),
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

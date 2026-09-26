@@ -135,6 +135,49 @@ export const getProjectHistory = (id: string) =>
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);
 
+export type ProjectDesignTemplate = {
+  id: string;
+  slug: string | null;
+  name: string;
+  description: string | null;
+  origin: "builtin" | "user" | "agent";
+  css: string;
+  tokens: Record<string, unknown>;
+};
+
+export type DesignTemplateSummary = {
+  id: string;
+  slug: string | null;
+  name: string;
+  description: string | null;
+  origin: "builtin" | "user" | "agent";
+  parsedTokens: {
+    colors?: Record<string, string>;
+    [k: string]: unknown;
+  } | null;
+  isReadOnly: boolean;
+  sortOrder: number;
+  updatedAt: string;
+};
+
+export const listDesignTemplates = () =>
+  fetchJson<DesignTemplateSummary[]>(`/design-templates`);
+
+export const getProjectDesignTemplate = (id: string) =>
+  fetchJson<ProjectDesignTemplate>(`/projects/${id}/design-template`);
+
+export const setProjectDesignTemplate = (
+  id: string,
+  designTemplateId: string | null,
+) =>
+  fetchJson<{ id: string; designTemplateId: string | null }>(
+    `/projects/${id}/design-template`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ designTemplateId }),
+    },
+  );
+
 export type ConnectSupabaseInput = {
   url: string;
   anonKey: string;

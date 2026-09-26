@@ -909,4 +909,51 @@ export const addTodoToLatestPlan = async (
   return { id: nextKey, title: todo.title, rationale };
 };
 
+export const getActiveDesignTemplateForProject = async (
+  projectId: string,
+  ownerId: string,
+) => {
+  if (!db) return null;
+  const project = await getProjectForOwner(projectId, ownerId);
+  if (!project) return null;
+
+  if (project.designTemplateId) {
+    const rows = await db
+      .select()
+      .from(schema.designTemplates)
+      .where(eq(schema.designTemplates.id, project.designTemplateId))
+      .limit(1);
+    if (rows[0]) return rows[0];
+  }
+
+  const fallback = await db
+    .select()
+    .from(schema.designTemplates)
+    .where(
+      and(
+        eq(schema.designTemplates.origin, "builtin"),
+        eq(schema.designTemplates.slug, "paper"),
+      ),
+    )
+    .limit(1);
+  return fallback[0] ?? null;
+};
+
+export const setDesignTemplateForProject = async (
+  projectId: string,
+  ownerId: string,
+  designTemplateId: string | null,
+) => {
+  if (!db) return null;
+  const project = await getProjectForOwner(projectId, ownerId);
+  if (!project) return null;
+  await db
+    .update(schema.projects)
+    .set({ designTemplateId, updatedAt: sql`now()` })
+    .where(
+      and(eq(schema.projects.id, project.id), eq(schema.projects.ownerId, ownerId)),
+    );
+  return true;
+};
+
 export { hasDb };

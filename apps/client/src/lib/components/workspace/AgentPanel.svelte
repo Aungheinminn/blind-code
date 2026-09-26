@@ -64,6 +64,7 @@
     {statusText}
     {selectedModel}
     {providers}
+    {projectId}
     on:submit={onSubmit}
     on:cancel={() => dispatch("cancel")}
     on:model-change={(e) => dispatch("model-change", e.detail)}

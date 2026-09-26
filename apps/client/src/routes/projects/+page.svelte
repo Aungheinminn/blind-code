@@ -250,8 +250,8 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-<div class="px-6 py-8">
-  <div class="max-w-5xl mx-auto">
+<div class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20">
+  <div>
     <div class="flex items-start justify-between gap-6">
       <div>
         <h1 class="text-2xl font-semibold">Projects</h1>

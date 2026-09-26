@@ -13,6 +13,7 @@
     retryLastPrompt,
     loadHistory,
     loadProjectFiles,
+    loadDesignTemplate,
     resetWorkspace,
     resumeTurn,
     activePlan,
@@ -81,6 +82,7 @@
     await Promise.all([
       loadHistory(id).catch(() => {}),
       loadProjectFiles(id).catch(() => {}),
+      loadDesignTemplate(id).catch(() => {}),
       resumeTurn(id).catch(() => {}),
       get(providers).length === 0 ? loadProviders().catch(() => {}) : Promise.resolve(),
     ]);

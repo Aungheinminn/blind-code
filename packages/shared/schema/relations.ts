@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { agentActions, agentSessions, toolCallCache, turnEvents, turns } from "./agent";
+import { designTemplates } from "./designTemplates";
 import { files } from "./fs";
 import { projects } from "./projects";
 import { sessions } from "./sessions";
@@ -8,6 +9,7 @@ import { users } from "./users";
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
   sessions: many(sessions),
+  designTemplates: many(designTemplates),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -22,8 +24,24 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.ownerId],
     references: [users.id],
   }),
+  designTemplate: one(designTemplates, {
+    fields: [projects.designTemplateId],
+    references: [designTemplates.id],
+  }),
   files: many(files),
   agentSessions: many(agentSessions),
+}));
+
+export const designTemplatesRelations = relations(designTemplates, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [designTemplates.ownerUserId],
+    references: [users.id],
+  }),
+  sourceProject: one(projects, {
+    fields: [designTemplates.sourceProjectId],
+    references: [projects.id],
+  }),
+  projects: many(projects),
 }));
 
 export const filesRelations = relations(files, ({ one }) => ({

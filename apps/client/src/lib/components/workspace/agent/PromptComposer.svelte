@@ -2,12 +2,14 @@
   import { createEventDispatcher } from "svelte";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ModelDropdown from "./ModelDropdown.svelte";
+  import DesignTemplatePicker from "./DesignTemplatePicker.svelte";
   import type { ProviderInfo } from "$lib/stores/agent";
 
   export let isRunning = false;
   export let statusText = "idle";
   export let selectedModel = "";
   export let providers: ProviderInfo[] = [];
+  export let projectId = "";
 
   let prompt = "";
   let box: PromptBox | undefined;
@@ -44,6 +46,9 @@
         class="flex items-center gap-2 min-w-0 text-[11px]"
         style="color: var(--text-tertiary);"
       >
+        {#if projectId}
+          <DesignTemplatePicker {projectId} disabled={isRunning} />
+        {/if}
         <span class="truncate">{statusText}</span>
       </div>
     </svelte:fragment>
