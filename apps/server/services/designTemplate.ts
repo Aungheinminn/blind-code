@@ -296,7 +296,8 @@ export const sanitizeTemplateBody = (body: string): string => {
 
 export const templateToCss = (tokens: DesignTemplateFrontmatter): string => {
   const lines: string[] = [];
-  lines.push(`@import "tailwindcss";`, "");
+  lines.push(`@import "tailwindcss";`);
+  lines.push(`@source "./**/*.{ts,tsx,js,jsx,html}";`, "");
   lines.push("@layer base {", "  :root {");
 
   const shadcn = buildShadcnMap(tokens);

@@ -136,6 +136,7 @@ export default function App() {
 `;
 
 export const INDEX_CSS = `@import "tailwindcss";
+@source "./**/*.{ts,tsx,js,jsx,html}";
 
 @layer base {
   :root {

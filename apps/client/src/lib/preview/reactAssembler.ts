@@ -8,8 +8,8 @@ const BASE_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "@radix-ui/react-slot": "^1.1.0",
   "@radix-ui/react-label": "^2.1.0",
-  tailwindcss: "^4.0.0",
-  "@tailwindcss/vite": "^4.0.0",
+  tailwindcss: "^4.1.0",
+  "@tailwindcss/vite": "^4.1.0",
   vite: "^5.4.0",
   "@vitejs/plugin-react": "^4.3.0",
 };
