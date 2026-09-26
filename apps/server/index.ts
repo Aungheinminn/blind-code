@@ -10,6 +10,7 @@ import { sampleBuildsController } from "./controllers/sampleBuilds.controller";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
 import { withCors } from "./services/cors";
+import { seedBuiltinDesignTemplates } from "./services/designTemplateSeeder";
 
 if (hasDb) {
   const swept = await turnBus.sweepOrphanedRunning(0).catch((e) => {
@@ -17,6 +18,9 @@ if (hasDb) {
     return 0;
   });
   if (swept > 0) console.log(`[db] marked ${swept} orphaned running turn(s) as failed`);
+
+  const seeded = await seedBuiltinDesignTemplates();
+  console.log(`[design-templates] seeded ${seeded} builtin(s)`);
 }
 
 const app = new Elysia();
