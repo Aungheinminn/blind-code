@@ -6,7 +6,6 @@
     messages,
     isRunning,
     providers,
-    selectedProvider,
     selectedModel,
     loadProviders,
     sendPrompt,
@@ -49,8 +48,6 @@
   let supabaseModalOpen = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
-  $: currentProvider = $providers.find((p) => p.name === $selectedProvider);
-  $: modelPlaceholder = currentProvider?.defaultModel ?? "";
   $: hasUserApp = Object.keys($projectFiles).some((p) =>
     /^\/?App\.(tsx|jsx|ts|js)$/.test(p),
   );
@@ -76,7 +73,7 @@
     const nonWelcome = get(messages).filter((m) => m.id !== "welcome");
     if (nonWelcome.length > 0) return;
     if (get(isRunning)) return;
-    if (!get(selectedProvider)) return;
+    if (!get(selectedModel)) return;
     sendPrompt(id, pending);
   };
 
@@ -149,9 +146,7 @@
     messages={$messages}
     isRunning={$isRunning}
     providers={$providers}
-    bind:selectedProvider={$selectedProvider}
-    bind:selectedModel={$selectedModel}
-    {modelPlaceholder}
+    selectedModel={$selectedModel}
     {statusText}
     plan={$activePlan}
     todoStatuses={$todoStatuses}
@@ -161,6 +156,7 @@
     on:cancel={cancelAgent}
     on:retry={() => retryLastPrompt(projectId)}
     on:back={goBack}
+    on:model-change={(e) => selectedModel.set(e.detail)}
   />
 
   <AgentLauncher

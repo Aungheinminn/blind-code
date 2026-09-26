@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  export let statusText = "idle";
   export let projectId = "";
   export let projectName = "";
 
@@ -32,17 +31,9 @@
     BC
   </div>
 
-  <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-    <span class="text-sm font-semibold tracking-tight truncate" style="color: var(--text-primary);">
+  <div class="flex-1 min-w-0">
+    <span class="text-sm font-semibold tracking-tight truncate block" style="color: var(--text-primary);">
       {displayName}
-    </span>
-    <span class="flex items-center gap-1.5 text-[11.5px] truncate" style="color: var(--text-tertiary);">
-      <span
-        class="w-[6px] h-[6px] rounded-full animate-pulse shrink-0"
-        style="background-color: var(--accent);"
-        aria-hidden="true"
-      ></span>
-      <span class="truncate">Agent — {statusText}</span>
     </span>
   </div>
 

@@ -7,7 +7,8 @@ import {
   type CoderEvent,
 } from "../services/coder";
 import { runAgent, type AgentEvent } from "../services/agent";
-import { listAvailableProviders, PROVIDERS, type ProviderName } from "../services/providers";
+import { listAvailableProviders } from "../services/providers";
+import { providerForModel } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
@@ -32,8 +33,7 @@ const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 type AgentIncoming =
   | {
       type: "run";
-      provider: string;
-      model?: string;
+      model: string;
       projectId: string;
       prompt: string;
       history?: CoderChatMessage[];
@@ -166,10 +166,18 @@ export const agentController = (app: Elysia) =>
           resolvedPerms.create_supabase_project &&
           resolvedPerms.attach_supabase_project;
 
-        const resolvedModelId =
-          msg.model?.trim() || PROVIDERS[msg.provider as ProviderName]?.defaultModel || "unknown";
+        const resolvedModelId = msg.model?.trim();
+        if (!resolvedModelId) {
+          ws.send({ type: "error", error: "model required" });
+          return;
+        }
+        const provider = providerForModel(resolvedModelId);
+        if (!provider) {
+          ws.send({ type: "error", error: `unknown model: ${resolvedModelId}` });
+          return;
+        }
         const sessionId = dbProjectId
-          ? await createAgentSession(dbProjectId, `${msg.provider}/${resolvedModelId}`)
+          ? await createAgentSession(dbProjectId, `${provider}/${resolvedModelId}`)
           : null;
 
         const turnId =
@@ -177,8 +185,8 @@ export const agentController = (app: Elysia) =>
 
         ws.send({
           type: "started",
-          provider: msg.provider,
-          model: msg.model ?? null,
+          provider,
+          model: resolvedModelId,
           sessionId,
           dbProjectId,
           turnId,
@@ -402,8 +410,8 @@ export const agentController = (app: Elysia) =>
 
         try {
           await runAgent({
-            provider: msg.provider,
-            model: msg.model,
+            provider,
+            model: resolvedModelId,
             toolContext,
             prompt: msg.prompt,
             history: msg.history,

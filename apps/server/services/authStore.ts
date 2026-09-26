@@ -11,10 +11,9 @@ export type ProviderCredential = {
 export type AuthFile = {
   version: 1;
   providers: Record<string, ProviderCredential>;
-  enabledModels: Record<string, string[]>;
 };
 
-const EMPTY: AuthFile = { version: 1, providers: {}, enabledModels: {} };
+const EMPTY: AuthFile = { version: 1, providers: {} };
 
 export const authFilePath = (): string => {
   if (process.env.BLIND_CODE_AUTH_FILE) return process.env.BLIND_CODE_AUTH_FILE;
@@ -30,10 +29,6 @@ const parseFile = (raw: string): AuthFile => {
   return {
     version: 1,
     providers: parsed.providers && typeof parsed.providers === "object" ? parsed.providers : {},
-    enabledModels:
-      parsed.enabledModels && typeof parsed.enabledModels === "object"
-        ? parsed.enabledModels
-        : {},
   };
 };
 
@@ -92,25 +87,6 @@ export const removeStoredKey = async (provider: string): Promise<boolean> => {
   const { [provider]: _removed, ...rest } = auth.providers;
   await writeAuth({ ...auth, providers: rest });
   return true;
-};
-
-export const getStoredEnabledModels = async (provider: string): Promise<string[] | null> => {
-  const auth = await readAuth();
-  return auth.enabledModels[provider] ?? null;
-};
-
-export const setStoredEnabledModels = async (
-  provider: string,
-  modelIds: string[],
-): Promise<void> => {
-  const auth = await readAuth();
-  await writeAuth({
-    ...auth,
-    enabledModels: {
-      ...auth.enabledModels,
-      [provider]: [...new Set(modelIds)],
-    },
-  });
 };
 
 export const last4 = (s: string): string => (s.length <= 4 ? s : s.slice(-4));

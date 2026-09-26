@@ -42,9 +42,7 @@
   $: textSize = size === "sm" ? "text-[14px]" : "text-base";
   $: bgVar = size === "sm" ? "var(--bg-tertiary)" : "var(--bg-panel)";
   $: shadow =
-    size === "sm"
-      ? "var(--panel-shadow)"
-      : "0 20px 50px -30px rgba(0, 0, 0, 0.9)";
+    size === "sm" ? "var(--composer-shadow)" : "0 20px 50px -30px rgba(0, 0, 0, 0.9)";
 </script>
 
 <div

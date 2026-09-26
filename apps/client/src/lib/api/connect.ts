@@ -10,18 +10,8 @@ export type ProviderStatus = {
   last4: string | null;
 };
 
-export type ModelTag = "fast" | "reasoning" | "vision" | "free";
-
-export type ModelInfo = {
-  id: string;
-  label: string;
-  tags?: ModelTag[];
-};
-
 export type ConnectData = {
   providers: ProviderStatus[];
-  catalogByProvider: Record<string, ModelInfo[]>;
-  enabledByProvider: Record<string, string[]>;
 };
 
 export const getConnect = () => fetchJson<ConnectData>("/connect");
@@ -36,19 +26,3 @@ export const deleteProviderKey = (provider: string) =>
   fetchJson<{ provider: string; removed: boolean }>(`/connect/${provider}/key`, {
     method: "DELETE",
   });
-
-export const setEnabledModels = (provider: string, modelIds: string[]) =>
-  fetchJson<{ provider: string; count: number }>(`/connect/${provider}/models`, {
-    method: "PUT",
-    body: JSON.stringify({ modelIds }),
-  });
-
-export type OpenRouterModel = ModelInfo & {
-  contextLength: number | null;
-  promptPrice: number | null;
-};
-
-export const getOpenRouterModels = (forceRefresh = false) =>
-  fetchJson<{ models: OpenRouterModel[]; fetchedAt: number }>(
-    `/connect/openrouter/models${forceRefresh ? "?refresh=1" : ""}`,
-  );

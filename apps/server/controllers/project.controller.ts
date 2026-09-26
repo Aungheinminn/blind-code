@@ -22,6 +22,7 @@ import {
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
 import { generateProjectTitle } from "../services/titler";
+import { providerForModel } from "@vibe/shared";
 import {
   getSupabaseApiKeys,
   SupabaseManagementError,
@@ -171,8 +172,7 @@ export const projectController = (app: Elysia) =>
       if (!user) return unauthorized(set);
       const b = (body as Record<string, unknown>) ?? {};
       const prompt = typeof b.prompt === "string" ? b.prompt.trim() : "";
-      const provider = typeof b.provider === "string" ? b.provider : "";
-      const model = typeof b.model === "string" ? b.model : undefined;
+      const model = typeof b.model === "string" ? b.model.trim() : "";
       const presetName = typeof b.name === "string" ? b.name.trim() : "";
       const presetDescription =
         typeof b.description === "string" ? b.description.trim() : "";
@@ -180,9 +180,14 @@ export const projectController = (app: Elysia) =>
         set.status = 400;
         return { error: "prompt required" };
       }
+      if (!model) {
+        set.status = 400;
+        return { error: "model required" };
+      }
+      const provider = providerForModel(model);
       if (!provider) {
         set.status = 400;
-        return { error: "provider required" };
+        return { error: `unknown model: ${model}` };
       }
       const { title, description } = presetName
         ? { title: presetName, description: presetDescription }

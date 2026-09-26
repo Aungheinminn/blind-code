@@ -1,13 +1,21 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
+  import ModelDropdown from "./ModelDropdown.svelte";
+  import type { ProviderInfo } from "$lib/stores/agent";
 
   export let isRunning = false;
   export let statusText = "idle";
+  export let selectedModel = "";
+  export let providers: ProviderInfo[] = [];
 
   let prompt = "";
   let box: PromptBox | undefined;
-  const dispatch = createEventDispatcher<{ submit: string; cancel: void }>();
+  const dispatch = createEventDispatcher<{
+    submit: string;
+    cancel: void;
+    "model-change": string;
+  }>();
 
   const submit = () => {
     const trimmed = prompt.trim();
@@ -20,7 +28,7 @@
   $: canSend = prompt.trim().length > 0 && !isRunning;
 </script>
 
-<div class="px-4 pt-3 pb-3.5 border-t" style="border-color: var(--border);">
+<div class="px-4 pt-3 pb-3.5">
   <PromptBox
     bind:this={box}
     bind:value={prompt}
@@ -33,20 +41,20 @@
   >
     <svelte:fragment slot="left">
       <div
-        class="flex items-center gap-2.5 min-w-0 text-[11px]"
+        class="flex items-center gap-2 min-w-0 text-[11px]"
         style="color: var(--text-tertiary);"
       >
-        <span>
-          <b class="font-medium" style="color: var(--text-secondary);">↵</b> send
-        </span>
-        <span>
-          <b class="font-medium" style="color: var(--text-secondary);">⇧↵</b> newline
-        </span>
-        <span class="truncate">· {statusText}</span>
+        <span class="truncate">{statusText}</span>
       </div>
     </svelte:fragment>
 
     <svelte:fragment slot="right">
+      <ModelDropdown
+        value={selectedModel}
+        {providers}
+        disabled={isRunning}
+        on:change={(e) => dispatch("model-change", e.detail)}
+      />
       {#if isRunning}
         <button
           type="button"
