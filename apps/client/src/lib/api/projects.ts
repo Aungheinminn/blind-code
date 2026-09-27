@@ -163,6 +163,21 @@ export type DesignTemplateSummary = {
 export const listDesignTemplates = () =>
   fetchJson<DesignTemplateSummary[]>(`/design-templates`);
 
+export const createDesignTemplateFromDraft = (input: {
+  markdown: string;
+  name?: string;
+  description?: string;
+}) =>
+  fetchJson<{ id: string; slug: string | null; name: string }>(
+    `/design-templates`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+
+export const deleteDesignTemplate = (id: string) =>
+  fetchJson<{ id: string; deleted: boolean }>(`/design-templates/${id}`, {
+    method: "DELETE",
+  });
+
 export const getProjectDesignTemplate = (id: string) =>
   fetchJson<ProjectDesignTemplate>(`/projects/${id}/design-template`);
 

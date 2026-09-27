@@ -4,7 +4,6 @@ import { and, eq } from "drizzle-orm";
 import { db, hasDb, schema } from "../db/client";
 import { getReasoningProviderOptions, resolveModel } from "./providers";
 import { parseTemplate } from "./designTemplate";
-import { createAgentDesignTemplate } from "../db/repo";
 import { extractErrorMessage } from "./coder";
 
 export type DesignAgentChatMessage = {
@@ -25,8 +24,8 @@ export type DesignAgentEvent =
     }
   | { type: "draft-updated"; markdown: string }
   | {
-      type: "template-saved";
-      template: { id: string; slug: string; name: string };
+      type: "save-proposed";
+      proposal: { name: string; description: string; markdown: string };
     }
   | { type: "step-finish"; finishReason: string }
   | { type: "finish"; finishReason: string; usage?: unknown }
@@ -43,7 +42,7 @@ export type RunDesignAgentOptions = {
   onEvent: (event: DesignAgentEvent) => void;
 };
 
-const DESIGN_AGENT_SYSTEM_PROMPT = `You are a design-system template authoring agent. Your job is to produce a single, valid design template Markdown document that describes a cohesive visual voice — colors, typography, layout, elevation, shapes, components, and usage rules — and save it for the user.
+const DESIGN_AGENT_SYSTEM_PROMPT = `You are a design-system template authoring agent. Your job is to produce a single, valid design template Markdown document that describes a cohesive visual voice — colors, typography, layout, elevation, shapes, components, and usage rules — and propose it to the user for saving. You never persist templates directly; the user decides whether to save via a UI popup.
 
 Output format (STRICT):
 Each template is a Markdown file with YAML frontmatter, matching the same schema used by the platform's builtin templates. Structure:
@@ -126,11 +125,11 @@ Your workflow:
 1. Optionally call read_builtin_template with slug "paper", "nebula", or "terminal" to see reference structure. Use this ONLY if you need to remind yourself of the format — do not copy verbatim.
 2. Call write_draft with your full Markdown document. This stashes the draft; the client sees a live preview.
 3. Call validate_draft. It returns { ok: true } or { ok: false, error }. If it fails, revise your draft (fix the specific issue named in the error) and call write_draft again, then validate_draft. Repeat until it passes. Cap yourself at 4 revision attempts — if you can't pass after four, report the blocker in text and stop.
-4. Once validate_draft returns ok, call save_template with a "name" and short "description". The tool persists the template and returns { id, slug }.
-5. Reply with one short sentence confirming what was saved. Do not dump the full markdown back to the user.
+4. Once validate_draft returns ok, call propose_save with the "name" and a short "description" you want to save the template as. This ASKS the user for approval via a UI popup — it does NOT persist. The user decides whether to save or keep iterating. You do not save directly.
+5. After calling propose_save, reply with one short sentence saying the draft is ready and stop. Do not narrate what you saved (nothing was saved yet). Do not call propose_save again in the same turn.
 
 Refinement turns:
-- If the user has an existing draft (visible in the conversation) and asks for a tweak ("make the accent warmer", "swap the serif for a mono headline"), start from that draft — do NOT regenerate from scratch. Call write_draft with the revised full document, then validate_draft, then save_template.
+- If the user has an existing draft (visible in the conversation) and asks for a tweak ("make the accent warmer", "swap the serif for a mono headline"), start from that draft — do NOT regenerate from scratch. Call write_draft with the revised full document, then validate_draft, then propose_save.
 - Do not call read_builtin_template on refinement turns unless the user explicitly changes the reference direction.
 
 Narration:
@@ -169,11 +168,9 @@ export const runDesignAgent = async (
   const model = await resolveModel(opts.provider, opts.model);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
-  const draftState: { markdown: string | null; savedTemplateId: string | null } =
-    {
-      markdown: opts.initialDraft?.trim() ? opts.initialDraft : null,
-      savedTemplateId: null,
-    };
+  const draftState: { markdown: string | null } = {
+    markdown: opts.initialDraft?.trim() ? opts.initialDraft : null,
+  };
 
   const emit = (event: DesignAgentEvent): void => {
     try {
@@ -199,7 +196,7 @@ export const runDesignAgent = async (
 
     write_draft: tool({
       description:
-        "Write the full markdown document as the current draft. Overwrites any prior draft. Emits a preview event to the client. Always follow with validate_draft before save_template.",
+        "Write the full markdown document as the current draft. Overwrites any prior draft. Emits a preview event to the client. Always follow with validate_draft before propose_save.",
       inputSchema: z.object({
         markdown: z
           .string()
@@ -239,9 +236,9 @@ export const runDesignAgent = async (
       },
     }),
 
-    save_template: tool({
+    propose_save: tool({
       description:
-        "Persist the current validated draft as a new template owned by the user. Re-validates before saving. Returns { id, slug, name } on success. Do not call unless validate_draft returned ok.",
+        "Ask the user to save the current validated draft. Re-validates the draft, then emits a proposal event that the client renders as a Save/Later popup — nothing is written to the database. The user decides. Do not call unless validate_draft returned ok. Call this at most ONCE per turn.",
       inputSchema: z.object({
         name: z
           .string()
@@ -258,7 +255,7 @@ export const runDesignAgent = async (
       }),
       execute: async ({ name, description }) => {
         if (!draftState.markdown) {
-          return { error: "no draft to save — call write_draft first" };
+          return { error: "no draft to propose — call write_draft first" };
         }
         let parsed;
         try {
@@ -268,25 +265,21 @@ export const runDesignAgent = async (
             error: `draft failed validation: ${extractErrorMessage(err)}`,
           };
         }
-        try {
-          const row = await createAgentDesignTemplate({
-            ownerUserId: opts.ownerUserId,
+        const finalDescription =
+          description ?? parsed.tokens.description ?? "";
+        emit({
+          type: "save-proposed",
+          proposal: {
             name,
-            description:
-              description ?? parsed.tokens.description ?? null,
-            content: draftState.markdown,
-            parsedTokens: parsed.tokens,
-          });
-          if (!row) return { error: "database not configured" };
-          draftState.savedTemplateId = row.id;
-          emit({
-            type: "template-saved",
-            template: { id: row.id, slug: row.slug ?? "", name: row.name },
-          });
-          return { id: row.id, slug: row.slug, name: row.name };
-        } catch (err) {
-          return { error: extractErrorMessage(err) };
-        }
+            description: finalDescription,
+            markdown: draftState.markdown,
+          },
+        });
+        return {
+          status: "awaiting_user_decision" as const,
+          name,
+          description: finalDescription,
+        };
       },
     }),
   };
