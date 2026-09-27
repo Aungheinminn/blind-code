@@ -1,11 +1,21 @@
 <script lang="ts">
   import { parseDraft, tokensFromDraft } from "./parseTemplate";
+  import { renderMiniMarkdown } from "./miniMarkdown";
 
   export let hasDraft = false;
   export let draft: string | null = null;
 
   $: parsed = draft ? parseDraft(draft) : null;
   $: tokens = parsed ? tokensFromDraft(parsed) : null;
+
+  const sectionHtml = (
+    p: ReturnType<typeof parseDraft>,
+    key: string,
+  ): string => {
+    const src = p?.sections?.[key];
+    if (!src || src.trim().length === 0) return "";
+    return renderMiniMarkdown(src);
+  };
 </script>
 
 <div class="canvas">
@@ -31,11 +41,23 @@
     </div>
   {:else}
     {@const t = tokens}
+    {@const overviewHtml = sectionHtml(parsed, "Overview")}
+    {@const colorsProse = sectionHtml(parsed, "Colors")}
+    {@const typographyProse = sectionHtml(parsed, "Typography")}
+    {@const elevationProse = sectionHtml(parsed, "Elevation")}
+    {@const shapesProse = sectionHtml(parsed, "Shapes")}
+    {@const componentsProse = sectionHtml(parsed, "Components")}
+    {@const layoutProse = sectionHtml(parsed, "Layout")}
+    {@const dosProse = sectionHtml(parsed, "Do's and Don'ts")}
     <div class="scroll">
-      {#if t.name || t.description}
+      {#if t.name || t.description || overviewHtml}
         <div class="draft-heading">
           {#if t.name}<h1>{t.name}</h1>{/if}
-          {#if t.description}<p>{t.description}</p>{/if}
+          {#if overviewHtml}
+            <div class="prose">{@html overviewHtml}</div>
+          {:else if t.description}
+            <p>{t.description}</p>
+          {/if}
         </div>
       {/if}
 
@@ -52,6 +74,9 @@
             </figure>
           {/each}
         </div>
+        {#if colorsProse}
+          <div class="prose">{@html colorsProse}</div>
+        {/if}
       </section>
 
       <section data-preview-section="typography" class="preview-section">
@@ -69,6 +94,9 @@
             Muted caption · used for metadata, labels, and secondary text
           </div>
         </div>
+        {#if typographyProse}
+          <div class="prose">{@html typographyProse}</div>
+        {/if}
       </section>
 
       <section data-preview-section="elevation" class="preview-section">
@@ -93,6 +121,9 @@
             lg
           </div>
         </div>
+        {#if elevationProse}
+          <div class="prose">{@html elevationProse}</div>
+        {/if}
       </section>
 
       <section data-preview-section="shapes" class="preview-section">
@@ -111,6 +142,9 @@
             style="background-color: {t.colors.primary}; border-radius: {t.rounded.lg};"
           ></div>
         </div>
+        {#if shapesProse}
+          <div class="prose">{@html shapesProse}</div>
+        {/if}
       </section>
 
       <section data-preview-section="components" class="preview-section">
@@ -153,7 +187,24 @@
             </div>
           </div>
         </div>
+        {#if componentsProse}
+          <div class="prose">{@html componentsProse}</div>
+        {/if}
       </section>
+
+      {#if layoutProse}
+        <section data-preview-section="layout" class="preview-section">
+          <div class="section-label">Layout</div>
+          <div class="prose">{@html layoutProse}</div>
+        </section>
+      {/if}
+
+      {#if dosProse}
+        <section data-preview-section="dos-donts" class="preview-section">
+          <div class="section-label">Do's & Don'ts</div>
+          <div class="prose">{@html dosProse}</div>
+        </section>
+      {/if}
     </div>
   {/if}
 </div>
@@ -380,5 +431,53 @@
     padding: 8px 12px;
     font-size: 13px;
     outline: none;
+  }
+
+  .prose {
+    margin-top: 14px;
+    max-width: 720px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .prose :global(p) {
+    margin: 0 0 10px;
+  }
+  .prose :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .prose :global(ul) {
+    margin: 0 0 10px;
+    padding-left: 18px;
+  }
+  .prose :global(ul:last-child) {
+    margin-bottom: 0;
+  }
+  .prose :global(li) {
+    margin: 4px 0;
+  }
+  .prose :global(strong) {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .prose :global(code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+  .prose :global(a) {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .prose :global(a:hover) {
+    text-decoration: underline;
+  }
+  .draft-heading .prose {
+    margin-top: 6px;
+    color: var(--text-secondary);
   }
 </style>

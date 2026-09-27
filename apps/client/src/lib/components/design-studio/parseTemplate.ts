@@ -3,6 +3,7 @@ export type ParsedDraft = {
   description: string;
   colors: Record<string, string>;
   rounded: Record<string, string>;
+  sections: Record<string, string>;
 };
 
 const stripFrontmatter = (source: string): string | null => {
@@ -12,6 +13,71 @@ const stripFrontmatter = (source: string): string | null => {
   const end = rest.search(/\n---\s*(?:\n|$)/);
   if (end === -1) return null;
   return rest.slice(0, end);
+};
+
+const bodyAfterFrontmatter = (source: string): string => {
+  const trimmed = source.replace(/^﻿/, "").trimStart();
+  if (!trimmed.startsWith("---")) return trimmed;
+  const rest = trimmed.slice(3);
+  const end = rest.search(/\n---\s*(?:\n|$)/);
+  if (end === -1) return "";
+  const afterMarker = rest.slice(end).replace(/^\n---\s*/, "");
+  return afterMarker.replace(/^\n+/, "");
+};
+
+const SECTION_ALIASES: Record<string, string> = {
+  "overview": "Overview",
+  "brand & style": "Overview",
+  "colors": "Colors",
+  "typography": "Typography",
+  "layout": "Layout",
+  "layout & spacing": "Layout",
+  "elevation": "Elevation",
+  "elevation & depth": "Elevation",
+  "shapes": "Shapes",
+  "components": "Components",
+  "do's and don'ts": "Do's and Don'ts",
+  "dos and don'ts": "Do's and Don'ts",
+  "dos and donts": "Do's and Don'ts",
+};
+
+const canonicalSection = (raw: string): string => {
+  const key = raw.trim().toLowerCase().replace(/[‘’]/g, "'");
+  return SECTION_ALIASES[key] ?? raw.trim();
+};
+
+const parseBodySections = (body: string): Record<string, string> => {
+  const out: Record<string, string> = {};
+  const lines = body.split(/\r?\n/);
+  let currentName: string | null = null;
+  let buf: string[] = [];
+  let inFence = false;
+
+  const flush = () => {
+    if (currentName == null) return;
+    const text = buf.join("\n").trim();
+    if (text.length > 0) out[currentName] = text;
+    buf = [];
+  };
+
+  for (const raw of lines) {
+    if (/^```/.test(raw)) {
+      inFence = !inFence;
+      buf.push(raw);
+      continue;
+    }
+    if (!inFence) {
+      const m = /^##\s+(.+?)\s*$/.exec(raw);
+      if (m) {
+        flush();
+        currentName = canonicalSection(m[1]);
+        continue;
+      }
+    }
+    if (currentName != null) buf.push(raw);
+  }
+  flush();
+  return out;
 };
 
 const unquote = (raw: string): string => {
@@ -64,6 +130,7 @@ export const parseDraft = (source: string): ParsedDraft | null => {
     description: "",
     colors: {},
     rounded: {},
+    sections: parseBodySections(bodyAfterFrontmatter(source)),
   };
 
   let i = 0;

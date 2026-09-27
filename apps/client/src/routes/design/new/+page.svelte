@@ -16,8 +16,14 @@
 
   let draftName = "Untitled draft";
   let prompt = "";
-  let activeSection: "colors" | "typography" | "elevation" | "shapes" | "components" =
-    "colors";
+  let activeSection:
+    | "colors"
+    | "typography"
+    | "elevation"
+    | "shapes"
+    | "components"
+    | "layout"
+    | "dos-donts" = "colors";
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
