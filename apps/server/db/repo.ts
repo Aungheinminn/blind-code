@@ -956,4 +956,115 @@ export const setDesignTemplateForProject = async (
   return true;
 };
 
+const USER_TEMPLATE_SORT_ORDER = 1000;
+
+const slugifyTemplateName = (raw: string): string => {
+  const base = raw
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base || "template";
+};
+
+const findAvailableTemplateSlug = async (base: string): Promise<string> => {
+  if (!db) return base;
+  const rows = await db
+    .select({ slug: schema.designTemplates.slug })
+    .from(schema.designTemplates)
+    .where(ilike(schema.designTemplates.slug, `${base}%`));
+  const taken = new Set(rows.map((r) => r.slug).filter((s): s is string => !!s));
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = `${base}-${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+};
+
+export const createAgentDesignTemplate = async (input: {
+  ownerUserId: string;
+  name: string;
+  description?: string | null;
+  content: string;
+  parsedTokens: unknown;
+  sourceProjectId?: string | null;
+}) => {
+  if (!db) return null;
+  const baseSlug = slugifyTemplateName(input.name);
+  const slug = await findAvailableTemplateSlug(baseSlug);
+  const [row] = await db
+    .insert(schema.designTemplates)
+    .values({
+      slug,
+      name: input.name,
+      description: input.description ?? null,
+      content: input.content,
+      parsedTokens: input.parsedTokens as any,
+      origin: "agent",
+      ownerUserId: input.ownerUserId,
+      sourceProjectId: input.sourceProjectId ?? null,
+      isReadOnly: false,
+      sortOrder: USER_TEMPLATE_SORT_ORDER,
+    })
+    .returning();
+  return row;
+};
+
+export const listDesignTemplatesForUser = async (ownerUserId: string) => {
+  if (!db) return [];
+  return db
+    .select({
+      id: schema.designTemplates.id,
+      slug: schema.designTemplates.slug,
+      name: schema.designTemplates.name,
+      description: schema.designTemplates.description,
+      origin: schema.designTemplates.origin,
+      parsedTokens: schema.designTemplates.parsedTokens,
+      isReadOnly: schema.designTemplates.isReadOnly,
+      sortOrder: schema.designTemplates.sortOrder,
+      ownerUserId: schema.designTemplates.ownerUserId,
+      sourceProjectId: schema.designTemplates.sourceProjectId,
+      createdAt: schema.designTemplates.createdAt,
+      updatedAt: schema.designTemplates.updatedAt,
+    })
+    .from(schema.designTemplates)
+    .where(
+      or(
+        eq(schema.designTemplates.origin, "builtin"),
+        and(
+          eq(schema.designTemplates.ownerUserId, ownerUserId),
+          inArray(schema.designTemplates.origin, ["user", "agent"]),
+        ),
+      ),
+    )
+    .orderBy(
+      asc(schema.designTemplates.sortOrder),
+      desc(schema.designTemplates.updatedAt),
+    );
+};
+
+export const deleteDesignTemplateForOwner = async (
+  id: string,
+  ownerUserId: string,
+): Promise<
+  { deleted: true } | { forbidden: true } | { notFound: true } | null
+> => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.designTemplates)
+    .where(eq(schema.designTemplates.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { notFound: true };
+  if (row.origin === "builtin" || row.isReadOnly) return { forbidden: true };
+  if (row.ownerUserId !== ownerUserId) return { forbidden: true };
+  await db
+    .delete(schema.designTemplates)
+    .where(eq(schema.designTemplates.id, id));
+  return { deleted: true };
+};
+
 export { hasDb };
