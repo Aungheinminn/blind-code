@@ -21,7 +21,7 @@
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
-  $: canSave = Boolean($draftMarkdown) && !isRunning;
+  $: canSave = Boolean($draftMarkdown) && !isRunning && !$savedTemplate;
 
   const onSubmit = async () => {
     if (!canSend) return;
@@ -58,10 +58,10 @@
     />
     <div class="toolbar-right">
       {#if $savedTemplate}
-        <span class="status-pill status-saved">
+        <a href="/design" class="status-pill status-saved" title="Open the template gallery">
           <span class="status-dot" aria-hidden="true"></span>
-          saved · {$savedTemplate.name}
-        </span>
+          saved · {$savedTemplate.name} →
+        </a>
       {:else}
         <span class="status-pill status-{$status.phase}">
           <span class="status-dot" aria-hidden="true"></span>
@@ -212,6 +212,11 @@
     color: #16a34a;
     border-color: color-mix(in srgb, #16a34a 30%, transparent);
     background-color: color-mix(in srgb, #16a34a 10%, transparent);
+    text-decoration: none;
+    transition: filter 150ms ease;
+  }
+  .status-saved:hover {
+    filter: brightness(0.95);
   }
   .status-saved .status-dot {
     background-color: #16a34a;

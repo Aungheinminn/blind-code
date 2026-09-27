@@ -1,10 +1,15 @@
 <script lang="ts">
+  import { parseDraft, tokensFromDraft } from "./parseTemplate";
+
   export let hasDraft = false;
   export let draft: string | null = null;
+
+  $: parsed = draft ? parseDraft(draft) : null;
+  $: tokens = parsed ? tokensFromDraft(parsed) : null;
 </script>
 
 <div class="canvas">
-  {#if !hasDraft}
+  {#if !hasDraft || !tokens}
     <div class="empty">
       <div class="empty-illustration" aria-hidden="true">
         <span class="dot" style="background-color: #b5442e;"></span>
@@ -17,16 +22,137 @@
         One line is enough — a mood, a use case, a reference. The agent will
         draft a template you can see below and refine with more prompts.
       </p>
+      {#if hasDraft && !tokens}
+        <p class="empty-note">
+          Draft received but frontmatter isn't parseable yet — waiting for the
+          agent to finish writing it.
+        </p>
+      {/if}
     </div>
   {:else}
+    {@const t = tokens}
     <div class="scroll">
+      {#if t.name || t.description}
+        <div class="draft-heading">
+          {#if t.name}<h1>{t.name}</h1>{/if}
+          {#if t.description}<p>{t.description}</p>{/if}
+        </div>
+      {/if}
+
       <section data-preview-section="colors" class="preview-section">
-        <div class="section-label">Draft markdown</div>
-        <p class="section-hint">
-          Phase&nbsp;3 will render this as swatches + type samples + components.
-          For now, the raw draft:
-        </p>
-        <pre class="raw-draft">{draft ?? ""}</pre>
+        <div class="section-label">Colors</div>
+        <div class="swatch-strip">
+          {#each t.swatches as s}
+            <figure class="swatch" title="{s.name} — {s.value}">
+              <span class="swatch-color" style="background-color: {s.value};"></span>
+              <figcaption>
+                <span class="swatch-name">{s.name}</span>
+                <span class="swatch-value">{s.value}</span>
+              </figcaption>
+            </figure>
+          {/each}
+        </div>
+      </section>
+
+      <section data-preview-section="typography" class="preview-section">
+        <div class="section-label">Typography</div>
+        <div
+          class="type-block"
+          style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+        >
+          <div class="type-headline">Season Field Notes</div>
+          <div class="type-body">
+            Body text sample at 15px / 1.55 — the second line shows how longer
+            paragraph copy wraps under a headline.
+          </div>
+          <div class="type-caption" style="color: {t.colors.mutedForeground};">
+            Muted caption · used for metadata, labels, and secondary text
+          </div>
+        </div>
+      </section>
+
+      <section data-preview-section="elevation" class="preview-section">
+        <div class="section-label">Elevation</div>
+        <div class="elev-row">
+          <div
+            class="elev-tile elev-sm"
+            style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+          >
+            sm
+          </div>
+          <div
+            class="elev-tile elev-md"
+            style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+          >
+            md
+          </div>
+          <div
+            class="elev-tile elev-lg"
+            style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+          >
+            lg
+          </div>
+        </div>
+      </section>
+
+      <section data-preview-section="shapes" class="preview-section">
+        <div class="section-label">Shapes</div>
+        <div class="shape-row">
+          <div
+            class="shape-tile"
+            style="background-color: {t.colors.primary}; border-radius: {t.rounded.sm};"
+          ></div>
+          <div
+            class="shape-tile"
+            style="background-color: {t.colors.primary}; border-radius: {t.rounded.md};"
+          ></div>
+          <div
+            class="shape-tile"
+            style="background-color: {t.colors.primary}; border-radius: {t.rounded.lg};"
+          ></div>
+        </div>
+      </section>
+
+      <section data-preview-section="components" class="preview-section">
+        <div class="section-label">Components</div>
+        <div class="component-grid">
+          <div
+            class="mock-card"
+            style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border: 1px solid {t.colors.border}; border-radius: {t.rounded.lg};"
+          >
+            <div class="mock-card-kicker" style="color: {t.colors.tertiary};">
+              PROGRAM
+            </div>
+            <div class="mock-card-title">Community Grant</div>
+            <p class="mock-card-body" style="color: {t.colors.mutedForeground};">
+              Rounded corners, tonal border, resting elevation.
+            </p>
+            <div class="mock-card-actions">
+              <button
+                type="button"
+                class="mock-btn"
+                style="background-color: {t.colors.primary}; color: {t.colors.surface}; border-radius: {t.rounded.md};"
+              >
+                Apply now
+              </button>
+              <button
+                type="button"
+                class="mock-btn"
+                style="background-color: transparent; color: {t.colors.onSurface}; border: 1px solid {t.colors.border}; border-radius: {t.rounded.md};"
+              >
+                Learn more
+              </button>
+            </div>
+            <div class="mock-input-row">
+              <input
+                type="text"
+                class="mock-input"
+                placeholder="your@email"
+                style="background-color: {t.colors.neutral}; color: {t.colors.onSurface}; border: 1px solid {t.colors.border}; border-radius: {t.rounded.md};"
+              />
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   {/if}
@@ -76,40 +202,183 @@
     color: var(--text-secondary);
     margin: 0;
   }
+  .empty-note {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-style: italic;
+  }
+
   .scroll {
     height: 100%;
     overflow-y: auto;
-    padding: 24px 32px 160px;
+    padding: 28px 40px 160px;
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 34px;
   }
+
+  .draft-heading h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: var(--text-primary);
+  }
+  .draft-heading p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    max-width: 640px;
+  }
+
   .preview-section {
-    scroll-margin-top: 20px;
+    scroll-margin-top: 16px;
   }
   .section-label {
     font-size: 10.5px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-tertiary);
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
-  .section-hint {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin: 0 0 12px;
+
+  .swatch-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    max-width: 900px;
   }
-  .raw-draft {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--text-primary);
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    white-space: pre-wrap;
-    overflow-x: auto;
+  .swatch {
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .swatch-color {
+    display: block;
+    height: 52px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .swatch figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .swatch-name {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .swatch-value {
+    color: var(--text-tertiary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+  }
+
+  .type-block {
+    max-width: 640px;
+    padding: 22px 24px;
+    border-radius: 12px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .type-headline {
+    font-size: 28px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .type-body {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .type-caption {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  .elev-row,
+  .shape-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .elev-tile {
+    width: 84px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 10px;
+    border: 1px solid;
+  }
+  .elev-sm {
+    box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
+  }
+  .elev-md {
+    box-shadow: 0 3px 10px color-mix(in srgb, #000 16%, transparent);
+  }
+  .elev-lg {
+    box-shadow: 0 12px 32px color-mix(in srgb, #000 22%, transparent);
+  }
+  .shape-tile {
+    width: 60px;
+    height: 60px;
+  }
+
+  .component-grid {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .mock-card {
+    width: 340px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mock-card-kicker {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .mock-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .mock-card-body {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .mock-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .mock-btn {
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border: 0;
+    cursor: default;
+  }
+  .mock-input-row {
+    margin-top: 6px;
+  }
+  .mock-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    outline: none;
   }
 </style>

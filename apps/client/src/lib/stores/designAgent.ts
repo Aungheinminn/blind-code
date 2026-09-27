@@ -196,6 +196,7 @@ export const sendDesignPrompt = async (prompt: string): Promise<void> => {
 
   addUserMessage(trimmed);
   errorMessage.set(null);
+  savedTemplate.set(null);
 
   let ws: WebSocket;
   try {
