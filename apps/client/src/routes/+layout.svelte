@@ -79,6 +79,7 @@
     const pid = projectDetailId(path);
     if (pid) return goto(`/projects/${pid}/workspace`);
     if (supabaseDetailRe.test(path)) return goto("/supabase");
+    if (path.startsWith("/design/") && path !== "/design") return goto("/design");
     goto("/");
   };
 </script>

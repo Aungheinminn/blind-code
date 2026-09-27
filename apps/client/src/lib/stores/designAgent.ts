@@ -1,5 +1,6 @@
 import { writable, get } from "svelte/store";
 import { getWsTicket } from "$lib/api/auth";
+import { createDesignTemplateFromDraft } from "$lib/api/projects";
 import { selectedModel } from "./agent";
 
 export type DesignAgentMessage = {
@@ -20,13 +21,21 @@ export type SavedTemplate = {
   name: string;
 };
 
+export type SaveProposal = {
+  name: string;
+  description: string;
+  markdown: string;
+};
+
 const SERVER_WS = import.meta.env.VITE_SERVER_WS ?? "ws://localhost:3001";
 const designAgentWsUrl = () => `${SERVER_WS}/ws/design-agent`;
 
 export const messages = writable<DesignAgentMessage[]>([]);
 export const status = writable<DesignAgentStatus>({ phase: "idle", label: "idle" });
 export const draftMarkdown = writable<string | null>(null);
+export const saveProposal = writable<SaveProposal | null>(null);
 export const savedTemplate = writable<SavedTemplate | null>(null);
+export const isSaving = writable(false);
 export const errorMessage = writable<string | null>(null);
 
 let socket: WebSocket | null = null;
@@ -37,7 +46,7 @@ const TOOL_STATUS: Record<string, string> = {
   read_builtin_template: "reading reference template",
   write_draft: "writing draft",
   validate_draft: "validating draft",
-  save_template: "saving template",
+  propose_save: "proposing save",
 };
 
 const setStatus = (phase: DesignAgentStatus["phase"], label: string) =>
@@ -124,12 +133,12 @@ const handleEvent = (raw: unknown) => {
       }
       break;
 
-    case "template-saved":
-      if (event.template) {
-        savedTemplate.set({
-          id: String(event.template.id ?? ""),
-          slug: String(event.template.slug ?? ""),
-          name: String(event.template.name ?? ""),
+    case "save-proposed":
+      if (event.proposal) {
+        saveProposal.set({
+          name: String(event.proposal.name ?? ""),
+          description: String(event.proposal.description ?? ""),
+          markdown: String(event.proposal.markdown ?? ""),
         });
       }
       break;
@@ -197,6 +206,7 @@ export const sendDesignPrompt = async (prompt: string): Promise<void> => {
   addUserMessage(trimmed);
   errorMessage.set(null);
   savedTemplate.set(null);
+  saveProposal.set(null);
 
   let ws: WebSocket;
   try {
@@ -233,12 +243,54 @@ export const cancelDesignAgent = () => {
   } catch {}
 };
 
+export const dismissSaveProposal = () => {
+  saveProposal.set(null);
+};
+
+export const commitSave = async (opts: {
+  name?: string;
+  description?: string;
+}): Promise<boolean> => {
+  const markdown = get(draftMarkdown);
+  if (!markdown) {
+    errorMessage.set("no draft to save yet");
+    return false;
+  }
+  isSaving.set(true);
+  errorMessage.set(null);
+  try {
+    const row = await createDesignTemplateFromDraft({
+      markdown,
+      name: opts.name,
+      description: opts.description,
+    });
+    if (!row) {
+      errorMessage.set("save failed");
+      return false;
+    }
+    savedTemplate.set({
+      id: row.id,
+      slug: row.slug ?? "",
+      name: row.name,
+    });
+    saveProposal.set(null);
+    return true;
+  } catch (err) {
+    errorMessage.set(err instanceof Error ? err.message : "save failed");
+    return false;
+  } finally {
+    isSaving.set(false);
+  }
+};
+
 export const resetDesignStudio = () => {
   closeSocket();
   messages.set([]);
   status.set({ phase: "idle", label: "idle" });
   draftMarkdown.set(null);
+  saveProposal.set(null);
   savedTemplate.set(null);
+  isSaving.set(false);
   errorMessage.set(null);
   currentAgentMessageId = null;
   abortRequested = false;

@@ -4,17 +4,23 @@
   import ProviderChip from "$lib/components/landing/ProviderChip.svelte";
   import SectionRail from "$lib/components/design-studio/SectionRail.svelte";
   import PreviewCanvas from "$lib/components/design-studio/PreviewCanvas.svelte";
+  import { parseDraft } from "$lib/components/design-studio/parseTemplate";
   import {
     status,
     draftMarkdown,
+    saveProposal,
     savedTemplate,
+    isSaving,
     errorMessage,
     sendDesignPrompt,
     cancelDesignAgent,
+    commitSave,
+    dismissSaveProposal,
     resetDesignStudio,
   } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
+  let nameEditedByUser = false;
   let prompt = "";
   let activeSection:
     | "colors"
@@ -27,12 +33,23 @@
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
-  $: canSave = Boolean($draftMarkdown) && !isRunning && !$savedTemplate;
+  $: canSave =
+    Boolean($draftMarkdown) &&
+    !isRunning &&
+    !$savedTemplate &&
+    !$isSaving;
+
+  $: if ($draftMarkdown && !nameEditedByUser) {
+    const parsed = parseDraft($draftMarkdown);
+    const fmName = parsed?.name?.trim();
+    if (fmName && fmName !== draftName) draftName = fmName;
+  }
 
   const onSubmit = async () => {
     if (!canSend) return;
     const text = prompt.trim();
     prompt = "";
+    nameEditedByUser = false;
     await sendDesignPrompt(text);
   };
 
@@ -40,9 +57,31 @@
     cancelDesignAgent();
   };
 
-  const onSave = () => {
+  const onSaveClick = async () => {
     if (!canSave) return;
-    void sendDesignPrompt(`Save this template as "${draftName.trim() || "Untitled draft"}".`);
+    await commitSave({
+      name: draftName.trim() || undefined,
+    });
+  };
+
+  const onPopupSave = async () => {
+    if (!$saveProposal) return;
+    await commitSave({
+      name: draftName.trim() || $saveProposal.name,
+      description: $saveProposal.description,
+    });
+  };
+
+  const onPopupLater = () => {
+    dismissSaveProposal();
+  };
+
+  const onNameInput = () => {
+    nameEditedByUser = true;
+  };
+
+  const onSectionChange = (id: string) => {
+    activeSection = id as typeof activeSection;
   };
 
   onDestroy(() => {
@@ -59,6 +98,7 @@
     <input
       type="text"
       bind:value={draftName}
+      on:input={onNameInput}
       class="draft-name"
       aria-label="Draft name"
     />
@@ -77,11 +117,11 @@
       <button
         type="button"
         class="save-btn"
-        on:click={onSave}
+        on:click={onSaveClick}
         disabled={!canSave}
-        title={canSave ? "Ask the agent to save this draft" : "Generate a draft first"}
+        title={canSave ? "Save this draft as a new template" : "Generate a draft first"}
       >
-        Save template
+        {$isSaving ? "Saving…" : "Save template"}
       </button>
     </div>
   </div>
@@ -93,10 +133,43 @@
   {/if}
 
   <div class="canvas-wrap">
-    <PreviewCanvas hasDraft={Boolean($draftMarkdown)} draft={$draftMarkdown} />
+    <PreviewCanvas
+      hasDraft={Boolean($draftMarkdown)}
+      draft={$draftMarkdown}
+      on:sectionchange={(e) => onSectionChange(e.detail)}
+    />
     <SectionRail bind:active={activeSection} />
 
     <div class="dock">
+      {#if $saveProposal && !$savedTemplate}
+        <div class="proposal" role="dialog" aria-live="polite">
+          <div class="proposal-body">
+            <span class="proposal-title">Ready to save as</span>
+            <strong class="proposal-name">"{$saveProposal.name}"</strong>
+            <span class="proposal-hint">
+              — or keep iterating and save later.
+            </span>
+          </div>
+          <div class="proposal-actions">
+            <button
+              type="button"
+              class="proposal-later"
+              on:click={onPopupLater}
+              disabled={$isSaving}
+            >
+              Later
+            </button>
+            <button
+              type="button"
+              class="proposal-save"
+              on:click={onPopupSave}
+              disabled={$isSaving}
+            >
+              {$isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      {/if}
       {#if isRunning}
         <span class="live-pill">
           <span class="live-dot" aria-hidden="true"></span>
@@ -304,6 +377,73 @@
     cursor: pointer;
     font-size: 11px;
     text-decoration: underline;
+  }
+  .proposal {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-panel);
+    box-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.35);
+  }
+  .proposal-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+  .proposal-title {
+    color: var(--text-tertiary);
+  }
+  .proposal-name {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .proposal-hint {
+    color: var(--text-tertiary);
+    font-size: 11.5px;
+  }
+  .proposal-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .proposal-later,
+  .proposal-save {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: background-color 150ms ease, filter 150ms ease, opacity 150ms ease;
+  }
+  .proposal-later {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  .proposal-later:hover:not(:disabled) {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .proposal-save {
+    background-color: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+  .proposal-save:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+  .proposal-later:disabled,
+  .proposal-save:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
   @keyframes pulse {
     0%,

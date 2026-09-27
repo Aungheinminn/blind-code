@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { afterUpdate, createEventDispatcher, onDestroy } from "svelte";
   import { parseDraft, tokensFromDraft } from "./parseTemplate";
   import { renderMiniMarkdown } from "./miniMarkdown";
 
@@ -16,6 +17,56 @@
     if (!src || src.trim().length === 0) return "";
     return renderMiniMarkdown(src);
   };
+
+  const dispatch = createEventDispatcher<{ sectionchange: string }>();
+
+  let scrollEl: HTMLDivElement | null = null;
+  let observer: IntersectionObserver | null = null;
+  let observedIds: string[] = [];
+  let lastEmitted: string | null = null;
+
+  const rebindObserver = () => {
+    if (typeof IntersectionObserver === "undefined") return;
+    if (!scrollEl) return;
+    const targets = Array.from(
+      scrollEl.querySelectorAll<HTMLElement>("[data-preview-section]"),
+    );
+    const ids = targets.map((el) => el.dataset.previewSection ?? "");
+    const sameSet =
+      ids.length === observedIds.length &&
+      ids.every((id, i) => id === observedIds[i]);
+    if (sameSet && observer) return;
+
+    observer?.disconnect();
+    observedIds = ids;
+    observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!visible) return;
+        const id = (visible.target as HTMLElement).dataset.previewSection;
+        if (!id || id === lastEmitted) return;
+        lastEmitted = id;
+        dispatch("sectionchange", id);
+      },
+      {
+        root: scrollEl,
+        rootMargin: "-10% 0px -75% 0px",
+        threshold: 0,
+      },
+    );
+    for (const el of targets) observer.observe(el);
+  };
+
+  afterUpdate(() => {
+    rebindObserver();
+  });
+
+  onDestroy(() => {
+    observer?.disconnect();
+    observer = null;
+  });
 </script>
 
 <div class="canvas">
@@ -48,7 +99,7 @@
     {@const componentsProse = sectionHtml(parsed, "Components")}
     {@const layoutProse = sectionHtml(parsed, "Layout")}
     {@const dosProse = sectionHtml(parsed, "Do's and Don'ts")}
-    <div class="scroll">
+    <div class="scroll" bind:this={scrollEl}>
       {#if t.name || t.description || overviewHtml}
         <div class="draft-heading">
           {#if t.name}<h1>{t.name}</h1>{/if}
