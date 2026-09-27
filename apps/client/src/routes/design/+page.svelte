@@ -46,7 +46,16 @@
 
 <section class="page w-full max-w-[900px] mx-auto px-6 pt-14 pb-20">
   <header class="header">
-    <h1>Design templates</h1>
+    <div class="header-top">
+      <h1>Design templates</h1>
+      <a href="/design/new" class="new-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        <span>Create new</span>
+      </a>
+    </div>
     <p>
       Every project renders with a design template — a
       <a href="https://github.com/google-labs-code/design.md" target="_blank" rel="noreferrer">
@@ -104,10 +113,35 @@
   .page {
     color: var(--text-primary);
   }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
   .header h1 {
     font-size: 24px;
     font-weight: 600;
-    margin: 0 0 12px;
+    margin: 0;
+  }
+  .new-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .new-btn:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-strong);
   }
   .header p {
     font-size: 14px;
