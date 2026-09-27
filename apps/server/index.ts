@@ -8,6 +8,7 @@ import { connectController } from "./controllers/connect.controller";
 import { accountController } from "./controllers/account.controller";
 import { sampleBuildsController } from "./controllers/sampleBuilds.controller";
 import { designTemplatesController } from "./controllers/designTemplates.controller";
+import { designAgentController } from "./controllers/designAgent.ws";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
 import { withCors } from "./services/cors";
@@ -46,6 +47,7 @@ sampleBuildsController(app);
 designTemplatesController(app);
 runtimeWsController(app, orchestrator);
 agentController(app);
+designAgentController(app);
 connectController(app);
 accountController(app);
 
