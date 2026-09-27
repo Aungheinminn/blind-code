@@ -1,24 +1,47 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ProviderChip from "$lib/components/landing/ProviderChip.svelte";
   import SectionRail from "$lib/components/design-studio/SectionRail.svelte";
   import PreviewCanvas from "$lib/components/design-studio/PreviewCanvas.svelte";
+  import {
+    status,
+    draftMarkdown,
+    savedTemplate,
+    errorMessage,
+    sendDesignPrompt,
+    cancelDesignAgent,
+    resetDesignStudio,
+  } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
   let prompt = "";
   let activeSection: "colors" | "typography" | "elevation" | "shapes" | "components" =
     "colors";
 
-  let status = "idle" as "idle" | "running";
+  $: isRunning = $status.phase === "running" || $status.phase === "connecting";
+  $: canSend = prompt.trim().length > 0 && !isRunning;
+  $: canSave = Boolean($draftMarkdown) && !isRunning;
 
-  $: canSend = prompt.trim().length > 0 && status === "idle";
-
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!canSend) return;
+    const text = prompt.trim();
     prompt = "";
+    await sendDesignPrompt(text);
   };
 
-  const onSave = () => {};
+  const onCancel = () => {
+    cancelDesignAgent();
+  };
+
+  const onSave = () => {
+    if (!canSave) return;
+    void sendDesignPrompt(`Save this template as "${draftName.trim() || "Untitled draft"}".`);
+  };
+
+  onDestroy(() => {
+    resetDesignStudio();
+  });
 </script>
 
 <svelte:head>
@@ -34,41 +57,65 @@
       aria-label="Draft name"
     />
     <div class="toolbar-right">
-      <span class="status-pill status-{status}">
-        <span class="status-dot" aria-hidden="true"></span>
-        {status === "running" ? "generating" : "idle"}
-      </span>
+      {#if $savedTemplate}
+        <span class="status-pill status-saved">
+          <span class="status-dot" aria-hidden="true"></span>
+          saved · {$savedTemplate.name}
+        </span>
+      {:else}
+        <span class="status-pill status-{$status.phase}">
+          <span class="status-dot" aria-hidden="true"></span>
+          {$status.label}
+        </span>
+      {/if}
       <button
         type="button"
         class="save-btn"
         on:click={onSave}
-        disabled
-        title="Save the current draft (available once you generate one)"
+        disabled={!canSave}
+        title={canSave ? "Ask the agent to save this draft" : "Generate a draft first"}
       >
         Save template
       </button>
     </div>
   </div>
 
+  {#if $errorMessage}
+    <div class="error-bar" role="alert">
+      {$errorMessage}
+    </div>
+  {/if}
+
   <div class="canvas-wrap">
-    <PreviewCanvas />
+    <PreviewCanvas hasDraft={Boolean($draftMarkdown)} draft={$draftMarkdown} />
     <SectionRail bind:active={activeSection} />
 
     <div class="dock">
-      {#if status === "running"}
+      {#if isRunning}
         <span class="live-pill">
           <span class="live-dot" aria-hidden="true"></span>
-          adjusting…
+          {$status.label}
+          <button
+            type="button"
+            class="cancel-link"
+            on:click={onCancel}
+            title="Cancel this run"
+          >
+            cancel
+          </button>
         </span>
       {/if}
       <form class="dock-box" on:submit|preventDefault={onSubmit}>
         <PromptBox
           bind:value={prompt}
-          placeholder="Describe the vibe — one line is enough…"
+          placeholder={$draftMarkdown
+            ? "Refine — 'make the accent warmer', 'tighten the type scale'…"
+            : "Describe the vibe — one line is enough…"}
           minHeight={44}
           maxHeight={140}
           size="sm"
           submitOnEnter
+          disabled={isRunning}
           on:submit={onSubmit}
         >
           <svelte:fragment slot="left">
@@ -155,9 +202,19 @@
     border-radius: 50%;
     background-color: var(--text-tertiary);
   }
-  .status-running .status-dot {
+  .status-running .status-dot,
+  .status-connecting .status-dot {
     background-color: var(--accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .status-saved {
+    color: #16a34a;
+    border-color: color-mix(in srgb, #16a34a 30%, transparent);
+    background-color: color-mix(in srgb, #16a34a 10%, transparent);
+  }
+  .status-saved .status-dot {
+    background-color: #16a34a;
   }
   .save-btn {
     padding: 7px 14px;
@@ -175,8 +232,15 @@
     cursor: not-allowed;
   }
   .save-btn:not(:disabled):hover {
-    background-color: var(--accent-hover, var(--accent));
     filter: brightness(1.05);
+  }
+
+  .error-bar {
+    padding: 8px 20px;
+    font-size: 12.5px;
+    color: #b91c1c;
+    background-color: color-mix(in srgb, #ef4444 10%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
   }
 
   .canvas-wrap {
@@ -205,8 +269,8 @@
   .live-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 8px;
+    padding: 4px 12px;
     border-radius: 999px;
     font-size: 11.5px;
     font-weight: 500;
@@ -220,6 +284,15 @@
     border-radius: 50%;
     background-color: var(--accent);
     animation: pulse 1.4s ease-in-out infinite;
+  }
+  .cancel-link {
+    background: transparent;
+    border: 0;
+    padding: 0 0 0 4px;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 11px;
+    text-decoration: underline;
   }
   @keyframes pulse {
     0%,

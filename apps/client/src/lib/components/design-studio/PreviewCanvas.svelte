@@ -1,5 +1,6 @@
 <script lang="ts">
   export let hasDraft = false;
+  export let draft: string | null = null;
 </script>
 
 <div class="canvas">
@@ -20,20 +21,12 @@
   {:else}
     <div class="scroll">
       <section data-preview-section="colors" class="preview-section">
-        <div class="section-label">Colors</div>
-        <p class="section-hint">Waiting for the draft to arrive…</p>
-      </section>
-      <section data-preview-section="typography" class="preview-section">
-        <div class="section-label">Typography</div>
-      </section>
-      <section data-preview-section="elevation" class="preview-section">
-        <div class="section-label">Elevation</div>
-      </section>
-      <section data-preview-section="shapes" class="preview-section">
-        <div class="section-label">Shapes</div>
-      </section>
-      <section data-preview-section="components" class="preview-section">
-        <div class="section-label">Components</div>
+        <div class="section-label">Draft markdown</div>
+        <p class="section-hint">
+          Phase&nbsp;3 will render this as swatches + type samples + components.
+          For now, the raw draft:
+        </p>
+        <pre class="raw-draft">{draft ?? ""}</pre>
       </section>
     </div>
   {/if}
@@ -104,6 +97,19 @@
   .section-hint {
     font-size: 13px;
     color: var(--text-secondary);
+    margin: 0 0 12px;
+  }
+  .raw-draft {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    white-space: pre-wrap;
+    overflow-x: auto;
     margin: 0;
   }
 </style>
