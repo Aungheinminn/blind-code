@@ -21,7 +21,6 @@
     { id: "shapes", label: "Shapes", letter: "S" },
     { id: "components", label: "Components", letter: "K" },
     { id: "layout", label: "Layout", letter: "L" },
-    { id: "dos-donts", label: "Do's & Don'ts", letter: "D" },
   ];
 
   const onPick = (id: typeof active) => {
