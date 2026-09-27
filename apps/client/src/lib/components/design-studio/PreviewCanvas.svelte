@@ -42,7 +42,6 @@
   {:else}
     {@const t = tokens}
     {@const overviewHtml = sectionHtml(parsed, "Overview")}
-    {@const colorsProse = sectionHtml(parsed, "Colors")}
     {@const typographyProse = sectionHtml(parsed, "Typography")}
     {@const elevationProse = sectionHtml(parsed, "Elevation")}
     {@const shapesProse = sectionHtml(parsed, "Shapes")}
@@ -74,9 +73,6 @@
             </figure>
           {/each}
         </div>
-        {#if colorsProse}
-          <div class="prose">{@html colorsProse}</div>
-        {/if}
       </section>
 
       <section data-preview-section="typography" class="preview-section">

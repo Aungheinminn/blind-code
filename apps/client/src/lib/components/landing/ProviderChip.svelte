@@ -3,6 +3,8 @@
   import { auth } from "$lib/stores/auth";
   import ModelDropdown from "$lib/components/workspace/agent/ModelDropdown.svelte";
 
+  export let placement: "up" | "down" = "down";
+
   let loaded = false;
 
   $: if ($auth.status === "authed" && !loaded) {
@@ -15,7 +17,7 @@
   <ModelDropdown
     value={$selectedModel}
     providers={$providers}
-    placement="down"
+    {placement}
     on:change={(e) => selectedModel.set(e.detail)}
   />
 {/if}

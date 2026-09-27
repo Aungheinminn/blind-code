@@ -125,7 +125,7 @@
           on:submit={onSubmit}
         >
           <svelte:fragment slot="left">
-            <ProviderChip />
+            <ProviderChip placement="up" />
           </svelte:fragment>
 
           <svelte:fragment slot="right">
