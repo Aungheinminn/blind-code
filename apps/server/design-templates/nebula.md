@@ -79,29 +79,29 @@ components:
 Nebula is engineered for high-focus productivity interfaces — data-heavy dashboards, admin consoles, developer tools. A deep indigo-black canvas contrasted against cool-gray surfaces establishes structure without visible borders. The electric teal accent snaps attention to anomalies and terminal states.
 
 ## Colors
-Indigo primary anchors active navigation, primary buttons, and focused inputs. Secondary lightens the indigo one step for hovered navigation and softer emphasis. Reserve the electric teal tertiary for critical highlights, success states, and hover on primary CTAs — one tertiary element per screen, no more. Neutral is the app canvas: deep indigo-black, never pure black. Surface is the cool-gray card layer, lifted from canvas by tone rather than shadow.
+`{colors.primary}` anchors active navigation, primary buttons, and focused inputs. `{colors.secondary}` lightens the indigo one step for hovered navigation and softer emphasis. Reserve `{colors.tertiary}` for critical highlights, success states, and hover on primary CTAs — one tertiary element per screen, no more. `{colors.neutral}` is the app canvas: deep indigo-black, never pure black. `{colors.surface}` is the cool-gray card layer, lifted from canvas by tone rather than shadow. `{colors.on-surface}` is the primary text on both; `{colors.muted-foreground}` handles metadata and helper text; `{colors.border}` is a single-pixel hairline used only where two same-tone surfaces need to be told apart.
 
 ## Typography
-Geist Sans Semibold carries the headlines with tightened tracking for institutional weight. Inter Regular at 15px handles body copy comfortably in dense data views. Reserve Geist Mono in generously-tracked uppercase for metric names, KPIs, timestamps, and other machine-adjacent metadata — never for body copy.
+Use `{typography.headline-lg}` for page titles and `{typography.headline-md}` for panel and section titles — Geist Sans Semibold with tightened tracking for institutional weight. `{typography.body-md}` handles the default reading experience at 15px comfortable for dense data views; `{typography.body-sm}` compresses supporting descriptions and inline metadata. `{typography.label-md}` runs in Geist Mono, generously tracked and uppercase — reserved for metric names, KPIs, timestamps, and other machine-adjacent metadata, never for body copy.
 
 ## Layout
-Fixed-max-width grid at 1440px on desktop, fluid below 1024px. Strict 8px spacing scale throughout. Data-heavy views use the md gutter between cards; single-focus views use the xl vertical rhythm so the primary content has room to breathe.
+Fixed-max-width grid at 1440px on desktop, fluid below 1024px. Data-heavy views use `{spacing.md}` between cards, `{spacing.lg}` for panel padding, and `{spacing.xl}` for vertical rhythm between primary sections so the surface has room to breathe. `{spacing.sm}` handles inline control gaps; `{spacing.xs}` is a micro-adjustment step.
 
 ## Elevation
-Depth is conveyed by tonal layers, not shadow. Surface reads as elevated purely because it's cooler and lighter than neutral. When a modal or popover truly must lift, add a 1px border-color outline before reaching for a shadow. Reserve the md and lg shadow steps for interactive states like drag or drop targets.
+Depth is conveyed by tonal layers, not shadow. `{colors.surface}` reads as elevated purely because it's cooler and lighter than `{colors.neutral}`. When a modal or popover truly must lift, use a 1px `{colors.border}` outline plus `{elevation.md}` before reaching for anything stronger. Reserve `{elevation.lg}` for critical states like a drop target during a drag.
 
 ## Shapes
-Modern-rounded. Cards use the lg radius, controls use md, chips and badges use full. Never mix sharp corners with rounded surfaces on the same screen — the visual language stays coherent.
+Modern-rounded. Cards use `{rounded.lg}`, controls use `{rounded.md}`, chips and badges use `{rounded.full}`. Never mix sharp corners with rounded surfaces on the same screen — the visual language stays coherent.
 
 ## Components
-Primary buttons run solid primary with on-surface text at the md radius. On hover, transition the background to tertiary over 150ms; disabled state drops to 40% opacity with a not-allowed cursor and no hover.
+Primary buttons run a solid `{colors.primary}` fill with `{colors.on-surface}` text at `{rounded.md}` corners; on hover, transition the background to `{colors.tertiary}` over 150ms. Disabled state drops to 40% opacity with a not-allowed cursor and no hover.
 
-Inputs sit on surface with no visible border by default and the md radius. On focus, add a 1.5px primary ring rather than swapping the input's own outline. On error, swap the ring to the error red and pair it with helper text in the same red.
+Inputs sit on `{colors.surface}` with no visible border by default and `{rounded.md}` corners. On focus, add a 1.5px `{colors.primary}` ring rather than swapping the input's own outline. On error, swap the ring to `{colors.error}` and pair with helper text in the same color.
 
-Cards use surface on neutral with the lg radius and lg padding. A 1px border-color outline is only for popovers and modals — resting cards stay borderless and let tonal contrast do the work.
+Cards use `{colors.surface}` on `{colors.neutral}` with `{rounded.lg}` corners and `{spacing.lg}` padding. A 1px `{colors.border}` outline is reserved for popovers and modals — resting cards stay borderless and let tonal contrast do the work.
 
 ## Do's and Don'ts
-- Do maintain WCAG AA (4.5:1) for all body text on both canvas and surface.
-- Do reserve the electric teal tertiary for one attention-critical element per view.
-- Don't use pure white — always route text color through on-surface.
-- Don't add drop shadows or heavy borders for resting hierarchy; lean on the tonal contrast between neutral and surface.
+- Do maintain WCAG AA (4.5:1) for `{colors.on-surface}` against both `{colors.neutral}` and `{colors.surface}`.
+- Do reserve `{colors.tertiary}` for one attention-critical element per view.
+- Don't use pure white — always route text color through `{colors.on-surface}`.
+- Don't add drop shadows or heavy borders for resting hierarchy; lean on the tonal contrast between `{colors.neutral}` and `{colors.surface}`.

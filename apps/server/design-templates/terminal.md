@@ -78,29 +78,29 @@ components:
 Terminal is a CLI aesthetic in the browser. Pure-black canvas, phosphor-green text, monospace everywhere, zero rounded corners. Aimed at developer tools, log viewers, ops dashboards, and anywhere a "hacker green screen" mood is a feature, not a bug.
 
 ## Colors
-Phosphor green primary is the default text color and the color of every active surface. Secondary is a slightly softer green for hover on primary text and for muted emphasis. Reserve the amber tertiary for warnings and non-critical highlights — never for success or info. Neutral is the pure-black canvas and must not be lightened. Surface is a near-black card layer one tonal shade above the canvas, just enough to read as elevated without breaking the ink discipline.
+`{colors.primary}` is the default text color and the color of every active surface. `{colors.secondary}` is a slightly softer green for hover on primary text and for muted emphasis. Reserve `{colors.tertiary}` for warnings and non-critical highlights — never for success or info. `{colors.neutral}` is the pure-black canvas and must not be lightened. `{colors.surface}` is a near-black card layer one tonal shade above the canvas, just enough to read as elevated without breaking the ink discipline. `{colors.on-surface}` names the phosphor as the semantic text color; `{colors.muted-foreground}` handles less-critical metadata; `{colors.border}` is the same-shade hairline used to separate stacked surfaces.
 
 ## Typography
-Everything is monospaced. JetBrains Mono at every size — no serif, no sans-serif variants. Headlines run bold with no tracking adjustment. Body sits at 14px regular. Labels stay uppercase with generous tracking for headers and machine-readable metadata.
+Everything is monospaced — JetBrains Mono at every size, no serif or sans-serif variants. `{typography.headline-lg}` and `{typography.headline-md}` run bold with no tracking adjustment. `{typography.body-md}` sits at 14px regular for legibility in dense logs; `{typography.body-sm}` compresses supporting rows. `{typography.label-md}` stays uppercase with generous tracking for section headers and machine-readable metadata.
 
 ## Layout
-Fixed-column grid on desktop (1200px max), full-fluid below. Consistent 8px spacing scale throughout. Prefer dense information layouts — this design language rewards content density over whitespace.
+Fixed-column grid on desktop (1200px max), full-fluid below. `{spacing.sm}` and `{spacing.md}` handle inline and gutter rhythm; `{spacing.lg}` sets card padding; `{spacing.xl}` separates primary sections. Prefer dense information layouts — this design language rewards content density over whitespace.
 
 ## Elevation
-There is no true elevation. Surface and neutral are separated by a single tonal shade, occasionally reinforced by a 1px border outline. The md shadow is a soft phosphor glow that can hint at focus or hover; the lg shadow reserves the same glow at higher intensity for critical states. Never use a soft ambient drop shadow — the aesthetic depends on sharp edges and clean tonal layers.
+There is no true elevation. `{colors.surface}` and `{colors.neutral}` are separated by a single tonal shade, occasionally reinforced by a 1px `{colors.border}` outline. `{elevation.md}` is a soft phosphor glow that can hint at focus or hover; `{elevation.lg}` reserves the same glow at higher intensity for critical states. Never use a soft ambient drop shadow — the aesthetic depends on sharp edges and clean tonal layers.
 
 ## Shapes
-Everything is sharp. The sm, md, and lg radius steps all resolve to 0px — buttons, cards, inputs, chips are all rectangular. Do not soften any corner; the aesthetic depends on it.
+Everything is sharp. `{rounded.sm}`, `{rounded.md}`, and `{rounded.lg}` all resolve to 0px — buttons, cards, inputs, chips are all rectangular. Do not soften any corner; the aesthetic depends on it.
 
 ## Components
-Primary buttons run neutral background with primary phosphor text and a 1px primary outline at 0 corners. On hover, invert — background becomes primary and text becomes neutral. Disabled state drops to 40% opacity with a not-allowed cursor and no hover.
+Primary buttons run a `{colors.neutral}` background with `{colors.primary}` text and a 1px `{colors.primary}` outline at `{rounded.md}` corners. On hover, invert — background becomes `{colors.primary}` and text becomes `{colors.neutral}`. Disabled state drops to 40% opacity with a not-allowed cursor and no hover.
 
-Inputs use neutral fill, primary text, and a 1px border-color outline. On focus, swap the outline to primary; on error, swap the outline and caret color to error and pair with helper text in the same red.
+Inputs use `{colors.neutral}` fill, `{colors.primary}` text, and a 1px `{colors.border}` outline. On focus, swap the outline to `{colors.primary}`; on error, swap the outline and caret to `{colors.error}` and pair with helper text in the same red.
 
-Cards live on surface over neutral with 0 corners and lg padding. A 1px border-color outline is optional for popovers and modals; resting cards stay borderless and rely on the single-shade tonal jump.
+Cards live on `{colors.surface}` over `{colors.neutral}` with `{rounded.lg}` corners and `{spacing.lg}` padding. A 1px `{colors.border}` outline is optional for popovers and modals; resting cards stay borderless and rely on the single-shade tonal jump.
 
 ## Do's and Don'ts
 - Do maintain the monospace discipline everywhere; even numeric labels stay mono.
-- Do keep the amber tertiary for warnings only; never mix with success or info states.
+- Do keep `{colors.tertiary}` for warnings only; never mix with success or info states.
 - Don't round any corner — the aesthetic depends on sharp edges.
 - Don't introduce any color outside the palette; the constraint is the point.
