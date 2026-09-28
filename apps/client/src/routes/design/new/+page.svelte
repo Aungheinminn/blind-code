@@ -30,6 +30,7 @@
   let prompt = "";
   let loadingTemplate = false;
   let loadError = "";
+  let viewOnly = false;
   let activeSection:
     | "colors"
     | "typography"
@@ -39,7 +40,7 @@
     | "layout"
     | "dos-donts" = "colors";
 
-  $: isEditing = Boolean($editingTemplateId);
+  $: isEditing = Boolean($editingTemplateId) && !viewOnly;
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
@@ -106,6 +107,7 @@
     try {
       const row = await getDesignTemplate(id);
       if (!row) throw new Error("template not found");
+      viewOnly = row.origin === "builtin";
       seedEditingTemplate({
         id: row.id,
         content: row.content,
@@ -132,8 +134,12 @@
 <section class="studio">
   <div class="toolbar">
     <div class="toolbar-left">
-      <span class="mode-chip" class:mode-chip-edit={isEditing}>
-        {isEditing ? "Editing" : "New"}
+      <span
+        class="mode-chip"
+        class:mode-chip-edit={isEditing}
+        class:mode-chip-view={viewOnly}
+      >
+        {viewOnly ? "Preview" : isEditing ? "Editing" : "New"}
       </span>
       <input
         type="text"
@@ -141,7 +147,8 @@
         on:input={onNameInput}
         class="draft-name"
         aria-label="Draft name"
-        disabled={loadingTemplate}
+        disabled={loadingTemplate || viewOnly}
+        readonly={viewOnly}
       />
     </div>
     <div class="toolbar-right">
@@ -151,23 +158,25 @@
           saved · {$savedTemplate.name} →
         </a>
       {/if}
-      <button
-        type="button"
-        class="save-btn"
-        on:click={onSaveClick}
-        disabled={!canSave}
-        title={canSave
-          ? isEditing
-            ? "Save your edits to this template"
-            : "Save this draft as a new template"
-          : "Generate a draft first"}
-      >
-        {$isSaving
-          ? "Saving…"
-          : isEditing
-            ? "Save changes"
-            : "Save template"}
-      </button>
+      {#if !viewOnly}
+        <button
+          type="button"
+          class="save-btn"
+          on:click={onSaveClick}
+          disabled={!canSave}
+          title={canSave
+            ? isEditing
+              ? "Save your edits to this template"
+              : "Save this draft as a new template"
+            : "Generate a draft first"}
+        >
+          {$isSaving
+            ? "Saving…"
+            : isEditing
+              ? "Save changes"
+              : "Save template"}
+        </button>
+      {/if}
     </div>
   </div>
 
@@ -189,11 +198,12 @@
     <PreviewCanvas
       hasDraft={Boolean($draftMarkdown)}
       draft={$draftMarkdown}
-      editable={Boolean($draftMarkdown) && !isRunning}
+      editable={Boolean($draftMarkdown) && !isRunning && !viewOnly}
       on:sectionchange={(e) => onSectionChange(e.detail)}
     />
     <SectionRail bind:active={activeSection} />
 
+    {#if !viewOnly}
     <div class="dock">
       {#if $saveProposal && !$savedTemplate}
         <div class="proposal" role="dialog" aria-live="polite">
@@ -274,6 +284,7 @@
         </PromptBox>
       </form>
     </div>
+    {/if}
   </div>
 </section>
 
@@ -316,6 +327,11 @@
     background-color: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .mode-chip-view {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-color: var(--border);
   }
   .loading-bar {
     padding: 8px 20px;

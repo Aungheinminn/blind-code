@@ -51,56 +51,32 @@
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
-<article class="card" class:manageable={canManage}>
-  {#if canManage}
-    <a
-      class="card-body"
-      href={`/design/new?id=${encodeURIComponent(template.id)}`}
-      aria-label={`Open ${template.name} in studio`}
-    >
-      <div class="card-head">
-        <h2>{template.name}</h2>
-        <span class="chip">{template.origin}</span>
-      </div>
-      {#if template.description}
-        <p class="desc">{template.description}</p>
-      {/if}
-      {#if swatches.length > 0}
-        <div class="swatches" role="list" aria-label="Color palette">
-          {#each swatches as s}
-            <span
-              class="swatch"
-              role="listitem"
-              title="{s.name} — {s.value}"
-              style="background-color: {s.value};"
-            ></span>
-          {/each}
-        </div>
-      {/if}
-    </a>
-  {:else}
-    <div class="card-body">
-      <div class="card-head">
-        <h2>{template.name}</h2>
-        <span class="chip">{template.origin}</span>
-      </div>
-      {#if template.description}
-        <p class="desc">{template.description}</p>
-      {/if}
-      {#if swatches.length > 0}
-        <div class="swatches" role="list" aria-label="Color palette">
-          {#each swatches as s}
-            <span
-              class="swatch"
-              role="listitem"
-              title="{s.name} — {s.value}"
-              style="background-color: {s.value};"
-            ></span>
-          {/each}
-        </div>
-      {/if}
+<article class="card">
+  <a
+    class="card-body"
+    href={`/design/new?id=${encodeURIComponent(template.id)}`}
+    aria-label={canManage ? `Open ${template.name} in studio` : `Preview ${template.name}`}
+  >
+    <div class="card-head">
+      <h2>{template.name}</h2>
+      <span class="chip">{template.origin}</span>
     </div>
-  {/if}
+    {#if template.description}
+      <p class="desc">{template.description}</p>
+    {/if}
+    {#if swatches.length > 0}
+      <div class="swatches" role="list" aria-label="Color palette">
+        {#each swatches as s}
+          <span
+            class="swatch"
+            role="listitem"
+            title="{s.name} — {s.value}"
+            style="background-color: {s.value};"
+          ></span>
+        {/each}
+      </div>
+    {/if}
+  </a>
 
   {#if canManage}
     <div class="kebab-wrap" bind:this={menuAnchor}>
@@ -163,7 +139,7 @@
     overflow: hidden;
     transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   }
-  .card.manageable:hover {
+  .card:hover {
     border-color: var(--accent);
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
     transform: translateY(-1px);
