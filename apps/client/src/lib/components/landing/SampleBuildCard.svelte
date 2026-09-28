@@ -91,6 +91,6 @@
     transition: border-color 150ms ease, transform 150ms ease;
   }
   .sample-card:hover {
-    border-color: var(--accent);
+    border-color: var(--accent) !important;
   }
 </style>
