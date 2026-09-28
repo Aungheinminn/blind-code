@@ -1,0 +1,235 @@
+<script lang="ts">
+  import { createEventDispatcher, onDestroy } from "svelte";
+  import type { DesignTemplateSummary } from "$lib/api/projects";
+
+  export let template: DesignTemplateSummary;
+  export let swatches: { name: string; value: string }[] = [];
+
+  const dispatch = createEventDispatcher<{
+    edit: DesignTemplateSummary;
+    delete: DesignTemplateSummary;
+  }>();
+
+  let menuOpen = false;
+  let menuAnchor: HTMLDivElement | null = null;
+
+  $: canManage = !template.isReadOnly && template.origin !== "builtin";
+
+  const toggleMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuOpen = !menuOpen;
+  };
+
+  const handleWindowClick = (e: MouseEvent) => {
+    if (!menuOpen || !menuAnchor) return;
+    if (!menuAnchor.contains(e.target as Node)) menuOpen = false;
+  };
+
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") menuOpen = false;
+  };
+
+  const onEdit = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuOpen = false;
+    dispatch("edit", template);
+  };
+
+  const onDelete = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    menuOpen = false;
+    dispatch("delete", template);
+  };
+
+  onDestroy(() => {
+    menuOpen = false;
+  });
+</script>
+
+<svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
+
+<article class="card">
+  <div class="card-head">
+    <h2>{template.name}</h2>
+    <span class="chip">{template.origin}</span>
+  </div>
+  {#if template.description}
+    <p class="desc">{template.description}</p>
+  {/if}
+  {#if swatches.length > 0}
+    <div class="swatches" role="list" aria-label="Color palette">
+      {#each swatches as s}
+        <span
+          class="swatch"
+          role="listitem"
+          title="{s.name} — {s.value}"
+          style="background-color: {s.value};"
+        ></span>
+      {/each}
+    </div>
+  {/if}
+
+  {#if canManage}
+    <div class="kebab-wrap" bind:this={menuAnchor}>
+      <button
+        type="button"
+        on:click={toggleMenu}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-label="Template actions"
+        title="More"
+        class="kebab"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="12" cy="19" r="1.6" />
+        </svg>
+      </button>
+
+      {#if menuOpen}
+        <div class="menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            on:click={onEdit}
+            class="menu-item"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+            <span>Edit</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            on:click={onDelete}
+            class="menu-item menu-item-danger"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span>Delete</span>
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
+</article>
+
+<style>
+  .card {
+    position: relative;
+    padding: 20px;
+    padding-right: 44px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background-color: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-head h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .chip {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+  }
+  .desc {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .swatches {
+    display: flex;
+    gap: 6px;
+    margin-top: auto;
+  }
+  .swatch {
+    flex: 1;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+  }
+
+  .kebab-wrap {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  .kebab {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .kebab:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .menu {
+    position: absolute;
+    top: 34px;
+    right: 0;
+    width: 140px;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-panel);
+    box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    text-align: left;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+  .menu-item:hover {
+    background-color: var(--bg-tertiary);
+  }
+  .menu-item-danger {
+    color: #ef4444;
+  }
+</style>
