@@ -6,7 +6,7 @@
   export let swatches: { name: string; value: string }[] = [];
 
   const dispatch = createEventDispatcher<{
-    edit: DesignTemplateSummary;
+    rename: DesignTemplateSummary;
     delete: DesignTemplateSummary;
   }>();
 
@@ -30,11 +30,11 @@
     if (e.key === "Escape") menuOpen = false;
   };
 
-  const onEdit = (e: MouseEvent) => {
+  const onRename = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     menuOpen = false;
-    dispatch("edit", template);
+    dispatch("rename", template);
   };
 
   const onDelete = (e: MouseEvent) => {
@@ -51,24 +51,54 @@
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
-<article class="card">
-  <div class="card-head">
-    <h2>{template.name}</h2>
-    <span class="chip">{template.origin}</span>
-  </div>
-  {#if template.description}
-    <p class="desc">{template.description}</p>
-  {/if}
-  {#if swatches.length > 0}
-    <div class="swatches" role="list" aria-label="Color palette">
-      {#each swatches as s}
-        <span
-          class="swatch"
-          role="listitem"
-          title="{s.name} — {s.value}"
-          style="background-color: {s.value};"
-        ></span>
-      {/each}
+<article class="card" class:manageable={canManage}>
+  {#if canManage}
+    <a
+      class="card-body"
+      href={`/design/new?id=${encodeURIComponent(template.id)}`}
+      aria-label={`Open ${template.name} in studio`}
+    >
+      <div class="card-head">
+        <h2>{template.name}</h2>
+        <span class="chip">{template.origin}</span>
+      </div>
+      {#if template.description}
+        <p class="desc">{template.description}</p>
+      {/if}
+      {#if swatches.length > 0}
+        <div class="swatches" role="list" aria-label="Color palette">
+          {#each swatches as s}
+            <span
+              class="swatch"
+              role="listitem"
+              title="{s.name} — {s.value}"
+              style="background-color: {s.value};"
+            ></span>
+          {/each}
+        </div>
+      {/if}
+    </a>
+  {:else}
+    <div class="card-body">
+      <div class="card-head">
+        <h2>{template.name}</h2>
+        <span class="chip">{template.origin}</span>
+      </div>
+      {#if template.description}
+        <p class="desc">{template.description}</p>
+      {/if}
+      {#if swatches.length > 0}
+        <div class="swatches" role="list" aria-label="Color palette">
+          {#each swatches as s}
+            <span
+              class="swatch"
+              role="listitem"
+              title="{s.name} — {s.value}"
+              style="background-color: {s.value};"
+            ></span>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -95,14 +125,14 @@
           <button
             type="button"
             role="menuitem"
-            on:click={onEdit}
+            on:click={onRename}
             class="menu-item"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
             </svg>
-            <span>Edit</span>
+            <span>Edit title</span>
           </button>
           <button
             type="button"
@@ -127,14 +157,24 @@
 <style>
   .card {
     position: relative;
-    padding: 20px;
-    padding-right: 44px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background-color: var(--bg-panel);
+    overflow: hidden;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .card.manageable:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
+  }
+  .card-body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 20px;
+    padding-right: 44px;
+    text-decoration: none;
+    color: inherit;
   }
   .card-head {
     display: flex;
@@ -146,6 +186,7 @@
     font-size: 16px;
     font-weight: 600;
     margin: 0;
+    color: var(--text-primary);
   }
   .chip {
     font-size: 10px;

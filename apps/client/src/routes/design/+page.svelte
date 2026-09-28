@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
+  import { onMount, tick } from "svelte";
   import {
     listDesignTemplates,
     deleteDesignTemplate,
+    getDesignTemplate,
+    updateDesignTemplateFromDraft,
     type DesignTemplateSummary,
   } from "$lib/api/projects";
+  import { patchTopLevelString } from "$lib/components/design-studio/draftPatcher";
   import DesignTemplateCard from "$lib/components/design-studio/DesignTemplateCard.svelte";
 
   let templates: DesignTemplateSummary[] = [];
@@ -17,6 +19,12 @@
   let deleteTarget: DesignTemplateSummary | null = null;
   let deleteBusy = false;
   let deleteError = "";
+
+  let renameTarget: DesignTemplateSummary | null = null;
+  let renameValue = "";
+  let renameBusy = false;
+  let renameError = "";
+  let renameInput: HTMLInputElement | null = null;
 
   $: builtins = templates.filter((t) => t.origin === "builtin");
   $: userTemplates = templates.filter((t) => t.origin !== "builtin");
@@ -89,12 +97,59 @@
     }
   };
 
-  const onEdit = (t: DesignTemplateSummary) => {
-    goto(`/design/new?id=${encodeURIComponent(t.id)}`);
+  const openRename = async (t: DesignTemplateSummary) => {
+    renameTarget = t;
+    renameValue = t.name;
+    renameError = "";
+    await tick();
+    renameInput?.focus();
+    renameInput?.select();
+  };
+
+  const closeRename = () => {
+    if (renameBusy) return;
+    renameTarget = null;
+    renameValue = "";
+    renameError = "";
+  };
+
+  const submitRename = async () => {
+    if (!renameTarget || renameBusy) return;
+    const name = renameValue.trim();
+    if (!name) return;
+    if (name === renameTarget.name) {
+      closeRename();
+      return;
+    }
+    renameBusy = true;
+    renameError = "";
+    try {
+      const full = await getDesignTemplate(renameTarget.id);
+      if (!full) throw new Error("template not found");
+      const nextMarkdown = patchTopLevelString(full.content, "name", name);
+      const updated = await updateDesignTemplateFromDraft(renameTarget.id, {
+        markdown: nextMarkdown,
+        name,
+      });
+      if (!updated) throw new Error("save failed");
+      const updatedId = renameTarget.id;
+      templates = templates.map((t) =>
+        t.id === updatedId ? { ...t, name: updated.name } : t,
+      );
+      renameTarget = null;
+      renameValue = "";
+    } catch (e) {
+      renameError = e instanceof Error ? e.message : String(e);
+    } finally {
+      renameBusy = false;
+    }
   };
 
   const onKeydown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") closeDelete();
+    if (e.key === "Escape") {
+      closeDelete();
+      closeRename();
+    }
   };
 
   onMount(loadTemplates);
@@ -145,7 +200,7 @@
           <DesignTemplateCard
             template={tpl}
             swatches={swatchesFor(tpl)}
-            on:edit={(e) => onEdit(e.detail)}
+            on:rename={(e) => openRename(e.detail)}
             on:delete={(e) => openDelete(e.detail)}
           />
         {/each}
@@ -197,7 +252,7 @@
           <DesignTemplateCard
             template={tpl}
             swatches={swatchesFor(tpl)}
-            on:edit={(e) => onEdit(e.detail)}
+            on:rename={(e) => openRename(e.detail)}
             on:delete={(e) => openDelete(e.detail)}
           />
         {/each}
@@ -205,6 +260,76 @@
     {/if}
   {/if}
 </section>
+
+{#if renameTarget}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    style="background-color: rgba(0, 0, 0, 0.55);"
+    on:click|self={closeRename}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rename-template-title"
+    tabindex="-1"
+  >
+    <form
+      on:submit|preventDefault={submitRename}
+      class="w-full max-w-md rounded-xl border shadow-xl"
+      style="border-color: var(--border); background-color: var(--bg-secondary);"
+    >
+      <div class="px-5 pt-5 pb-4">
+        <h2 id="rename-template-title" class="text-base font-semibold">Edit title</h2>
+        <p class="mt-1 text-xs" style="color: var(--text-secondary);">
+          Rename this template. This updates both the row name and the frontmatter
+          <code>name</code> field.
+        </p>
+      </div>
+
+      <div class="px-5 pb-4 space-y-4">
+        <label class="block text-xs font-medium" style="color: var(--text-secondary);">
+          Template name
+          <input
+            type="text"
+            bind:this={renameInput}
+            bind:value={renameValue}
+            required
+            class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
+            style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          />
+        </label>
+
+        {#if renameError}
+          <div
+            class="rounded-md border px-3 py-2 text-xs"
+            style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
+          >
+            {renameError}
+          </div>
+        {/if}
+      </div>
+
+      <div class="px-5 pb-5 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md text-sm font-medium border cursor-pointer disabled:opacity-50"
+          style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-panel);"
+          disabled={renameBusy}
+          on:click={closeRename}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={!renameValue.trim() || renameBusy}
+          class="px-3 py-2 rounded-md text-sm font-medium text-white cursor-pointer disabled:opacity-50"
+          style="background-color: var(--accent);"
+        >
+          {renameBusy ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </form>
+  </div>
+{/if}
 
 {#if deleteTarget}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->

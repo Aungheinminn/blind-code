@@ -6,6 +6,7 @@
   import SectionRail from "$lib/components/design-studio/SectionRail.svelte";
   import PreviewCanvas from "$lib/components/design-studio/PreviewCanvas.svelte";
   import { parseDraft } from "$lib/components/design-studio/parseTemplate";
+  import { patchTopLevelString } from "$lib/components/design-studio/draftPatcher";
   import { getDesignTemplate } from "$lib/api/projects";
   import {
     status,
@@ -21,6 +22,7 @@
     dismissSaveProposal,
     resetDesignStudio,
     seedEditingTemplate,
+    applyDraftPatch,
   } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
@@ -86,6 +88,10 @@
 
   const onNameInput = () => {
     nameEditedByUser = true;
+    if (!$draftMarkdown) return;
+    const trimmed = draftName.trim();
+    if (!trimmed) return;
+    applyDraftPatch((md) => patchTopLevelString(md, "name", trimmed));
   };
 
   const onSectionChange = (id: string) => {

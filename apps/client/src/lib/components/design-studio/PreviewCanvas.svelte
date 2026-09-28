@@ -321,9 +321,20 @@
       <section data-preview-section="elevation" class="preview-section">
         <div class="section-label">Elevation</div>
         <div class="elev-row">
-          <div class="elev-tile elev-sm" style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};">sm</div>
-          <div class="elev-tile elev-md" style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};">md</div>
-          <div class="elev-tile elev-lg" style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};">lg</div>
+          {#each ["sm", "md", "lg"] as step}
+            <button
+              type="button"
+              class="elev-tile elev-{step}"
+              class:editable
+              style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+              disabled={!editable}
+              title={editable ? "Click to edit elevation notes" : ""}
+              on:click={() => openProse("Elevation")}
+              aria-label="Edit elevation notes"
+            >
+              {step}
+            </button>
+          {/each}
         </div>
         {#if elevationProse}
           <div
@@ -704,6 +715,19 @@
     font-weight: 500;
     border-radius: 10px;
     border: 1px solid;
+    padding: 0;
+    transition: outline-offset 120ms ease;
+  }
+  .elev-tile.editable {
+    cursor: pointer;
+  }
+  .elev-tile.editable:hover,
+  .elev-tile.editable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .elev-tile:disabled {
+    cursor: default;
   }
   .elev-sm {
     box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);

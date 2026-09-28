@@ -88,6 +88,10 @@
   };
 </script>
 
+<svelte:head>
+  <title>Bases — Blind Code</title>
+</svelte:head>
+
 <div class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20">
   <div class="mb-6 flex items-start justify-between gap-4">
     <div>
