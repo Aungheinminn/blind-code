@@ -659,17 +659,15 @@
     gap: 6px;
     padding: 4px;
     border-radius: 8px;
-    border: 1px solid transparent;
-    transition: border-color 150ms ease, background-color 150ms ease;
+    transition: outline-offset 120ms ease;
   }
   .swatch.editable {
     cursor: pointer;
   }
   .swatch.editable:hover,
   .swatch.editable:focus-visible {
-    border-color: var(--border);
-    background-color: var(--bg-panel);
-    outline: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
   }
   .swatch-color {
     display: block;
