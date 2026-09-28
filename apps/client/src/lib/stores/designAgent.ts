@@ -316,6 +316,17 @@ export const seedEditingTemplate = (input: {
   savedTemplate.set(null);
 };
 
+export const applyDraftPatch = (
+  patch: (markdown: string) => string,
+): void => {
+  const current = get(draftMarkdown);
+  if (!current) return;
+  const next = patch(current);
+  if (next === current) return;
+  draftMarkdown.set(next);
+  savedTemplate.set(null);
+};
+
 export const resetDesignStudio = () => {
   closeSocket();
   messages.set([]);

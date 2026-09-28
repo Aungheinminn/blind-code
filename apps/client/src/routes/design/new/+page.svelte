@@ -183,6 +183,7 @@
     <PreviewCanvas
       hasDraft={Boolean($draftMarkdown)}
       draft={$draftMarkdown}
+      editable={Boolean($draftMarkdown) && !isRunning}
       on:sectionchange={(e) => onSectionChange(e.detail)}
     />
     <SectionRail bind:active={activeSection} />
