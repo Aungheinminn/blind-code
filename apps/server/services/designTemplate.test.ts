@@ -12,18 +12,56 @@ colors:
   on-surface: "#1A1C1E"
   surface: "#FFFFFF"
   error: "#DC2626"
+  border: "#E7E3DC"
+  muted-foreground: "#6C7278"
 typography:
+  headline-lg:
+    fontFamily: Inter
+    fontSize: 30px
+    fontWeight: 600
+  headline-md:
+    fontFamily: Inter
+    fontSize: 22px
+    fontWeight: 600
   body-md:
     fontFamily: Inter
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.6
+  body-sm:
+    fontFamily: Inter
+    fontSize: 14px
+    fontWeight: 400
+  label-md:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: 500
 rounded:
   sm: 4px
   md: 8px
   lg: 12px
+  full: 9999px
 spacing:
+  xs: 4px
+  sm: 8px
   md: 16px
+  lg: 24px
+  xl: 40px
+components:
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+    padding: 12px
+  input:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.md}"
+    padding: 10px
+  card:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.lg}"
+    padding: 20px
 ---
 
 # Test Theme
@@ -81,8 +119,8 @@ describe("parseTemplate", () => {
   test("accepts omitted section listed in frontmatter", () => {
     const source = validTemplate
       .replace(
-        "spacing:\n  md: 16px",
-        "spacing:\n  md: 16px\nomitted:\n  - section: elevation\n    reason: flat design",
+        "version: alpha",
+        "version: alpha\nomitted:\n  - section: elevation\n    reason: flat design",
       )
       .replace("## Elevation & Depth\nFlat.\n\n", "");
     const result = parseTemplate(source);
@@ -117,9 +155,18 @@ describe("templateToCss", () => {
   });
 
   test("falls back to shadcn defaults when a semantic token is missing", () => {
-    const source = validTemplate.replace(/^colors:[\s\S]*?typography:/m, "colors:\n  primary: \"#000000\"\n  on-surface: \"#000000\"\n  neutral: \"#FFFFFF\"\ntypography:");
-    const { tokens } = parseTemplate(source);
-    const css = templateToCss(tokens);
+    // Strict schema requires all 9 color keys, but templateToCss must still
+    // gracefully handle partial input (e.g. hand-constructed tokens in tests
+    // or migrations).
+    const partialTokens = {
+      name: "Partial",
+      colors: {
+        primary: "#000000",
+        "on-surface": "#000000",
+        neutral: "#FFFFFF",
+      },
+    } as any;
+    const css = templateToCss(partialTokens);
     expect(css).toContain("--muted-foreground:");
     expect(css).toContain("--destructive:");
   });

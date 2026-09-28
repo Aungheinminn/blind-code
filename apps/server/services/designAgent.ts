@@ -120,6 +120,13 @@ Hard rules (the validator will reject you otherwise):
 3. Section headings must be unique (no duplicate H2s).
 4. Contrast: on-surface vs neutral AND on-surface vs surface must each pass WCAG AA (contrast ratio >= 4.5:1). Choose your palette to satisfy both pairs, or the save will be rejected.
 5. Use hex colors (#RRGGBB or #RGB) in the frontmatter "colors" block — no hsl(), rgb(), oklch(), or named colors. The contrast checker only understands hex.
+6. Frontmatter keys are LOCKED. The schema is strict — any unknown key rejects the draft. Use ONLY the keys listed:
+   - colors: primary, secondary, tertiary, neutral, surface, on-surface, error, border, muted-foreground (all 9 required)
+   - typography: headline-lg, headline-md, body-md, body-sm, label-md (all 5 required, each with fontFamily, fontSize, fontWeight; lineHeight and letterSpacing optional)
+   - rounded: sm, md, lg, full (all 4 required)
+   - spacing: xs, sm, md, lg, xl (all 5 required)
+   - components: button-primary, input, card (all 3 required, each with optional backgroundColor, textColor, borderColor, rounded, padding)
+   - Do NOT invent extras like button-primary-hover, success color, headline-sm, card-elevated, etc. Encode hover behavior, extra states, or extra variants in the prose (## Components / ## Do's and Don'ts), not as extra token keys.
 
 Your workflow:
 1. Optionally call read_builtin_template with slug "paper", "nebula", or "terminal" to see reference structure. Use this ONLY if you need to remind yourself of the format — do not copy verbatim.

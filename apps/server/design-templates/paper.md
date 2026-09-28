@@ -11,6 +11,7 @@ colors:
   on-surface: "#1A1C1E"
   error: "#B0261F"
   border: "#E7E3DC"
+  muted-foreground: "#6C7278"
 typography:
   headline-lg:
     fontFamily: Public Sans

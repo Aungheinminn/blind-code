@@ -57,9 +57,6 @@ components:
     textColor: "{colors.primary}"
     rounded: "{rounded.md}"
     padding: 12px
-  button-primary-hover:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.neutral}"
   input:
     backgroundColor: "{colors.neutral}"
     textColor: "{colors.primary}"

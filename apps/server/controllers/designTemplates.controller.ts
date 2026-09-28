@@ -6,6 +6,8 @@ import {
   listDesignTemplatesForUser,
   deleteDesignTemplateForOwner,
   createAgentDesignTemplate,
+  getDesignTemplateForReader,
+  updateDesignTemplateForOwner,
 } from "../db/repo";
 import { parseTemplate } from "../services/designTemplate";
 
@@ -39,6 +41,86 @@ export const designTemplatesController = (app: Elysia) =>
           asc(schema.designTemplates.createdAt),
         );
       return { data: rows };
+    })
+    .get("/design-templates/:id", async ({ params, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const result = await getDesignTemplateForReader(params.id, user.id);
+      if (!result) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      if ("notFound" in result) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if ("forbidden" in result) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      return { data: result.row };
+    })
+    .put("/design-templates/:id", async ({ params, body, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const b = (body as Record<string, unknown>) ?? {};
+      const markdown = typeof b.markdown === "string" ? b.markdown : "";
+      if (!markdown.trim()) {
+        set.status = 400;
+        return { error: "markdown required" };
+      }
+      let parsed;
+      try {
+        parsed = parseTemplate(markdown);
+      } catch (err) {
+        set.status = 400;
+        return {
+          error:
+            err instanceof Error
+              ? `draft failed validation: ${err.message}`
+              : "draft failed validation",
+        };
+      }
+      const rawName = typeof b.name === "string" ? b.name.trim() : "";
+      const name = rawName.length > 0 ? rawName : parsed.tokens.name;
+      const rawDesc = typeof b.description === "string" ? b.description : "";
+      const description =
+        rawDesc.trim().length > 0
+          ? rawDesc.trim()
+          : (parsed.tokens.description ?? null);
+      const result = await updateDesignTemplateForOwner(params.id, user.id, {
+        name,
+        description,
+        content: markdown,
+        parsedTokens: parsed.tokens,
+      });
+      if (!result) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      if ("notFound" in result) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if ("forbidden" in result) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      return { data: result.updated };
     })
     .post("/design-templates", async ({ body, request, set }) => {
       if (!hasDb) {

@@ -58,8 +58,6 @@ components:
     textColor: "{colors.on-surface}"
     rounded: "{rounded.md}"
     padding: 12px
-  button-primary-hover:
-    backgroundColor: "{colors.tertiary}"
   input:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
