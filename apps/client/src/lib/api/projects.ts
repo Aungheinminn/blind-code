@@ -160,8 +160,18 @@ export type DesignTemplateSummary = {
   updatedAt: string;
 };
 
+export type DesignTemplateFull = DesignTemplateSummary & {
+  content: string;
+  ownerUserId: string | null;
+  sourceProjectId: string | null;
+  createdAt: string;
+};
+
 export const listDesignTemplates = () =>
   fetchJson<DesignTemplateSummary[]>(`/design-templates`);
+
+export const getDesignTemplate = (id: string) =>
+  fetchJson<DesignTemplateFull>(`/design-templates/${id}`);
 
 export const createDesignTemplateFromDraft = (input: {
   markdown: string;
@@ -172,6 +182,15 @@ export const createDesignTemplateFromDraft = (input: {
     `/design-templates`,
     { method: "POST", body: JSON.stringify(input) },
   );
+
+export const updateDesignTemplateFromDraft = (
+  id: string,
+  input: { markdown: string; name?: string; description?: string },
+) =>
+  fetchJson<DesignTemplateFull>(`/design-templates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 
 export const deleteDesignTemplate = (id: string) =>
   fetchJson<{ id: string; deleted: boolean }>(`/design-templates/${id}`, {

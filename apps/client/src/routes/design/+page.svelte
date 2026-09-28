@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import {
     listDesignTemplates,
     deleteDesignTemplate,
@@ -88,8 +89,8 @@
     }
   };
 
-  const onEdit = (_t: DesignTemplateSummary) => {
-    // TODO: wire edit flow — for now this button is a stub.
+  const onEdit = (t: DesignTemplateSummary) => {
+    goto(`/design/new?id=${encodeURIComponent(t.id)}`);
   };
 
   const onKeydown = (e: KeyboardEvent) => {

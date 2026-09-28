@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { page } from "$app/stores";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ProviderChip from "$lib/components/landing/ProviderChip.svelte";
   import SectionRail from "$lib/components/design-studio/SectionRail.svelte";
   import PreviewCanvas from "$lib/components/design-studio/PreviewCanvas.svelte";
   import { parseDraft } from "$lib/components/design-studio/parseTemplate";
+  import { getDesignTemplate } from "$lib/api/projects";
   import {
     status,
     draftMarkdown,
@@ -12,16 +14,20 @@
     savedTemplate,
     isSaving,
     errorMessage,
+    editingTemplateId,
     sendDesignPrompt,
     cancelDesignAgent,
     commitSave,
     dismissSaveProposal,
     resetDesignStudio,
+    seedEditingTemplate,
   } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
   let nameEditedByUser = false;
   let prompt = "";
+  let loadingTemplate = false;
+  let loadError = "";
   let activeSection:
     | "colors"
     | "typography"
@@ -30,6 +36,8 @@
     | "components"
     | "layout"
     | "dos-donts" = "colors";
+
+  $: isEditing = Boolean($editingTemplateId);
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
@@ -84,6 +92,28 @@
     activeSection = id as typeof activeSection;
   };
 
+  onMount(async () => {
+    const id = $page.url.searchParams.get("id");
+    if (!id) return;
+    loadingTemplate = true;
+    loadError = "";
+    try {
+      const row = await getDesignTemplate(id);
+      if (!row) throw new Error("template not found");
+      seedEditingTemplate({
+        id: row.id,
+        content: row.content,
+        name: row.name,
+      });
+      draftName = row.name;
+      nameEditedByUser = false;
+    } catch (err) {
+      loadError = err instanceof Error ? err.message : "failed to load template";
+    } finally {
+      loadingTemplate = false;
+    }
+  });
+
   onDestroy(() => {
     resetDesignStudio();
   });
@@ -95,13 +125,19 @@
 
 <section class="studio">
   <div class="toolbar">
-    <input
-      type="text"
-      bind:value={draftName}
-      on:input={onNameInput}
-      class="draft-name"
-      aria-label="Draft name"
-    />
+    <div class="toolbar-left">
+      <span class="mode-chip" class:mode-chip-edit={isEditing}>
+        {isEditing ? "Editing" : "New"}
+      </span>
+      <input
+        type="text"
+        bind:value={draftName}
+        on:input={onNameInput}
+        class="draft-name"
+        aria-label="Draft name"
+        disabled={loadingTemplate}
+      />
+    </div>
     <div class="toolbar-right">
       {#if $savedTemplate}
         <a href="/design" class="status-pill status-saved" title="Open the template gallery">
@@ -114,17 +150,33 @@
         class="save-btn"
         on:click={onSaveClick}
         disabled={!canSave}
-        title={canSave ? "Save this draft as a new template" : "Generate a draft first"}
+        title={canSave
+          ? isEditing
+            ? "Save your edits to this template"
+            : "Save this draft as a new template"
+          : "Generate a draft first"}
       >
-        {$isSaving ? "Saving…" : "Save template"}
+        {$isSaving
+          ? "Saving…"
+          : isEditing
+            ? "Save changes"
+            : "Save template"}
       </button>
     </div>
   </div>
 
-  {#if $errorMessage}
+  {#if loadError}
+    <div class="error-bar" role="alert">
+      Couldn't load template: {loadError}
+    </div>
+  {:else if $errorMessage}
     <div class="error-bar" role="alert">
       {$errorMessage}
     </div>
+  {/if}
+
+  {#if loadingTemplate}
+    <div class="loading-bar" role="status">Loading template…</div>
   {/if}
 
   <div class="canvas-wrap">
@@ -233,6 +285,37 @@
     padding: 10px 20px;
     border-bottom: 1px solid var(--border);
     background-color: var(--bg-secondary);
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+  .mode-chip {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border);
+  }
+  .mode-chip-edit {
+    background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .loading-bar {
+    padding: 8px 20px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
   }
   .draft-name {
     flex: 1;
