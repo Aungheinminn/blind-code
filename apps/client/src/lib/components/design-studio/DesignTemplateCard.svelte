@@ -161,11 +161,12 @@
     border-radius: 12px;
     background-color: var(--bg-panel);
     overflow: hidden;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   }
   .card.manageable:hover {
     border-color: var(--accent);
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
+    transform: translateY(-1px);
   }
   .card-body {
     display: flex;

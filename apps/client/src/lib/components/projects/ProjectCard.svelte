@@ -144,11 +144,12 @@
 
 <style>
   .project-card {
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   }
   .project-card:hover {
     border-color: var(--accent) !important;
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
+    transform: translateY(-1px);
   }
   .kebab:hover {
     background-color: var(--bg-tertiary);

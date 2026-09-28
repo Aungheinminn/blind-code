@@ -92,5 +92,6 @@
   }
   .sample-card:hover {
     border-color: var(--accent) !important;
+    transform: translateY(-1px);
   }
 </style>
