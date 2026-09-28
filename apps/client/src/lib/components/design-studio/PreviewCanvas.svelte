@@ -30,7 +30,7 @@
   ): string => {
     const src = p?.sections?.[key];
     if (!src || src.trim().length === 0) return "";
-    return renderMiniMarkdown(src);
+    return renderMiniMarkdown(src, p);
   };
 
   const dispatch = createEventDispatcher<{ sectionchange: string }>();
@@ -887,6 +887,78 @@
   }
   .prose :global(a:hover) {
     text-decoration: underline;
+  }
+  .prose :global(h3),
+  .prose :global(h4),
+  .prose :global(h5),
+  .prose :global(h6) {
+    margin: 14px 0 6px;
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .prose :global(h3) {
+    font-size: 14px;
+  }
+  .prose :global(h4) {
+    font-size: 13px;
+  }
+  .prose :global(h5),
+  .prose :global(h6) {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .prose :global(.token-color) {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 6px 1px 4px;
+    border-radius: 999px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    line-height: 1.4;
+    vertical-align: baseline;
+  }
+  .prose :global(.token-swatch) {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .prose :global(.token-color .token-name) {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .prose :global(.token-color .token-value) {
+    color: var(--text-tertiary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+  }
+  .prose :global(.token-chip) {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 7px;
+    border-radius: 5px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    line-height: 1.4;
+    vertical-align: baseline;
+  }
+  .prose :global(.token-chip .token-name) {
+    color: var(--text-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+  }
+  .prose :global(.token-chip .token-value) {
+    color: var(--text-tertiary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
   }
   .draft-heading .prose {
     margin-top: 6px;
