@@ -108,11 +108,6 @@
           <span class="status-dot" aria-hidden="true"></span>
           saved · {$savedTemplate.name} →
         </a>
-      {:else}
-        <span class="status-pill status-{$status.phase}">
-          <span class="status-dot" aria-hidden="true"></span>
-          {$status.label}
-        </span>
       {/if}
       <button
         type="button"
@@ -281,12 +276,6 @@
     border-radius: 50%;
     background-color: var(--text-tertiary);
   }
-  .status-running .status-dot,
-  .status-connecting .status-dot {
-    background-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-    animation: pulse 1.4s ease-in-out infinite;
-  }
   .status-saved {
     color: #16a34a;
     border-color: color-mix(in srgb, #16a34a 30%, transparent);
@@ -354,13 +343,14 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 999px;
     font-size: 11.5px;
     font-weight: 500;
     color: var(--accent);
-    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
   }
   .live-dot {
     width: 6px;
