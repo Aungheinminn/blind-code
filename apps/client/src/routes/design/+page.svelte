@@ -11,9 +11,23 @@
   let loading = true;
   let error = "";
 
+  let searchInput = "";
+
   let deleteTarget: DesignTemplateSummary | null = null;
   let deleteBusy = false;
   let deleteError = "";
+
+  $: builtins = templates.filter((t) => t.origin === "builtin");
+  $: userTemplates = templates.filter((t) => t.origin !== "builtin");
+  $: filteredUserTemplates = (() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return userTemplates;
+    return userTemplates.filter((t) => {
+      const name = t.name.toLowerCase();
+      const desc = (t.description ?? "").toLowerCase();
+      return name.includes(q) || desc.includes(q);
+    });
+  })();
 
   const SWATCH_ORDER = [
     "primary",
@@ -120,16 +134,74 @@
   {:else if templates.length === 0}
     <p class="status">No templates found. Run <code>bun run db:seed:templates</code>.</p>
   {:else}
-    <div class="grid">
-      {#each templates as tpl (tpl.id)}
-        <DesignTemplateCard
-          template={tpl}
-          swatches={swatchesFor(tpl)}
-          on:edit={(e) => onEdit(e.detail)}
-          on:delete={(e) => openDelete(e.detail)}
+    {#if builtins.length > 0}
+      <div class="section-heading">
+        <h2>Built-in</h2>
+        <span class="section-count">{builtins.length}</span>
+      </div>
+      <div class="grid">
+        {#each builtins as tpl (tpl.id)}
+          <DesignTemplateCard
+            template={tpl}
+            swatches={swatchesFor(tpl)}
+            on:edit={(e) => onEdit(e.detail)}
+            on:delete={(e) => openDelete(e.detail)}
+          />
+        {/each}
+      </div>
+    {/if}
+
+    <div class="section-heading section-heading-user">
+      <div class="section-heading-left">
+        <h2>My templates</h2>
+        <span class="section-count">{userTemplates.length}</span>
+      </div>
+      <div class="search-wrap">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="text"
+          bind:value={searchInput}
+          placeholder="Search my templates…"
+          class="search-input"
+          disabled={userTemplates.length === 0}
         />
-      {/each}
+        {#if searchInput}
+          <button
+            type="button"
+            class="search-clear"
+            aria-label="Clear search"
+            on:click={() => (searchInput = "")}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        {/if}
+      </div>
     </div>
+
+    {#if userTemplates.length === 0}
+      <p class="status">
+        No custom templates yet. <a href="/design/new" class="inline-link">Create one</a> with the design agent.
+      </p>
+    {:else if filteredUserTemplates.length === 0}
+      <p class="status">No custom templates match "{searchInput}".</p>
+    {:else}
+      <div class="grid">
+        {#each filteredUserTemplates as tpl (tpl.id)}
+          <DesignTemplateCard
+            template={tpl}
+            swatches={swatchesFor(tpl)}
+            on:edit={(e) => onEdit(e.detail)}
+            on:delete={(e) => openDelete(e.detail)}
+          />
+        {/each}
+      </div>
+    {/if}
   {/if}
 </section>
 
@@ -252,8 +324,98 @@
     border-radius: 4px;
     background-color: var(--bg-panel);
   }
-  .grid {
+  .section-heading {
     margin-top: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .section-heading-left {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .section-heading h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin: 0;
+  }
+  .section-count {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 1px 8px;
+    border-radius: 999px;
+  }
+  .section-heading-user {
+    margin-top: 40px;
+  }
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 240px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    font-size: 13px;
+    padding: 7px 32px 7px 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 150ms ease;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+  .search-input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    border: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+  }
+  .search-clear:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .inline-link {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .inline-link:hover {
+    text-decoration: underline;
+  }
+  .grid {
+    margin-top: 14px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 16px;
