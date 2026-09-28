@@ -3,6 +3,9 @@ export type ParsedDraft = {
   description: string;
   colors: Record<string, string>;
   rounded: Record<string, string>;
+  elevation: Record<string, string>;
+  typography: Record<string, Record<string, string>>;
+  components: Record<string, Record<string, string>>;
   sections: Record<string, string>;
 };
 
@@ -120,6 +123,42 @@ const parseBlockMap = (
   return { entries, nextIdx: i };
 };
 
+const parseNestedBlockMap = (
+  lines: string[],
+  startIdx: number,
+  parentIndent: number,
+): {
+  entries: Record<string, Record<string, string>>;
+  nextIdx: number;
+} => {
+  const entries: Record<string, Record<string, string>> = {};
+  let i = startIdx;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim().length === 0) {
+      i += 1;
+      continue;
+    }
+    const indent = line.length - line.trimStart().length;
+    if (indent <= parentIndent) break;
+    const m = /^([A-Za-z0-9_-]+)\s*:\s*(.*)$/.exec(line.trim());
+    if (!m) {
+      i += 1;
+      continue;
+    }
+    const [, key, rawValue] = m;
+    if (rawValue.trim().length > 0) {
+      entries[key] = { _value: unquote(rawValue) };
+      i += 1;
+      continue;
+    }
+    const nested = parseBlockMap(lines, i + 1, indent);
+    entries[key] = nested.entries;
+    i = nested.nextIdx;
+  }
+  return { entries, nextIdx: i };
+};
+
 export const parseDraft = (source: string): ParsedDraft | null => {
   const fm = stripFrontmatter(source);
   if (fm == null) return null;
@@ -130,6 +169,9 @@ export const parseDraft = (source: string): ParsedDraft | null => {
     description: "",
     colors: {},
     rounded: {},
+    elevation: {},
+    typography: {},
+    components: {},
     sections: parseBodySections(bodyAfterFrontmatter(source)),
   };
 
@@ -170,6 +212,24 @@ export const parseDraft = (source: string): ParsedDraft | null => {
       i = parsed.nextIdx;
       continue;
     }
+    if (key === "elevation") {
+      const parsed = parseBlockMap(lines, i + 1, indent);
+      result.elevation = parsed.entries;
+      i = parsed.nextIdx;
+      continue;
+    }
+    if (key === "typography") {
+      const parsed = parseNestedBlockMap(lines, i + 1, indent);
+      result.typography = parsed.entries;
+      i = parsed.nextIdx;
+      continue;
+    }
+    if (key === "components") {
+      const parsed = parseNestedBlockMap(lines, i + 1, indent);
+      result.components = parsed.entries;
+      i = parsed.nextIdx;
+      continue;
+    }
     i += 1;
   }
 
@@ -198,6 +258,11 @@ export type PreviewTokens = {
     mutedForeground: string;
   };
   rounded: {
+    sm: string;
+    md: string;
+    lg: string;
+  };
+  elevation: {
     sm: string;
     md: string;
     lg: string;
@@ -233,6 +298,11 @@ export const tokensFromDraft = (parsed: ParsedDraft): PreviewTokens => {
     md: dimensionToCss(parsed.rounded.md ?? parsed.rounded.default, "8px"),
     lg: dimensionToCss(parsed.rounded.lg, "14px"),
   };
+  const elevation = {
+    sm: parsed.elevation.sm ?? "0 1px 2px rgba(0,0,0,0.12)",
+    md: parsed.elevation.md ?? "0 3px 10px rgba(0,0,0,0.16)",
+    lg: parsed.elevation.lg ?? "0 12px 32px rgba(0,0,0,0.22)",
+  };
   const swatches = Object.entries(parsed.colors)
     .filter(([, v]) => typeof v === "string" && v.trim().length > 0)
     .map(([name, value]) => ({ name, value: value.trim() }));
@@ -241,6 +311,7 @@ export const tokensFromDraft = (parsed: ParsedDraft): PreviewTokens => {
     description: parsed.description,
     colors,
     rounded,
+    elevation,
     swatches,
   };
 };

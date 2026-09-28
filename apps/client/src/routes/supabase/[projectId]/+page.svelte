@@ -60,6 +60,10 @@
   };
 </script>
 
+<svelte:head>
+  <title>Base — Blind Code</title>
+</svelte:head>
+
 <div class="mx-auto max-w-2xl px-6 py-8">
   <div class="mb-4 flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
     <a href="/supabase" class="hover:underline" style="color: var(--text-secondary);">Supabase</a>

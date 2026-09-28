@@ -1067,4 +1067,60 @@ export const deleteDesignTemplateForOwner = async (
   return { deleted: true };
 };
 
+export const getDesignTemplateForReader = async (
+  id: string,
+  ownerUserId: string,
+) => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.designTemplates)
+    .where(eq(schema.designTemplates.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { notFound: true as const };
+  if (row.origin === "builtin") return { row };
+  if (row.ownerUserId !== ownerUserId) return { forbidden: true as const };
+  return { row };
+};
+
+export const updateDesignTemplateForOwner = async (
+  id: string,
+  ownerUserId: string,
+  patch: {
+    name: string;
+    description: string | null;
+    content: string;
+    parsedTokens: unknown;
+  },
+): Promise<
+  { updated: NonNullable<Awaited<ReturnType<typeof getDesignTemplateForReader>>>["row"] }
+  | { forbidden: true }
+  | { notFound: true }
+  | null
+> => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.designTemplates)
+    .where(eq(schema.designTemplates.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { notFound: true };
+  if (row.origin === "builtin" || row.isReadOnly) return { forbidden: true };
+  if (row.ownerUserId !== ownerUserId) return { forbidden: true };
+  const [updated] = await db
+    .update(schema.designTemplates)
+    .set({
+      name: patch.name,
+      description: patch.description,
+      content: patch.content,
+      parsedTokens: patch.parsedTokens as any,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(schema.designTemplates.id, id))
+    .returning();
+  return { updated };
+};
+
 export { hasDb };

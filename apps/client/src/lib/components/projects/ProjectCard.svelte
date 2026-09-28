@@ -60,7 +60,7 @@
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
 <div
-  class="relative rounded-xl border transition-transform"
+  class="relative rounded-xl border project-card"
   style="border-color: var(--border); background-color: var(--bg-secondary); color: var(--text-primary);"
 >
   <a
@@ -143,6 +143,14 @@
 </div>
 
 <style>
+  .project-card {
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  }
+  .project-card:hover {
+    border-color: var(--accent) !important;
+    box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
+    transform: translateY(-1px);
+  }
   .kebab:hover {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);

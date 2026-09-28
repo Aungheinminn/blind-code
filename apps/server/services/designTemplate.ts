@@ -7,17 +7,84 @@ import type {
 
 const dimensionSchema = z.union([z.string(), z.number()]);
 
-const typographySchema = z
+const typographyRoleSchema = z
   .object({
-    fontFamily: z.string().optional(),
-    fontSize: dimensionSchema.optional(),
-    fontWeight: z.union([z.number(), z.string()]).optional(),
+    fontFamily: z.string(),
+    fontSize: dimensionSchema,
+    fontWeight: z.union([z.number(), z.string()]),
     lineHeight: dimensionSchema.optional(),
     letterSpacing: dimensionSchema.optional(),
-    fontFeature: z.string().optional(),
-    fontVariation: z.string().optional(),
   })
-  .passthrough();
+  .strict();
+
+const componentSchema = z
+  .object({
+    backgroundColor: z.string().optional(),
+    textColor: z.string().optional(),
+    borderColor: z.string().optional(),
+    rounded: z.string().optional(),
+    padding: dimensionSchema.optional(),
+  })
+  .strict();
+
+const colorsSchema = z
+  .object({
+    primary: z.string(),
+    secondary: z.string(),
+    tertiary: z.string(),
+    neutral: z.string(),
+    surface: z.string(),
+    "on-surface": z.string(),
+    error: z.string(),
+    border: z.string(),
+    "muted-foreground": z.string(),
+  })
+  .strict();
+
+const typographyBlockSchema = z
+  .object({
+    "headline-lg": typographyRoleSchema,
+    "headline-md": typographyRoleSchema,
+    "body-md": typographyRoleSchema,
+    "body-sm": typographyRoleSchema,
+    "label-md": typographyRoleSchema,
+  })
+  .strict();
+
+const roundedSchema = z
+  .object({
+    sm: dimensionSchema,
+    md: dimensionSchema,
+    lg: dimensionSchema,
+    full: dimensionSchema,
+  })
+  .strict();
+
+const elevationSchema = z
+  .object({
+    sm: z.string(),
+    md: z.string(),
+    lg: z.string(),
+  })
+  .strict();
+
+const spacingSchema = z
+  .object({
+    xs: dimensionSchema,
+    sm: dimensionSchema,
+    md: dimensionSchema,
+    lg: dimensionSchema,
+    xl: dimensionSchema,
+  })
+  .strict();
+
+const componentsBlockSchema = z
+  .object({
+    "button-primary": componentSchema,
+    input: componentSchema,
+    card: componentSchema,
+  })
+  .strict();
 
 const omittedEntrySchema = z.union([
   z.string(),
@@ -30,13 +97,14 @@ const frontmatterSchema = z
     name: z.string().min(1, "name is required"),
     description: z.string().optional(),
     omitted: z.array(omittedEntrySchema).optional(),
-    colors: z.record(z.string()).optional(),
-    typography: z.record(typographySchema).optional(),
-    rounded: z.record(dimensionSchema).optional(),
-    spacing: z.record(dimensionSchema).optional(),
-    components: z.record(z.record(z.string())).optional(),
+    colors: colorsSchema,
+    typography: typographyBlockSchema,
+    rounded: roundedSchema,
+    elevation: elevationSchema,
+    spacing: spacingSchema,
+    components: componentsBlockSchema,
   })
-  .passthrough();
+  .strict();
 
 const REQUIRED_SECTIONS = [
   "Overview",

@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { page } from "$app/stores";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ProviderChip from "$lib/components/landing/ProviderChip.svelte";
   import SectionRail from "$lib/components/design-studio/SectionRail.svelte";
   import PreviewCanvas from "$lib/components/design-studio/PreviewCanvas.svelte";
   import { parseDraft } from "$lib/components/design-studio/parseTemplate";
+  import { patchTopLevelString } from "$lib/components/design-studio/draftPatcher";
+  import { getDesignTemplate } from "$lib/api/projects";
   import {
     status,
     draftMarkdown,
@@ -12,16 +15,22 @@
     savedTemplate,
     isSaving,
     errorMessage,
+    editingTemplateId,
     sendDesignPrompt,
     cancelDesignAgent,
     commitSave,
     dismissSaveProposal,
     resetDesignStudio,
+    seedEditingTemplate,
+    applyDraftPatch,
   } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
   let nameEditedByUser = false;
   let prompt = "";
+  let loadingTemplate = false;
+  let loadError = "";
+  let viewOnly = false;
   let activeSection:
     | "colors"
     | "typography"
@@ -30,6 +39,8 @@
     | "components"
     | "layout"
     | "dos-donts" = "colors";
+
+  $: isEditing = Boolean($editingTemplateId) && !viewOnly;
 
   $: isRunning = $status.phase === "running" || $status.phase === "connecting";
   $: canSend = prompt.trim().length > 0 && !isRunning;
@@ -78,11 +89,38 @@
 
   const onNameInput = () => {
     nameEditedByUser = true;
+    if (!$draftMarkdown) return;
+    const trimmed = draftName.trim();
+    if (!trimmed) return;
+    applyDraftPatch((md) => patchTopLevelString(md, "name", trimmed));
   };
 
   const onSectionChange = (id: string) => {
     activeSection = id as typeof activeSection;
   };
+
+  onMount(async () => {
+    const id = $page.url.searchParams.get("id");
+    if (!id) return;
+    loadingTemplate = true;
+    loadError = "";
+    try {
+      const row = await getDesignTemplate(id);
+      if (!row) throw new Error("template not found");
+      viewOnly = row.origin === "builtin";
+      seedEditingTemplate({
+        id: row.id,
+        content: row.content,
+        name: row.name,
+      });
+      draftName = row.name;
+      nameEditedByUser = false;
+    } catch (err) {
+      loadError = err instanceof Error ? err.message : "failed to load template";
+    } finally {
+      loadingTemplate = false;
+    }
+  });
 
   onDestroy(() => {
     resetDesignStudio();
@@ -95,51 +133,77 @@
 
 <section class="studio">
   <div class="toolbar">
-    <input
-      type="text"
-      bind:value={draftName}
-      on:input={onNameInput}
-      class="draft-name"
-      aria-label="Draft name"
-    />
+    <div class="toolbar-left">
+      <span
+        class="mode-chip"
+        class:mode-chip-edit={isEditing}
+        class:mode-chip-view={viewOnly}
+      >
+        {viewOnly ? "Preview" : isEditing ? "Editing" : "New"}
+      </span>
+      <input
+        type="text"
+        bind:value={draftName}
+        on:input={onNameInput}
+        class="draft-name"
+        aria-label="Draft name"
+        disabled={loadingTemplate || viewOnly}
+        readonly={viewOnly}
+      />
+    </div>
     <div class="toolbar-right">
       {#if $savedTemplate}
         <a href="/design" class="status-pill status-saved" title="Open the template gallery">
           <span class="status-dot" aria-hidden="true"></span>
           saved · {$savedTemplate.name} →
         </a>
-      {:else}
-        <span class="status-pill status-{$status.phase}">
-          <span class="status-dot" aria-hidden="true"></span>
-          {$status.label}
-        </span>
       {/if}
-      <button
-        type="button"
-        class="save-btn"
-        on:click={onSaveClick}
-        disabled={!canSave}
-        title={canSave ? "Save this draft as a new template" : "Generate a draft first"}
-      >
-        {$isSaving ? "Saving…" : "Save template"}
-      </button>
+      {#if !viewOnly}
+        <button
+          type="button"
+          class="save-btn"
+          on:click={onSaveClick}
+          disabled={!canSave}
+          title={canSave
+            ? isEditing
+              ? "Save your edits to this template"
+              : "Save this draft as a new template"
+            : "Generate a draft first"}
+        >
+          {$isSaving
+            ? "Saving…"
+            : isEditing
+              ? "Save changes"
+              : "Save template"}
+        </button>
+      {/if}
     </div>
   </div>
 
-  {#if $errorMessage}
+  {#if loadError}
+    <div class="error-bar" role="alert">
+      Couldn't load template: {loadError}
+    </div>
+  {:else if $errorMessage}
     <div class="error-bar" role="alert">
       {$errorMessage}
     </div>
+  {/if}
+
+  {#if loadingTemplate}
+    <div class="loading-bar" role="status">Loading template…</div>
   {/if}
 
   <div class="canvas-wrap">
     <PreviewCanvas
       hasDraft={Boolean($draftMarkdown)}
       draft={$draftMarkdown}
+      editable={Boolean($draftMarkdown) && !isRunning && !viewOnly}
       on:sectionchange={(e) => onSectionChange(e.detail)}
     />
     <SectionRail bind:active={activeSection} />
 
+    {#if !viewOnly}
     <div class="dock">
       {#if $saveProposal && !$savedTemplate}
         <div class="proposal" role="dialog" aria-live="polite">
@@ -220,6 +284,7 @@
         </PromptBox>
       </form>
     </div>
+    {/if}
   </div>
 </section>
 
@@ -238,6 +303,42 @@
     padding: 10px 20px;
     border-bottom: 1px solid var(--border);
     background-color: var(--bg-secondary);
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+  .mode-chip {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border);
+  }
+  .mode-chip-edit {
+    background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .mode-chip-view {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .loading-bar {
+    padding: 8px 20px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
   }
   .draft-name {
     flex: 1;
@@ -280,12 +381,6 @@
     height: 6px;
     border-radius: 50%;
     background-color: var(--text-tertiary);
-  }
-  .status-running .status-dot,
-  .status-connecting .status-dot {
-    background-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-    animation: pulse 1.4s ease-in-out infinite;
   }
   .status-saved {
     color: #16a34a;
@@ -354,13 +449,14 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 999px;
     font-size: 11.5px;
     font-weight: 500;
     color: var(--accent);
-    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
   }
   .live-dot {
     width: 6px;

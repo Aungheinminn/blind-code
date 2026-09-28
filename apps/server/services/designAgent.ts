@@ -76,6 +76,10 @@ rounded:
   md: 8px
   lg: 14px
   full: 9999px
+elevation:
+  sm: "0 1px 2px rgba(0,0,0,0.10)"
+  md: "0 3px 10px rgba(0,0,0,0.14)"
+  lg: "0 12px 32px rgba(0,0,0,0.20)"
 spacing:
   xs: 4px
   sm: 8px
@@ -120,6 +124,14 @@ Hard rules (the validator will reject you otherwise):
 3. Section headings must be unique (no duplicate H2s).
 4. Contrast: on-surface vs neutral AND on-surface vs surface must each pass WCAG AA (contrast ratio >= 4.5:1). Choose your palette to satisfy both pairs, or the save will be rejected.
 5. Use hex colors (#RRGGBB or #RGB) in the frontmatter "colors" block — no hsl(), rgb(), oklch(), or named colors. The contrast checker only understands hex.
+6. Frontmatter keys are LOCKED. The schema is strict — any unknown key rejects the draft. Use ONLY the keys listed:
+   - colors: primary, secondary, tertiary, neutral, surface, on-surface, error, border, muted-foreground (all 9 required)
+   - typography: headline-lg, headline-md, body-md, body-sm, label-md (all 5 required, each with fontFamily, fontSize, fontWeight; lineHeight and letterSpacing optional)
+   - rounded: sm, md, lg, full (all 4 required)
+   - elevation: sm, md, lg (all 3 required, CSS box-shadow strings like "0 1px 2px rgba(0,0,0,0.10)")
+   - spacing: xs, sm, md, lg, xl (all 5 required)
+   - components: button-primary, input, card (all 3 required, each with optional backgroundColor, textColor, borderColor, rounded, padding)
+   - Do NOT invent extras like button-primary-hover, success color, headline-sm, card-elevated, etc. Encode hover behavior, extra states, or extra variants in the prose (## Components / ## Do's and Don'ts), not as extra token keys.
 
 Your workflow:
 1. Optionally call read_builtin_template with slug "paper", "nebula", or "terminal" to see reference structure. Use this ONLY if you need to remind yourself of the format — do not copy verbatim.
@@ -127,6 +139,12 @@ Your workflow:
 3. Call validate_draft. It returns { ok: true } or { ok: false, error }. If it fails, revise your draft (fix the specific issue named in the error) and call write_draft again, then validate_draft. Repeat until it passes. Cap yourself at 4 revision attempts — if you can't pass after four, report the blocker in text and stop.
 4. Once validate_draft returns ok, call propose_save with the "name" and a short "description" you want to save the template as. This ASKS the user for approval via a UI popup — it does NOT persist. The user decides whether to save or keep iterating. You do not save directly.
 5. After calling propose_save, reply with one short sentence saying the draft is ready and stop. Do not narrate what you saved (nothing was saved yet). Do not call propose_save again in the same turn.
+
+Prose style (important — the studio renders token refs as live chips):
+- When the prose in any body section names a token you defined in the frontmatter, reference it as \`{group.key}\` (backticked). Examples: \`{colors.primary}\`, \`{colors.on-surface}\`, \`{rounded.md}\`, \`{typography.headline-lg}\`, \`{spacing.md}\`, \`{elevation.md}\`. Do NOT paraphrase these with adjectives like "the cyan fill" or "near-black text" — reference the token instead.
+- The studio parses these refs and renders them as small chips (a color swatch + hex for colors, a value chip for the rest) that update automatically when the user edits the token. Adjective-only prose goes stale the moment a value changes.
+- Still write in flowing prose — sentences and short paragraphs, not spec-sheet bullets. The chips are inline references INSIDE prose. Do not add \`###\` subheadings inside a section unless the content truly needs them.
+- Bare descriptors are fine when they're not naming a token ("keep labels concise", "avoid drop shadows"). Only chip up what you defined in the frontmatter.
 
 Refinement turns:
 - If the user has an existing draft (visible in the conversation) and asks for a tweak ("make the accent warmer", "swap the serif for a mono headline"), start from that draft — do NOT regenerate from scratch. Call write_draft with the revised full document, then validate_draft, then propose_save.

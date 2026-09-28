@@ -11,6 +11,7 @@ colors:
   on-surface: "#1A1C1E"
   error: "#B0261F"
   border: "#E7E3DC"
+  muted-foreground: "#6C7278"
 typography:
   headline-lg:
     fontFamily: Public Sans
@@ -44,6 +45,10 @@ rounded:
   md: 8px
   lg: 12px
   full: 9999px
+elevation:
+  sm: "0 1px 2px rgba(20,20,20,0.06)"
+  md: "0 3px 10px rgba(20,20,20,0.08)"
+  lg: "0 12px 28px rgba(20,20,20,0.10)"
 spacing:
   xs: 4px
   sm: 8px
@@ -70,46 +75,32 @@ components:
 # Paper
 
 ## Overview
-Paper feels like an editorial print layout translated to screen. Warm off-white canvas, deep ink text, restrained terracotta accents. Aimed at reading-heavy and productivity contexts where visual noise should get out of the way.
+Paper feels like an editorial print layout translated to screen. A warm off-white canvas, deep ink text, and restrained terracotta accents. Aimed at reading-heavy and productivity contexts where visual noise should get out of the way.
 
 ## Colors
-- **Primary (`{colors.primary}`)** — headlines, body text, primary button surfaces. Always on `{colors.neutral}` or `{colors.surface}` to preserve contrast.
-- **Secondary (`{colors.secondary}`)** — metadata, borders, captions. Never for body text on `{colors.neutral}`.
-- **Tertiary (`{colors.tertiary}`)** — the single accent. Reserve for primary actions, active states, and error-adjacent emphasis. One tertiary per view.
-- **Neutral (`{colors.neutral}`)** — the page canvas. Warmer than pure white to feel organic.
-- **Surface (`{colors.surface}`)** — cards and inputs sit on this. Slightly brighter than the canvas to feel lifted without shadow.
+`{colors.primary}` carries headlines, body copy, and primary button fills, always on top of `{colors.neutral}` or `{colors.surface}` to preserve contrast. `{colors.secondary}` supports metadata, dividers, and captions but is intentionally too light for body text on the canvas. Reserve `{colors.tertiary}` as the single accent — one call-to-action or active state per view, no more. `{colors.neutral}` is the page canvas, warmer than pure white to feel organic; `{colors.surface}` sits slightly brighter above it so cards read as lifted without any shadow. `{colors.muted-foreground}` handles placeholder text and quiet metadata; `{colors.border}` is the hairline that separates same-tone surfaces.
 
 ## Typography
-- **Headlines:** `{typography.headline-lg}` for page titles, `{typography.headline-md}` for section titles. Semibold, tightened tracking.
-- **Body:** `{typography.body-md}` at 16px is the default. Constrain text columns to `65ch` for comfortable reading.
-- **Labels:** `{typography.label-md}` in slight uppercase for metadata (dates, tags, byline). Do not use for body copy.
+Use `{typography.headline-lg}` for page titles and `{typography.headline-md}` for section titles — semibold with tightened tracking so headings stay confident without shouting. `{typography.body-md}` is the default reading size on a comfortable 1.6 leading; constrain text columns near 65ch so paragraphs stay easy to scan. Reach for `{typography.body-sm}` in compact controls and dense metadata rows. `{typography.label-md}` is small and slightly uppercase, reserved for dates, tags, and byline chips — never for body copy.
 
 ## Layout
-Fluid single-column on mobile, two-column max on desktop with a 1200px container. 8px spacing scale (`{spacing.xs}` half-step for micro-adjustments). Related content sits in cards with `{spacing.lg}` internal padding; ungrouped content uses `{spacing.xl}` vertical rhythm between sections.
+Fluid single-column on mobile, two-column max on desktop inside a 1200px container. `{spacing.md}` is the standard gutter between cards and controls, `{spacing.lg}` the internal padding on grouped panels, and `{spacing.xl}` the vertical rhythm between ungrouped sections so the page breathes between ideas. `{spacing.xs}` is a half-step available for micro-adjustments only.
 
-## Elevation & Depth
-Depth comes from **tonal contrast**, not shadow. `{colors.surface}` sits on `{colors.neutral}` and reads as elevated purely because it's brighter. Reserve subtle borders (`{colors.border}`) for cases where two surfaces of the same tone must be distinguished.
+## Elevation
+Depth comes from tonal contrast, not shadow. `{colors.surface}` reads as elevated over `{colors.neutral}` purely because it's brighter and warmer. Reserve `{elevation.sm}` for hover-lift on interactive cards; `{elevation.md}` and `{elevation.lg}` exist for menus and modals but should feel rare — most of the page stays flat and print-like.
 
 ## Shapes
-Softly geometric. Cards use `{rounded.lg}`, controls use `{rounded.md}`, pills use `{rounded.full}`. Do not mix sharp corners into rounded contexts.
+Softly geometric. Cards use `{rounded.lg}`, controls use `{rounded.md}`, and pills use `{rounded.full}`. Never mix sharp corners into rounded contexts — the visual language stays consistent across the whole surface.
 
 ## Components
-### Buttons
-- **Default:** solid `{colors.primary}` fill with `{colors.surface}` text, `{rounded.md}` corners, `{spacing.sm}` × `{spacing.md}` padding.
-- **Hover:** lighten fill by 8% via `color-mix`; no shadow change.
-- **Secondary:** transparent fill, `{colors.primary}` text, 1px `{colors.border}`.
-- **Disabled:** 40% opacity, `not-allowed` cursor, no hover transitions.
+Primary buttons run a solid `{colors.primary}` fill with `{colors.surface}` text and `{rounded.md}` corners; hover lightens the fill roughly 8% via color-mix with no shadow change. Secondary buttons stay transparent with a 1px `{colors.border}` outline and `{colors.primary}` text. Disabled state drops to 40% opacity with a not-allowed cursor and no hover.
 
-### Inputs
-- Default: `{colors.surface}` fill, `{colors.border}` outline, `{rounded.md}` corners.
-- Focused: swap outline to `{colors.primary}` at 1.5px.
-- Error: swap outline to `{colors.error}`.
+Inputs sit on `{colors.surface}` with a 1px `{colors.border}` outline and `{rounded.md}` corners. On focus the outline swaps to `{colors.primary}` at 1.5px thickness; on error it swaps to `{colors.error}`. Placeholder text uses `{colors.muted-foreground}`.
 
-### Cards
-- `{colors.surface}` on `{colors.neutral}`, `{rounded.lg}`, `{spacing.lg}` padding. No shadow — rely on tonal contrast.
+Cards live on `{colors.surface}` over `{colors.neutral}` with `{rounded.lg}` corners and `{spacing.lg}` padding. Rely on tonal contrast for resting hierarchy — reach for `{elevation.sm}` or higher only when a card genuinely needs to lift above the flow (hover, drag, modal).
 
 ## Do's and Don'ts
-- Do maintain WCAG AA (4.5:1 for body text) at all times.
+- Do maintain WCAG AA (4.5:1 for body text) between `{colors.on-surface}` and every background you place it on.
 - Do reserve `{colors.tertiary}` for at most one element per view.
-- Don't use `{colors.secondary}` for body text on `{colors.neutral}` — the contrast dips below AA.
-- Don't add drop shadows to convey elevation; use `{colors.surface}` layering instead.
+- Don't use `{colors.secondary}` for body text on `{colors.neutral}` — its contrast dips below AA.
+- Don't add drop shadows to convey resting elevation; layer `{colors.surface}` over `{colors.neutral}` instead.

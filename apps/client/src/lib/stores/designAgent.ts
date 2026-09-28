@@ -1,6 +1,9 @@
 import { writable, get } from "svelte/store";
 import { getWsTicket } from "$lib/api/auth";
-import { createDesignTemplateFromDraft } from "$lib/api/projects";
+import {
+  createDesignTemplateFromDraft,
+  updateDesignTemplateFromDraft,
+} from "$lib/api/projects";
 import { selectedModel } from "./agent";
 
 export type DesignAgentMessage = {
@@ -37,6 +40,7 @@ export const saveProposal = writable<SaveProposal | null>(null);
 export const savedTemplate = writable<SavedTemplate | null>(null);
 export const isSaving = writable(false);
 export const errorMessage = writable<string | null>(null);
+export const editingTemplateId = writable<string | null>(null);
 
 let socket: WebSocket | null = null;
 let currentAgentMessageId: string | null = null;
@@ -258,21 +262,39 @@ export const commitSave = async (opts: {
   }
   isSaving.set(true);
   errorMessage.set(null);
+  const editId = get(editingTemplateId);
   try {
-    const row = await createDesignTemplateFromDraft({
-      markdown,
-      name: opts.name,
-      description: opts.description,
-    });
-    if (!row) {
-      errorMessage.set("save failed");
-      return false;
+    if (editId) {
+      const row = await updateDesignTemplateFromDraft(editId, {
+        markdown,
+        name: opts.name,
+        description: opts.description,
+      });
+      if (!row) {
+        errorMessage.set("save failed");
+        return false;
+      }
+      savedTemplate.set({
+        id: row.id,
+        slug: row.slug ?? "",
+        name: row.name,
+      });
+    } else {
+      const row = await createDesignTemplateFromDraft({
+        markdown,
+        name: opts.name,
+        description: opts.description,
+      });
+      if (!row) {
+        errorMessage.set("save failed");
+        return false;
+      }
+      savedTemplate.set({
+        id: row.id,
+        slug: row.slug ?? "",
+        name: row.name,
+      });
     }
-    savedTemplate.set({
-      id: row.id,
-      slug: row.slug ?? "",
-      name: row.name,
-    });
     saveProposal.set(null);
     return true;
   } catch (err) {
@@ -281,6 +303,28 @@ export const commitSave = async (opts: {
   } finally {
     isSaving.set(false);
   }
+};
+
+export const seedEditingTemplate = (input: {
+  id: string;
+  content: string;
+  name: string;
+}) => {
+  resetDesignStudio();
+  editingTemplateId.set(input.id);
+  draftMarkdown.set(input.content);
+  savedTemplate.set(null);
+};
+
+export const applyDraftPatch = (
+  patch: (markdown: string) => string,
+): void => {
+  const current = get(draftMarkdown);
+  if (!current) return;
+  const next = patch(current);
+  if (next === current) return;
+  draftMarkdown.set(next);
+  savedTemplate.set(null);
 };
 
 export const resetDesignStudio = () => {
@@ -292,6 +336,7 @@ export const resetDesignStudio = () => {
   savedTemplate.set(null);
   isSaving.set(false);
   errorMessage.set(null);
+  editingTemplateId.set(null);
   currentAgentMessageId = null;
   abortRequested = false;
 };
