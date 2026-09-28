@@ -171,7 +171,7 @@
     transition: border-color 150ms ease, transform 150ms ease;
   }
   .card:hover {
-    border-color: var(--border-strong, var(--accent));
+    border-color: var(--accent);
     transform: translateY(-1px);
   }
   .card:focus-visible {

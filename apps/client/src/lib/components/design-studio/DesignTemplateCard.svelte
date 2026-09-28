@@ -164,7 +164,7 @@
     transition: border-color 150ms ease, box-shadow 150ms ease;
   }
   .card.manageable:hover {
-    border-color: var(--border-strong);
+    border-color: var(--accent);
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
   }
   .card-body {
