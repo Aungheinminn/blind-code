@@ -4,6 +4,7 @@
   import { renderMiniMarkdown } from "./miniMarkdown";
   import SwatchPopover from "./SwatchPopover.svelte";
   import ShapePopover from "./ShapePopover.svelte";
+  import ElevationPopover from "./ElevationPopover.svelte";
   import TypographyDialog from "./TypographyDialog.svelte";
   import ComponentsDialog from "./ComponentsDialog.svelte";
   import ProseEditor from "./ProseEditor.svelte";
@@ -85,6 +86,7 @@
   type OpenEditor =
     | { kind: "swatch"; name: string; value: string }
     | { kind: "shape"; step: "sm" | "md" | "lg" | "full"; value: string }
+    | { kind: "elevation"; step: "sm" | "md" | "lg"; value: string }
     | { kind: "typography" }
     | { kind: "components" }
     | { kind: "prose"; section: string }
@@ -102,6 +104,11 @@
 
   const applyShape = (step: string, value: string) => {
     applyDraftPatch((md) => patchFrontmatterBlockLeaf(md, "rounded", step, value));
+    closeEditor();
+  };
+
+  const applyElevation = (step: string, value: string) => {
+    applyDraftPatch((md) => patchFrontmatterBlockLeaf(md, "elevation", step, value));
     closeEditor();
   };
 
@@ -154,6 +161,10 @@
     if (!editable) return;
     openEditor = { kind: "shape", step, value };
   };
+  const openElevation = (step: "sm" | "md" | "lg", value: string) => {
+    if (!editable) return;
+    openEditor = { kind: "elevation", step, value };
+  };
   const openTypography = () => {
     if (!editable) return;
     openEditor = { kind: "typography" };
@@ -183,6 +194,13 @@
         { step: "sm", value: tokens.rounded.sm },
         { step: "md", value: tokens.rounded.md },
         { step: "lg", value: tokens.rounded.lg },
+      ] as Array<{ step: "sm" | "md" | "lg"; value: string }>)
+    : [];
+  $: elevationTiles = tokens
+    ? ([
+        { step: "sm", value: tokens.elevation.sm },
+        { step: "md", value: tokens.elevation.md },
+        { step: "lg", value: tokens.elevation.lg },
       ] as Array<{ step: "sm" | "md" | "lg"; value: string }>)
     : [];
 </script>
@@ -321,18 +339,18 @@
       <section data-preview-section="elevation" class="preview-section">
         <div class="section-label">Elevation</div>
         <div class="elev-row">
-          {#each ["sm", "md", "lg"] as step}
+          {#each elevationTiles as e}
             <button
               type="button"
-              class="elev-tile elev-{step}"
+              class="elev-tile"
               class:editable
-              style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
+              style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border}; box-shadow: {e.value};"
               disabled={!editable}
-              title={editable ? "Click to edit elevation notes" : ""}
-              on:click={() => openProse("Elevation")}
-              aria-label="Edit elevation notes"
+              title="elevation.{e.step} — {e.value}{editable ? ' · click to edit' : ''}"
+              on:click={() => openElevation(e.step, e.value)}
+              aria-label="Edit elevation {e.step}"
             >
-              {step}
+              {e.step}
             </button>
           {/each}
         </div>
@@ -478,6 +496,16 @@
       step={s.step}
       value={s.value}
       on:apply={(e) => applyShape(s.step, e.detail)}
+      on:close={closeEditor}
+    />
+  </div>
+{:else if openEditor && openEditor.kind === "elevation"}
+  {@const s = openEditor}
+  <div class="popover-mount">
+    <ElevationPopover
+      step={s.step}
+      value={s.value}
+      on:apply={(e) => applyElevation(s.step, e.detail)}
       on:close={closeEditor}
     />
   </div>
@@ -728,15 +756,6 @@
   }
   .elev-tile:disabled {
     cursor: default;
-  }
-  .elev-sm {
-    box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
-  }
-  .elev-md {
-    box-shadow: 0 3px 10px color-mix(in srgb, #000 16%, transparent);
-  }
-  .elev-lg {
-    box-shadow: 0 12px 32px color-mix(in srgb, #000 22%, transparent);
   }
   .shape-tile {
     width: 60px;

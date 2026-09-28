@@ -60,6 +60,14 @@ const roundedSchema = z
   })
   .strict();
 
+const elevationSchema = z
+  .object({
+    sm: z.string(),
+    md: z.string(),
+    lg: z.string(),
+  })
+  .strict();
+
 const spacingSchema = z
   .object({
     xs: dimensionSchema,
@@ -92,6 +100,7 @@ const frontmatterSchema = z
     colors: colorsSchema,
     typography: typographyBlockSchema,
     rounded: roundedSchema,
+    elevation: elevationSchema,
     spacing: spacingSchema,
     components: componentsBlockSchema,
   })

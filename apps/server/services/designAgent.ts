@@ -76,6 +76,10 @@ rounded:
   md: 8px
   lg: 14px
   full: 9999px
+elevation:
+  sm: "0 1px 2px rgba(0,0,0,0.10)"
+  md: "0 3px 10px rgba(0,0,0,0.14)"
+  lg: "0 12px 32px rgba(0,0,0,0.20)"
 spacing:
   xs: 4px
   sm: 8px
@@ -124,6 +128,7 @@ Hard rules (the validator will reject you otherwise):
    - colors: primary, secondary, tertiary, neutral, surface, on-surface, error, border, muted-foreground (all 9 required)
    - typography: headline-lg, headline-md, body-md, body-sm, label-md (all 5 required, each with fontFamily, fontSize, fontWeight; lineHeight and letterSpacing optional)
    - rounded: sm, md, lg, full (all 4 required)
+   - elevation: sm, md, lg (all 3 required, CSS box-shadow strings like "0 1px 2px rgba(0,0,0,0.10)")
    - spacing: xs, sm, md, lg, xl (all 5 required)
    - components: button-primary, input, card (all 3 required, each with optional backgroundColor, textColor, borderColor, rounded, padding)
    - Do NOT invent extras like button-primary-hover, success color, headline-sm, card-elevated, etc. Encode hover behavior, extra states, or extra variants in the prose (## Components / ## Do's and Don'ts), not as extra token keys.

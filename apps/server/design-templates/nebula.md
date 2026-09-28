@@ -46,6 +46,10 @@ rounded:
   md: 8px
   lg: 14px
   full: 9999px
+elevation:
+  sm: "0 1px 2px rgba(0,0,0,0.35)"
+  md: "0 6px 18px rgba(0,0,0,0.45)"
+  lg: "0 20px 44px rgba(0,0,0,0.55)"
 spacing:
   xs: 4px
   sm: 8px
