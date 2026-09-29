@@ -26,7 +26,6 @@
   } from "$lib/stores/designAgent";
 
   let draftName = "Untitled draft";
-  let nameEditedByUser = false;
   let prompt = "";
   let loadingTemplate = false;
   let loadError = "";
@@ -50,8 +49,11 @@
     !$savedTemplate &&
     !$isSaving;
 
-  $: if ($draftMarkdown && !nameEditedByUser) {
-    const parsed = parseDraft($draftMarkdown);
+  $: syncNameFromDraft($draftMarkdown);
+
+  function syncNameFromDraft(md: string | null) {
+    if (!md) return;
+    const parsed = parseDraft(md);
     const fmName = parsed?.name?.trim();
     if (fmName && fmName !== draftName) draftName = fmName;
   }
@@ -60,7 +62,6 @@
     if (!canSend) return;
     const text = prompt.trim();
     prompt = "";
-    nameEditedByUser = false;
     await sendDesignPrompt(text);
   };
 
@@ -88,7 +89,6 @@
   };
 
   const onNameInput = () => {
-    nameEditedByUser = true;
     if (!$draftMarkdown) return;
     const trimmed = draftName.trim();
     if (!trimmed) return;
@@ -114,7 +114,6 @@
         name: row.name,
       });
       draftName = row.name;
-      nameEditedByUser = false;
     } catch (err) {
       loadError = err instanceof Error ? err.message : "failed to load template";
     } finally {
@@ -138,8 +137,25 @@
         class="mode-chip"
         class:mode-chip-edit={isEditing}
         class:mode-chip-view={viewOnly}
+        aria-label={viewOnly ? "Preview mode" : isEditing ? "Editing" : "New template"}
+        title={viewOnly ? "Preview (read-only)" : isEditing ? "Editing an existing template" : "New template"}
       >
-        {viewOnly ? "Preview" : isEditing ? "Editing" : "New"}
+        {#if viewOnly}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        {:else if isEditing}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+          </svg>
+        {:else}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        {/if}
       </span>
       <input
         type="text"
@@ -147,6 +163,7 @@
         on:input={onNameInput}
         class="draft-name"
         aria-label="Draft name"
+        maxlength="160"
         disabled={loadingTemplate || viewOnly}
         readonly={viewOnly}
       />
@@ -313,12 +330,12 @@
   }
   .mode-chip {
     flex-shrink: 0;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     background-color: var(--bg-tertiary);
     color: var(--text-tertiary);
     border: 1px solid var(--border);

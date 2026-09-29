@@ -147,11 +147,11 @@
     box-sizing: border-box;
   }
   .inline-display-editable {
-    cursor: text;
+    cursor: pointer;
   }
   .inline-display-editable:hover,
   .inline-display-editable:focus-visible {
-    background-color: var(--bg-panel);
+    background-color: var(--bg-tertiary);
     outline: none;
   }
   .inline-input {
