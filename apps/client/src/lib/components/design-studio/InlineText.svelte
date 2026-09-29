@@ -154,9 +154,10 @@
   .inline-display {
     display: block;
     padding: 4px 6px;
-    margin: -4px -6px;
+    border: 1px solid transparent;
     border-radius: 6px;
-    transition: background-color 150ms ease;
+    transition: background-color 150ms ease, border-color 150ms ease;
+    box-sizing: border-box;
   }
   .inline-display-editable {
     cursor: text;
@@ -167,9 +168,9 @@
     outline: none;
   }
   .inline-input {
+    display: block;
     width: 100%;
     padding: 4px 6px;
-    margin: -4px -6px;
     font: inherit;
     color: inherit;
     background-color: var(--bg-panel);
@@ -178,6 +179,7 @@
     outline: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
     resize: vertical;
+    box-sizing: border-box;
   }
   .inline-textarea {
     min-height: 96px;

@@ -675,7 +675,6 @@
     margin: 0;
     font-size: 13.5px;
     color: var(--text-secondary);
-    max-width: 640px;
   }
   .placeholder-prose {
     margin: 0;
@@ -883,7 +882,6 @@
 
   .prose {
     margin-top: 14px;
-    max-width: 720px;
     font-size: 13.5px;
     line-height: 1.6;
     color: var(--text-secondary);
