@@ -299,14 +299,14 @@
             </div>
           {/if}
           {#if overviewHtml || editable}
-            <InlineText
-              value={overviewSrc || t.description || ""}
-              multiline
-              {editable}
-              placeholder="Describe the template's mood, target use cases, what makes it distinct."
-              on:apply={(e) => applyProse("Overview", e.detail)}
-            >
-              <div class="prose prose-heading">
+            <div class="prose prose-heading">
+              <InlineText
+                value={overviewSrc || t.description || ""}
+                multiline
+                {editable}
+                placeholder="Describe the template's mood, target use cases, what makes it distinct."
+                on:apply={(e) => applyProse("Overview", e.detail)}
+              >
                 {#if overviewHtml}
                   {@html overviewHtml}
                 {:else if t.description}
@@ -314,8 +314,8 @@
                 {:else}
                   <p class="placeholder-prose">Click to add an overview…</p>
                 {/if}
-              </div>
-            </InlineText>
+              </InlineText>
+            </div>
           {/if}
         </div>
       {/if}
@@ -369,21 +369,21 @@
           </div>
         </div>
         {#if typographyProse || editable}
-          <InlineText
-            value={typographyProseSrc}
-            multiline
-            {editable}
-            placeholder="Describe when to use each type role."
-            on:apply={(e) => applyProse("Typography", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={typographyProseSrc}
+              multiline
+              {editable}
+              placeholder="Describe when to use each type role."
+              on:apply={(e) => applyProse("Typography", e.detail)}
+            >
               {#if typographyProse}
                 {@html typographyProse}
               {:else}
                 <p class="placeholder-prose">Click to add typography notes…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         {/if}
       </section>
 
@@ -406,21 +406,21 @@
           {/each}
         </div>
         {#if elevationProse || editable}
-          <InlineText
-            value={elevationProseSrc}
-            multiline
-            {editable}
-            placeholder="Describe when to use each elevation depth."
-            on:apply={(e) => applyProse("Elevation", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={elevationProseSrc}
+              multiline
+              {editable}
+              placeholder="Describe when to use each elevation depth."
+              on:apply={(e) => applyProse("Elevation", e.detail)}
+            >
               {#if elevationProse}
                 {@html elevationProse}
               {:else}
                 <p class="placeholder-prose">Click to add elevation notes…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         {/if}
       </section>
 
@@ -441,21 +441,21 @@
           {/each}
         </div>
         {#if shapesProse || editable}
-          <InlineText
-            value={shapesProseSrc}
-            multiline
-            {editable}
-            placeholder="Describe the shape language."
-            on:apply={(e) => applyProse("Shapes", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={shapesProseSrc}
+              multiline
+              {editable}
+              placeholder="Describe the shape language."
+              on:apply={(e) => applyProse("Shapes", e.detail)}
+            >
               {#if shapesProse}
                 {@html shapesProse}
               {:else}
                 <p class="placeholder-prose">Click to add shape notes…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         {/if}
       </section>
 
@@ -489,63 +489,63 @@
           </div>
         </div>
         {#if componentsProse || editable}
-          <InlineText
-            value={componentsProseSrc}
-            multiline
-            {editable}
-            placeholder="Describe how each component composes tokens."
-            on:apply={(e) => applyProse("Components", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={componentsProseSrc}
+              multiline
+              {editable}
+              placeholder="Describe how each component composes tokens."
+              on:apply={(e) => applyProse("Components", e.detail)}
+            >
               {#if componentsProse}
                 {@html componentsProse}
               {:else}
                 <p class="placeholder-prose">Click to add component notes…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         {/if}
       </section>
 
       {#if layoutProse || editable}
         <section data-preview-section="layout" class="preview-section">
           <div class="section-label">Layout</div>
-          <InlineText
-            value={layoutProseSrc}
-            multiline
-            {editable}
-            placeholder="Describe grid, spacing, container patterns."
-            on:apply={(e) => applyProse("Layout", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={layoutProseSrc}
+              multiline
+              {editable}
+              placeholder="Describe grid, spacing, container patterns."
+              on:apply={(e) => applyProse("Layout", e.detail)}
+            >
               {#if layoutProse}
                 {@html layoutProse}
               {:else}
                 <p class="placeholder-prose">Click to add layout notes…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         </section>
       {/if}
 
       {#if dosProse || editable}
         <section data-preview-section="dos-donts" class="preview-section">
           <div class="section-label">Do's & Don'ts</div>
-          <InlineText
-            value={dosProseSrc}
-            multiline
-            {editable}
-            placeholder="List the rules to embrace and the ones to avoid."
-            on:apply={(e) => applyProse("Do's and Don'ts", e.detail)}
-          >
-            <div class="prose">
+          <div class="prose">
+            <InlineText
+              value={dosProseSrc}
+              multiline
+              {editable}
+              placeholder="List the rules to embrace and the ones to avoid."
+              on:apply={(e) => applyProse("Do's and Don'ts", e.detail)}
+            >
               {#if dosProse}
                 {@html dosProse}
               {:else}
                 <p class="placeholder-prose">Click to add do's and don'ts…</p>
               {/if}
-            </div>
-          </InlineText>
+            </InlineText>
+          </div>
         </section>
       {/if}
     </div>

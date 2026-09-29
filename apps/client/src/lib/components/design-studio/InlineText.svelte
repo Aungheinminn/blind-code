@@ -7,13 +7,11 @@
   export let editable = true;
   export let displayClass = "";
   export let inputClass = "";
-  export let saveDelayMs = 900;
 
   let editing = false;
   let draft = value;
   let rootEl: HTMLDivElement | null = null;
   let inputEl: HTMLInputElement | HTMLTextAreaElement | null = null;
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastCommitted = value;
 
   const dispatch = createEventDispatcher<{ apply: string }>();
@@ -23,25 +21,10 @@
     lastCommitted = value;
   }
 
-  const clearTimer = () => {
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-    }
-  };
-
   const commitIfChanged = (next: string) => {
     if (next === lastCommitted) return;
     lastCommitted = next;
     dispatch("apply", next);
-  };
-
-  const scheduleCommit = () => {
-    clearTimer();
-    saveTimer = setTimeout(() => {
-      commitIfChanged(draft);
-      saveTimer = null;
-    }, saveDelayMs);
   };
 
   const startEditing = async () => {
@@ -58,13 +41,8 @@
 
   const stopEditing = () => {
     if (!editing) return;
-    clearTimer();
     commitIfChanged(draft);
     editing = false;
-  };
-
-  const onInput = () => {
-    scheduleCommit();
   };
 
   const onBlur = () => {
@@ -74,7 +52,6 @@
   const onKeydown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       draft = lastCommitted;
-      clearTimer();
       editing = false;
       return;
     }
@@ -97,7 +74,6 @@
   };
 
   onDestroy(() => {
-    clearTimer();
     if (editing && draft !== lastCommitted) {
       dispatch("apply", draft);
     }
@@ -110,7 +86,6 @@
       <textarea
         bind:this={inputEl}
         bind:value={draft}
-        on:input={onInput}
         on:blur={onBlur}
         on:keydown={onKeydown}
         class="inline-input inline-textarea {inputClass}"
@@ -123,7 +98,6 @@
         type="text"
         bind:this={inputEl}
         bind:value={draft}
-        on:input={onInput}
         on:blur={onBlur}
         on:keydown={onKeydown}
         class="inline-input {inputClass}"
