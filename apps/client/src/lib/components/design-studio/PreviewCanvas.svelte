@@ -7,7 +7,7 @@
   import ElevationPopover from "./ElevationPopover.svelte";
   import TypographyDialog from "./TypographyDialog.svelte";
   import ComponentsDialog from "./ComponentsDialog.svelte";
-  import ProseEditor from "./ProseEditor.svelte";
+  import InlineText from "./InlineText.svelte";
   import {
     patchFrontmatterBlockLeaf,
     patchFrontmatterNestedLeaf,
@@ -83,17 +83,17 @@
     observer = null;
   });
 
+  type AnchorRect = { top: number; left: number; bottom: number; right: number; width: number; height: number };
+
   type OpenEditor =
-    | { kind: "swatch"; name: string; value: string }
-    | { kind: "shape"; step: "sm" | "md" | "lg" | "full"; value: string }
-    | { kind: "elevation"; step: "sm" | "md" | "lg"; value: string }
+    | { kind: "swatch"; name: string; value: string; anchor: AnchorRect }
+    | { kind: "shape"; step: "sm" | "md" | "lg" | "full"; value: string; anchor: AnchorRect }
+    | { kind: "elevation"; step: "sm" | "md" | "lg"; value: string; anchor: AnchorRect }
     | { kind: "typography" }
-    | { kind: "components" }
-    | { kind: "prose"; section: string }
-    | { kind: "name" }
-    | { kind: "description" };
+    | { kind: "components" };
 
   let openEditor: OpenEditor | null = null;
+  let popoverEl: HTMLDivElement | null = null;
 
   const closeEditor = () => (openEditor = null);
 
@@ -140,50 +140,89 @@
 
   const applyProse = (section: string, body: string) => {
     applyDraftPatch((md) => patchProseSection(md, section, body));
-    closeEditor();
   };
 
   const applyName = (name: string) => {
-    applyDraftPatch((md) => patchTopLevelString(md, "name", name));
-    closeEditor();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    applyDraftPatch((md) => patchTopLevelString(md, "name", trimmed));
   };
 
   const applyDescription = (desc: string) => {
-    applyDraftPatch((md) => patchTopLevelString(md, "description", desc));
+    applyDraftPatch((md) => patchTopLevelString(md, "description", desc.trim()));
+  };
+
+  const rectFromEvent = (event: Event): AnchorRect | null => {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return null;
+    const r = target.getBoundingClientRect();
+    return { top: r.top, left: r.left, bottom: r.bottom, right: r.right, width: r.width, height: r.height };
+  };
+
+  const openSwatch = (event: Event, name: string, value: string) => {
+    if (!editable) return;
+    event.stopPropagation();
+    const anchor = rectFromEvent(event);
+    if (!anchor) return;
+    openEditor = { kind: "swatch", name, value, anchor };
+  };
+  const openShape = (
+    event: Event,
+    step: "sm" | "md" | "lg" | "full",
+    value: string,
+  ) => {
+    if (!editable) return;
+    event.stopPropagation();
+    const anchor = rectFromEvent(event);
+    if (!anchor) return;
+    openEditor = { kind: "shape", step, value, anchor };
+  };
+  const openElevation = (
+    event: Event,
+    step: "sm" | "md" | "lg",
+    value: string,
+  ) => {
+    if (!editable) return;
+    event.stopPropagation();
+    const anchor = rectFromEvent(event);
+    if (!anchor) return;
+    openEditor = { kind: "elevation", step, value, anchor };
+  };
+  const openTypography = (event: Event) => {
+    if (!editable) return;
+    event.stopPropagation();
+    openEditor = { kind: "typography" };
+  };
+  const openComponents = (event: Event) => {
+    if (!editable) return;
+    event.stopPropagation();
+    openEditor = { kind: "components" };
+  };
+
+  const isAnchoredEditor = (
+    e: OpenEditor | null,
+  ): e is Extract<OpenEditor, { anchor: AnchorRect }> =>
+    !!e && (e.kind === "swatch" || e.kind === "shape" || e.kind === "elevation");
+
+  $: popoverStyle = (() => {
+    if (!isAnchoredEditor(openEditor)) return "";
+    const a = openEditor.anchor;
+    const est = openEditor.kind === "shape" ? 220 : openEditor.kind === "elevation" ? 340 : 240;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const left = Math.max(12, Math.min(a.left, vw - est - 12));
+    const top = a.bottom + 8;
+    return `top: ${top}px; left: ${left}px;`;
+  })();
+
+  const onWindowClick = (event: MouseEvent) => {
+    if (!openEditor) return;
+    if (!popoverEl) return;
+    if (popoverEl.contains(event.target as Node)) return;
     closeEditor();
   };
 
-  const openSwatch = (name: string, value: string) => {
-    if (!editable) return;
-    openEditor = { kind: "swatch", name, value };
-  };
-  const openShape = (step: "sm" | "md" | "lg" | "full", value: string) => {
-    if (!editable) return;
-    openEditor = { kind: "shape", step, value };
-  };
-  const openElevation = (step: "sm" | "md" | "lg", value: string) => {
-    if (!editable) return;
-    openEditor = { kind: "elevation", step, value };
-  };
-  const openTypography = () => {
-    if (!editable) return;
-    openEditor = { kind: "typography" };
-  };
-  const openComponents = () => {
-    if (!editable) return;
-    openEditor = { kind: "components" };
-  };
-  const openProse = (section: string) => {
-    if (!editable) return;
-    openEditor = { kind: "prose", section };
-  };
-  const openName = () => {
-    if (!editable) return;
-    openEditor = { kind: "name" };
-  };
-  const openDescription = () => {
-    if (!editable) return;
-    openEditor = { kind: "description" };
+  const onWindowKeydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") closeEditor();
   };
 
   $: draftForEditors = draft ?? "";
@@ -204,6 +243,8 @@
       ] as Array<{ step: "sm" | "md" | "lg"; value: string }>)
     : [];
 </script>
+
+<svelte:window on:click={onWindowClick} on:keydown={onWindowKeydown} />
 
 <div class="canvas">
   {#if !hasDraft || !tokens}
@@ -228,6 +269,13 @@
     </div>
   {:else}
     {@const t = tokens}
+    {@const overviewSrc = parsed?.sections?.Overview ?? ""}
+    {@const typographyProseSrc = parsed?.sections?.Typography ?? ""}
+    {@const elevationProseSrc = parsed?.sections?.Elevation ?? ""}
+    {@const shapesProseSrc = parsed?.sections?.Shapes ?? ""}
+    {@const componentsProseSrc = parsed?.sections?.Components ?? ""}
+    {@const layoutProseSrc = parsed?.sections?.Layout ?? ""}
+    {@const dosProseSrc = parsed?.sections?.["Do's and Don'ts"] ?? ""}
     {@const overviewHtml = sectionHtml(parsed, "Overview")}
     {@const typographyProse = sectionHtml(parsed, "Typography")}
     {@const elevationProse = sectionHtml(parsed, "Elevation")}
@@ -236,43 +284,38 @@
     {@const layoutProse = sectionHtml(parsed, "Layout")}
     {@const dosProse = sectionHtml(parsed, "Do's and Don'ts")}
     <div class="scroll" bind:this={scrollEl}>
-      {#if t.name || t.description || overviewHtml}
+      {#if t.name || t.description || overviewHtml || editable}
         <div class="draft-heading">
-          {#if t.name}
-            <h1
-              class:editable
-              on:click={openName}
-              on:keydown={(e) => e.key === "Enter" && openName()}
-              role={editable ? "button" : undefined}
-              tabindex={editable ? 0 : -1}
-              title={editable ? "Click to rename" : ""}
-            >
-              {t.name}
-            </h1>
-          {/if}
-          {#if overviewHtml}
-            <div
-              class="prose"
-              class:editable
-              on:click={() => openProse("Overview")}
-              on:keydown={(e) => e.key === "Enter" && openProse("Overview")}
-              role={editable ? "button" : undefined}
-              tabindex={editable ? 0 : -1}
-              title={editable ? "Click to edit overview" : ""}
-            >
-              {@html overviewHtml}
+          {#if t.name || editable}
+            <div class="draft-title">
+              <InlineText
+                value={t.name}
+                {editable}
+                placeholder="Untitled template"
+                on:apply={(e) => applyName(e.detail)}
+              >
+                <h1>{t.name || "Untitled template"}</h1>
+              </InlineText>
             </div>
-          {:else if t.description}
-            <p
-              class:editable
-              on:click={openDescription}
-              on:keydown={(e) => e.key === "Enter" && openDescription()}
-              role={editable ? "button" : undefined}
-              tabindex={editable ? 0 : -1}
-              title={editable ? "Click to edit description" : ""}
+          {/if}
+          {#if overviewHtml || editable}
+            <InlineText
+              value={overviewSrc || t.description || ""}
+              multiline
+              {editable}
+              placeholder="Describe the template's mood, target use cases, what makes it distinct."
+              on:apply={(e) => applyProse("Overview", e.detail)}
             >
-              {t.description}
-            </p>
+              <div class="prose prose-heading">
+                {#if overviewHtml}
+                  {@html overviewHtml}
+                {:else if t.description}
+                  <p>{t.description}</p>
+                {:else}
+                  <p class="placeholder-prose">Click to add an overview…</p>
+                {/if}
+              </div>
+            </InlineText>
           {/if}
         </div>
       {/if}
@@ -285,8 +328,10 @@
               class="swatch"
               class:editable
               title="{s.name} — {s.value}{editable ? ' · click to edit' : ''}"
-              on:click={() => openSwatch(s.name, s.value)}
-              on:keydown={(e) => e.key === "Enter" && openSwatch(s.name, s.value)}
+              on:click={(e) => openSwatch(e, s.name, s.value)}
+              on:keydown={(e) => {
+                if (e.key === "Enter") openSwatch(e, s.name, s.value);
+              }}
               role={editable ? "button" : undefined}
               tabindex={editable ? 0 : -1}
             >
@@ -307,7 +352,9 @@
           class:editable
           style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border};"
           on:click={openTypography}
-          on:keydown={(e) => e.key === "Enter" && openTypography()}
+          on:keydown={(e) => {
+            if (e.key === "Enter") openTypography(e);
+          }}
           role={editable ? "button" : undefined}
           tabindex={editable ? 0 : -1}
           title={editable ? "Click to edit typography" : ""}
@@ -321,18 +368,22 @@
             Muted caption · used for metadata, labels, and secondary text
           </div>
         </div>
-        {#if typographyProse}
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Typography")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Typography")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit typography notes" : ""}
+        {#if typographyProse || editable}
+          <InlineText
+            value={typographyProseSrc}
+            multiline
+            {editable}
+            placeholder="Describe when to use each type role."
+            on:apply={(e) => applyProse("Typography", e.detail)}
           >
-            {@html typographyProse}
-          </div>
+            <div class="prose">
+              {#if typographyProse}
+                {@html typographyProse}
+              {:else}
+                <p class="placeholder-prose">Click to add typography notes…</p>
+              {/if}
+            </div>
+          </InlineText>
         {/if}
       </section>
 
@@ -347,25 +398,29 @@
               style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border-color: {t.colors.border}; box-shadow: {e.value};"
               disabled={!editable}
               title="elevation.{e.step} — {e.value}{editable ? ' · click to edit' : ''}"
-              on:click={() => openElevation(e.step, e.value)}
+              on:click={(ev) => openElevation(ev, e.step, e.value)}
               aria-label="Edit elevation {e.step}"
             >
               {e.step}
             </button>
           {/each}
         </div>
-        {#if elevationProse}
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Elevation")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Elevation")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit elevation notes" : ""}
+        {#if elevationProse || editable}
+          <InlineText
+            value={elevationProseSrc}
+            multiline
+            {editable}
+            placeholder="Describe when to use each elevation depth."
+            on:apply={(e) => applyProse("Elevation", e.detail)}
           >
-            {@html elevationProse}
-          </div>
+            <div class="prose">
+              {#if elevationProse}
+                {@html elevationProse}
+              {:else}
+                <p class="placeholder-prose">Click to add elevation notes…</p>
+              {/if}
+            </div>
+          </InlineText>
         {/if}
       </section>
 
@@ -380,23 +435,27 @@
               style="background-color: {t.colors.primary}; border-radius: {s.value};"
               title="rounded.{s.step} — {s.value}{editable ? ' · click to edit' : ''}"
               disabled={!editable}
-              on:click={() => openShape(s.step, s.value)}
+              on:click={(e) => openShape(e, s.step, s.value)}
               aria-label="Edit rounded {s.step}"
             ></button>
           {/each}
         </div>
-        {#if shapesProse}
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Shapes")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Shapes")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit shapes notes" : ""}
+        {#if shapesProse || editable}
+          <InlineText
+            value={shapesProseSrc}
+            multiline
+            {editable}
+            placeholder="Describe the shape language."
+            on:apply={(e) => applyProse("Shapes", e.detail)}
           >
-            {@html shapesProse}
-          </div>
+            <div class="prose">
+              {#if shapesProse}
+                {@html shapesProse}
+              {:else}
+                <p class="placeholder-prose">Click to add shape notes…</p>
+              {/if}
+            </div>
+          </InlineText>
         {/if}
       </section>
 
@@ -408,7 +467,9 @@
             class:editable
             style="background-color: {t.colors.surface}; color: {t.colors.onSurface}; border: 1px solid {t.colors.border}; border-radius: {t.rounded.lg};"
             on:click={openComponents}
-            on:keydown={(e) => e.key === "Enter" && openComponents()}
+            on:keydown={(e) => {
+              if (e.key === "Enter") openComponents(e);
+            }}
             role={editable ? "button" : undefined}
             tabindex={editable ? 0 : -1}
             title={editable ? "Click to edit components" : ""}
@@ -427,52 +488,64 @@
             </div>
           </div>
         </div>
-        {#if componentsProse}
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Components")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Components")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit components notes" : ""}
+        {#if componentsProse || editable}
+          <InlineText
+            value={componentsProseSrc}
+            multiline
+            {editable}
+            placeholder="Describe how each component composes tokens."
+            on:apply={(e) => applyProse("Components", e.detail)}
           >
-            {@html componentsProse}
-          </div>
+            <div class="prose">
+              {#if componentsProse}
+                {@html componentsProse}
+              {:else}
+                <p class="placeholder-prose">Click to add component notes…</p>
+              {/if}
+            </div>
+          </InlineText>
         {/if}
       </section>
 
-      {#if layoutProse}
+      {#if layoutProse || editable}
         <section data-preview-section="layout" class="preview-section">
           <div class="section-label">Layout</div>
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Layout")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Layout")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit layout notes" : ""}
+          <InlineText
+            value={layoutProseSrc}
+            multiline
+            {editable}
+            placeholder="Describe grid, spacing, container patterns."
+            on:apply={(e) => applyProse("Layout", e.detail)}
           >
-            {@html layoutProse}
-          </div>
+            <div class="prose">
+              {#if layoutProse}
+                {@html layoutProse}
+              {:else}
+                <p class="placeholder-prose">Click to add layout notes…</p>
+              {/if}
+            </div>
+          </InlineText>
         </section>
       {/if}
 
-      {#if dosProse}
+      {#if dosProse || editable}
         <section data-preview-section="dos-donts" class="preview-section">
           <div class="section-label">Do's & Don'ts</div>
-          <div
-            class="prose"
-            class:editable
-            on:click={() => openProse("Do's and Don'ts")}
-            on:keydown={(e) => e.key === "Enter" && openProse("Do's and Don'ts")}
-            role={editable ? "button" : undefined}
-            tabindex={editable ? 0 : -1}
-            title={editable ? "Click to edit do's and don'ts" : ""}
+          <InlineText
+            value={dosProseSrc}
+            multiline
+            {editable}
+            placeholder="List the rules to embrace and the ones to avoid."
+            on:apply={(e) => applyProse("Do's and Don'ts", e.detail)}
           >
-            {@html dosProse}
-          </div>
+            <div class="prose">
+              {#if dosProse}
+                {@html dosProse}
+              {:else}
+                <p class="placeholder-prose">Click to add do's and don'ts…</p>
+              {/if}
+            </div>
+          </InlineText>
         </section>
       {/if}
     </div>
@@ -481,7 +554,7 @@
 
 {#if openEditor && openEditor.kind === "swatch"}
   {@const s = openEditor}
-  <div class="popover-mount">
+  <div class="popover-anchor" style={popoverStyle} bind:this={popoverEl}>
     <SwatchPopover
       name={s.name}
       value={s.value}
@@ -491,7 +564,7 @@
   </div>
 {:else if openEditor && openEditor.kind === "shape"}
   {@const s = openEditor}
-  <div class="popover-mount">
+  <div class="popover-anchor" style={popoverStyle} bind:this={popoverEl}>
     <ShapePopover
       step={s.step}
       value={s.value}
@@ -501,7 +574,7 @@
   </div>
 {:else if openEditor && openEditor.kind === "elevation"}
   {@const s = openEditor}
-  <div class="popover-mount">
+  <div class="popover-anchor" style={popoverStyle} bind:this={popoverEl}>
     <ElevationPopover
       step={s.step}
       value={s.value}
@@ -510,42 +583,18 @@
     />
   </div>
 {:else if openEditor && openEditor.kind === "typography" && parsed}
-  <TypographyDialog
-    values={typographyValues}
-    on:apply={(e) => applyTypography(e.detail)}
-    on:close={closeEditor}
-  />
+  <div bind:this={popoverEl}>
+    <TypographyDialog
+      values={typographyValues}
+      on:apply={(e) => applyTypography(e.detail)}
+      on:close={closeEditor}
+    />
+  </div>
 {:else if openEditor && openEditor.kind === "components" && parsed}
-  <ComponentsDialog
-    values={componentsValues}
-    on:apply={(e) => applyComponents(e.detail)}
-    on:close={closeEditor}
-  />
-{:else if openEditor && openEditor.kind === "prose"}
-  {@const s = openEditor}
-  <div class="prose-editor-mount">
-    <ProseEditor
-      section={s.section}
-      value={readProseSection(draftForEditors, s.section)}
-      on:apply={(e) => applyProse(s.section, e.detail)}
-      on:close={closeEditor}
-    />
-  </div>
-{:else if openEditor && openEditor.kind === "name" && tokens}
-  <div class="prose-editor-mount">
-    <ProseEditor
-      section="Name"
-      value={tokens.name}
-      on:apply={(e) => applyName(e.detail.trim())}
-      on:close={closeEditor}
-    />
-  </div>
-{:else if openEditor && openEditor.kind === "description" && tokens}
-  <div class="prose-editor-mount">
-    <ProseEditor
-      section="Description"
-      value={tokens.description}
-      on:apply={(e) => applyDescription(e.detail.trim())}
+  <div bind:this={popoverEl}>
+    <ComponentsDialog
+      values={componentsValues}
+      on:apply={(e) => applyComponents(e.detail)}
       on:close={closeEditor}
     />
   </div>
@@ -611,28 +660,27 @@
     gap: 34px;
   }
 
-  .draft-heading h1 {
+  .draft-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .draft-title h1 {
     font-size: 22px;
     font-weight: 700;
-    margin: 0 0 6px;
+    margin: 0;
     color: var(--text-primary);
-    padding: 2px 6px;
-    margin-left: -6px;
-    border-radius: 6px;
-    transition: background-color 150ms ease;
   }
-  .draft-heading h1.editable {
-    cursor: pointer;
-  }
-  .draft-heading h1.editable:hover {
-    background-color: var(--bg-panel);
-  }
-  .draft-heading p,
   .draft-heading .prose {
     margin: 0;
     font-size: 13.5px;
     color: var(--text-secondary);
     max-width: 640px;
+  }
+  .placeholder-prose {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-style: italic;
   }
 
   .preview-section {
@@ -839,18 +887,9 @@
     font-size: 13.5px;
     line-height: 1.6;
     color: var(--text-secondary);
-    padding: 6px 8px;
-    margin-left: -8px;
-    border-radius: 6px;
-    transition: background-color 150ms ease;
   }
-  .prose.editable {
-    cursor: pointer;
-  }
-  .prose.editable:hover,
-  .prose.editable:focus-visible {
-    background-color: var(--bg-panel);
-    outline: none;
+  .prose-heading {
+    margin-top: 0;
   }
   .prose :global(p) {
     margin: 0 0 10px;
@@ -960,24 +999,9 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 10.5px;
   }
-  .draft-heading .prose {
-    margin-top: 6px;
-    color: var(--text-secondary);
-  }
 
-  .popover-mount {
+  .popover-anchor {
     position: fixed;
     z-index: 55;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-  .prose-editor-mount {
-    position: fixed;
-    z-index: 55;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: min(560px, calc(100vw - 40px));
   }
 </style>
