@@ -27,6 +27,13 @@
     dispatch("apply", next);
   };
 
+  const autoGrow = () => {
+    if (!(inputEl instanceof HTMLTextAreaElement)) return;
+    inputEl.style.height = "auto";
+    const next = Math.min(inputEl.scrollHeight, 480);
+    inputEl.style.height = `${next}px`;
+  };
+
   const startEditing = async () => {
     if (!editable) return;
     if (editing) return;
@@ -37,6 +44,7 @@
     inputEl?.focus();
     if (inputEl instanceof HTMLInputElement) inputEl.select();
     else inputEl?.setSelectionRange?.(inputEl.value.length, inputEl.value.length);
+    autoGrow();
   };
 
   const stopEditing = () => {
@@ -86,6 +94,7 @@
       <textarea
         bind:this={inputEl}
         bind:value={draft}
+        on:input={autoGrow}
         on:blur={onBlur}
         on:keydown={onKeydown}
         class="inline-input inline-textarea {inputClass}"
@@ -157,7 +166,10 @@
   }
   .inline-textarea {
     min-height: 96px;
+    max-height: 480px;
+    overflow-y: auto;
     font-family: inherit;
     line-height: inherit;
+    resize: none;
   }
 </style>
