@@ -388,6 +388,14 @@
     background-color: color-mix(in srgb, #16a34a 10%, transparent);
     text-decoration: none;
     transition: filter 150ms ease;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .status-saved > :not(.status-dot) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
   .status-saved:hover {
     filter: brightness(0.95);

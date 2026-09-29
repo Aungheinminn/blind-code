@@ -164,6 +164,11 @@
     font-weight: 600;
     margin: 0;
     color: var(--text-primary);
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .chip {
     font-size: 10px;
@@ -180,6 +185,11 @@
     font-size: 13px;
     line-height: 1.5;
     color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .swatches {
     display: flex;
