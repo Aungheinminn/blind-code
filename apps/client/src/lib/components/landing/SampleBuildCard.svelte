@@ -72,13 +72,13 @@
   {/if}
   <div class="p-3.5 flex flex-col gap-1.5">
     <span
-      class="text-[14.5px] font-semibold"
+      class="text-[14.5px] font-semibold truncate"
       style="color: var(--text-primary);"
     >
       {name}
     </span>
     <span
-      class="text-[13px] leading-[1.45]"
+      class="text-[13px] leading-[1.45] line-clamp-2"
       style="color: var(--text-secondary);"
     >
       {description}
