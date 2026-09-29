@@ -10,6 +10,16 @@ import {
   updateDesignTemplateForOwner,
 } from "../db/repo";
 import { parseTemplate } from "../services/designTemplate";
+import { friendlyError } from "../services/errors";
+
+const NAME_MAX = 160;
+
+const checkNameLength = (
+  name: string,
+): { error: string } | null =>
+  name.length > NAME_MAX
+    ? { error: `Title is too long — keep it under ${NAME_MAX} characters.` }
+    : null;
 
 export const designTemplatesController = (app: Elysia) =>
   app
@@ -97,30 +107,40 @@ export const designTemplatesController = (app: Elysia) =>
       }
       const rawName = typeof b.name === "string" ? b.name.trim() : "";
       const name = rawName.length > 0 ? rawName : parsed.tokens.name;
+      const nameErr = checkNameLength(name);
+      if (nameErr) {
+        set.status = 400;
+        return nameErr;
+      }
       const rawDesc = typeof b.description === "string" ? b.description : "";
       const description =
         rawDesc.trim().length > 0
           ? rawDesc.trim()
           : (parsed.tokens.description ?? null);
-      const result = await updateDesignTemplateForOwner(params.id, user.id, {
-        name,
-        description,
-        content: markdown,
-        parsedTokens: parsed.tokens,
-      });
-      if (!result) {
-        set.status = 503;
-        return { error: "database not configured" };
+      try {
+        const result = await updateDesignTemplateForOwner(params.id, user.id, {
+          name,
+          description,
+          content: markdown,
+          parsedTokens: parsed.tokens,
+        });
+        if (!result) {
+          set.status = 503;
+          return { error: "database not configured" };
+        }
+        if ("notFound" in result) {
+          set.status = 404;
+          return { error: "not found" };
+        }
+        if ("forbidden" in result) {
+          set.status = 403;
+          return { error: "forbidden" };
+        }
+        return { data: result.updated };
+      } catch (err) {
+        set.status = 500;
+        return { error: friendlyError(err, { entity: "template", field: "title" }) };
       }
-      if ("notFound" in result) {
-        set.status = 404;
-        return { error: "not found" };
-      }
-      if ("forbidden" in result) {
-        set.status = 403;
-        return { error: "forbidden" };
-      }
-      return { data: result.updated };
     })
     .post("/design-templates", async ({ body, request, set }) => {
       if (!hasDb) {
@@ -152,6 +172,11 @@ export const designTemplatesController = (app: Elysia) =>
       }
       const rawName = typeof b.name === "string" ? b.name.trim() : "";
       const name = rawName.length > 0 ? rawName : parsed.tokens.name;
+      const nameErr = checkNameLength(name);
+      if (nameErr) {
+        set.status = 400;
+        return nameErr;
+      }
       const rawDesc = typeof b.description === "string" ? b.description : "";
       const description =
         rawDesc.trim().length > 0
@@ -172,9 +197,7 @@ export const designTemplatesController = (app: Elysia) =>
         return { data: { id: row.id, slug: row.slug, name: row.name } };
       } catch (err) {
         set.status = 500;
-        return {
-          error: err instanceof Error ? err.message : "failed to save template",
-        };
+        return { error: friendlyError(err, { entity: "template", field: "title" }) };
       }
     })
     .delete("/design-templates/:id", async ({ params, request, set }) => {

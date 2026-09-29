@@ -25,6 +25,15 @@ import { templateToCss } from "../services/designTemplate";
 import type { DesignTemplateFrontmatter } from "@vibe/shared";
 import { hasDb } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
+import { friendlyError } from "../services/errors";
+
+const PROJECT_NAME_MAX = 160;
+const projectNameTooLong = (n: string) =>
+  n.length > PROJECT_NAME_MAX
+    ? {
+        error: `Project name is too long — keep it under ${PROJECT_NAME_MAX} characters.`,
+      }
+    : null;
 import { generateProjectTitle } from "../services/titler";
 import { providerForModel } from "@vibe/shared";
 import {
@@ -160,15 +169,25 @@ export const projectController = (app: Elysia) =>
       const name = ((b.name as string) ?? (b.id as string) ?? crypto.randomUUID()).trim();
       if (!name) {
         set.status = 400;
-        return { error: "name required" };
+        return { error: "Project name is required." };
+      }
+      const nameErr = projectNameTooLong(name);
+      if (nameErr) {
+        set.status = 400;
+        return nameErr;
       }
       const description = typeof b.description === "string" ? b.description : undefined;
-      const project = await ensureProject(name, user.id, { description });
-      if (!project || project.forbidden || !project.created) {
-        set.status = 409;
-        return { error: "A project with that name already exists." };
+      try {
+        const project = await ensureProject(name, user.id, { description });
+        if (!project || project.forbidden || !project.created) {
+          set.status = 409;
+          return { error: "A project with that name already exists." };
+        }
+        return { data: project };
+      } catch (err) {
+        set.status = 500;
+        return { error: friendlyError(err, { entity: "project", field: "name" }) };
       }
-      return { data: project };
     })
     .post("/projects/from-prompt", async ({ body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
@@ -221,14 +240,27 @@ export const projectController = (app: Elysia) =>
         isArchived: boolean;
         agentToolPermissions: AgentToolPermissions | null;
       }> = {};
-      if (typeof raw.name === "string") patch.name = raw.name;
+      if (typeof raw.name === "string") {
+        const nameErr = projectNameTooLong(raw.name);
+        if (nameErr) {
+          set.status = 400;
+          return nameErr;
+        }
+        patch.name = raw.name;
+      }
       if (raw.description === null || typeof raw.description === "string") {
         patch.description = raw.description as string | null;
       }
       if (typeof raw.isArchived === "boolean") patch.isArchived = raw.isArchived;
       const perms = parseAgentToolPermissions(raw.agentToolPermissions);
       if (perms !== undefined) patch.agentToolPermissions = perms;
-      const updated = await updateProjectForOwner(params.id, user.id, patch);
+      let updated;
+      try {
+        updated = await updateProjectForOwner(params.id, user.id, patch);
+      } catch (err) {
+        set.status = 500;
+        return { error: friendlyError(err, { entity: "project", field: "name" }) };
+      }
       if (!updated) {
         set.status = 404;
         return { error: "not found" };

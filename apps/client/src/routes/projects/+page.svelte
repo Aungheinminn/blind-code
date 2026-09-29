@@ -417,6 +417,7 @@
             bind:value={newName}
             placeholder="e.g. landing-page"
             required
+            maxlength="160"
             class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
             style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
           />
@@ -497,6 +498,7 @@
             bind:this={editNameInput}
             bind:value={editName}
             required
+            maxlength="160"
             class="mt-1 w-full text-sm px-3 py-2 rounded-md border bg-transparent outline-none"
             style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
           />
