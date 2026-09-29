@@ -29,8 +29,12 @@
 
   const autoGrow = () => {
     if (!(inputEl instanceof HTMLTextAreaElement)) return;
+    const before = inputEl.clientHeight;
     inputEl.style.height = "auto";
-    const next = Math.min(inputEl.scrollHeight, 480);
+    const scroll = inputEl.scrollHeight;
+    // Only grow — never shrink below whatever the user has already set
+    // (either via drag handle or previous autogrow). Capped at 480px.
+    const next = Math.min(Math.max(scroll, before), 480);
     inputEl.style.height = `${next}px`;
   };
 
@@ -170,6 +174,6 @@
     overflow-y: auto;
     font-family: inherit;
     line-height: inherit;
-    resize: none;
+    resize: vertical;
   }
 </style>
