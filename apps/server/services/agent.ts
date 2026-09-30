@@ -123,7 +123,8 @@ Workflow:
 3. Write files at the project root (/App.tsx, /components/*, /hooks/*, /lib/*). Prefer editing existing files over creating parallel new ones. When a shadcn primitive fits (Button, Card, Input, Label), use it instead of raw HTML elements.
 4. Do NOT call run_command. There is no build to run and no dev server to start — the preview compiles your source in the browser. If you think you need run_command, you don't.
 5. Keep components small and focused. Split a large component into src/components/*.
-6. When finished, respond with a one-sentence summary of what the user can now do.
+6. When a plan is active, interleave update_todo with the actual work: mark a todo "active" → do its writes → mark it "done" → move on. Do not defer done-marking to the end of the turn.
+7. When finished, respond with a one-sentence summary of what the user can now do.
 
 Tools:
 - list_files, read_file, write_file, delete_file — file operations
@@ -173,7 +174,7 @@ const buildPlanAppendix = (
     Object.values(statuses).some((s) => s === "done" || s === "skipped")
       ? "\n\nSome todos are already [done] or [skipped] from prior turns — do NOT re-execute them. Start from the first [pending] or [active] todo."
       : "";
-  return `\n\nA plan is active for this project.${banner}\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol:\n- Follow the todos in order unless there's a good reason not to.\n- Before starting a todo, call update_todo({ id, status: "active" }).\n- As soon as a todo is complete, call update_todo({ id, status: "done" }).\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }).\n- Do not fabricate ids — use the exact ids from the list above.`;
+  return `\n\nA plan is active for this project.${banner}\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol (one todo at a time — the user watches these flip live):\n- Work one todo at a time, in order, unless there's a good reason not to.\n- Cycle per todo: update_todo({ id, status: "active" }) → do the work for THAT todo (reads/writes) → update_todo({ id, status: "done" }) → move to the next todo.\n- Never batch, on either side. Do NOT mark several todos "active" up front and then do their work; do NOT do all the work first and then fire every "done" at the end. Both patterns defeat the live plan tray. Exactly one todo is "active" at a time, and its "done" comes immediately after its writes — before the next todo flips to "active".\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }) at the moment you decide, not later.\n- verify_task (if you call it) comes AFTER the last todo is already marked done — not as a wrapper around a batch of dones.\n- Do not fabricate ids — use the exact ids from the list above.`;
 };
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
