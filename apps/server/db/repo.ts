@@ -484,6 +484,16 @@ export const deleteProjectForOwner = async (idOrName: string, ownerId: string) =
       .where(eq(schema.turns.projectId, id));
     const turnIds = turnRows.map((r) => r.id);
 
+    const planRows = await tx
+      .select({ id: schema.plans.id })
+      .from(schema.plans)
+      .where(eq(schema.plans.projectId, id));
+    const planIds = planRows.map((r) => r.id);
+
+    if (planIds.length > 0) {
+      await tx.delete(schema.planTodos).where(inArray(schema.planTodos.planId, planIds));
+      await tx.delete(schema.plans).where(inArray(schema.plans.id, planIds));
+    }
     if (turnIds.length > 0) {
       await tx.delete(schema.turnEvents).where(inArray(schema.turnEvents.turnId, turnIds));
       await tx.delete(schema.turns).where(inArray(schema.turns.id, turnIds));

@@ -27,9 +27,14 @@ const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
 const sandboxDir = (projectId: string) => join(SANDBOX_ROOT, projectId);
 
+const normalizeProjectPath = (rel: string): string => rel.replace(/^\/+/, "");
+
 const safeJoin = (projectId: string, rel: string): string => {
   const root = sandboxDir(projectId);
-  const abs = resolve(root, rel);
+  // Treat leading slashes as "from the project root", not as filesystem-absolute.
+  // Both '/App.tsx' and 'App.tsx' should resolve to <sandbox>/<project>/App.tsx.
+  const relFromProject = normalizeProjectPath(rel);
+  const abs = resolve(root, relFromProject);
   const relFromRoot = relative(root, abs);
   if (relFromRoot.startsWith("..") || resolve(root, relFromRoot) !== abs) {
     throw new Error(`Path escapes project root: ${rel}`);
@@ -81,7 +86,7 @@ export const buildReadOnlyTools = (ctx: ToolContext) => {
       description:
         "Read the contents of a text file inside the current project. Returns the file contents as a UTF-8 string.",
       inputSchema: z.object({
-        path: z.string().describe("Path relative to the project root, e.g. 'src/App.tsx'"),
+        path: z.string().describe("Path from the project root, e.g. '/App.tsx' or '/components/Header.tsx'."),
       }),
       execute: idem("read_file", async ({ path }: { path: string }) => {
         const abs = safeJoin(sandboxProjectId, path);
@@ -143,17 +148,18 @@ export const buildWriteTools = (ctx: ToolContext) => {
       description:
         "Create or overwrite a text file inside the current project. Parent directories are created automatically.",
       inputSchema: z.object({
-        path: z.string().describe("Path relative to the project root, e.g. 'src/App.tsx'"),
+        path: z.string().describe("Path from the project root, e.g. '/App.tsx' or '/components/Header.tsx'. Do NOT prefix with 'src/'."),
         content: z.string().describe("Full file content to write (UTF-8)"),
       }),
       execute: idem(
         "write_file",
         async ({ path, content }: { path: string; content: string }) => {
           const abs = safeJoin(sandboxProjectId, path);
+          const stored = normalizeProjectPath(path);
           await mkdir(dirname(abs), { recursive: true });
           await writeFile(abs, content, "utf-8");
-          if (dbProjectId) await upsertProjectFile(dbProjectId, path, content);
-          return { path, bytes: Buffer.byteLength(content, "utf-8") };
+          if (dbProjectId) await upsertProjectFile(dbProjectId, stored, content);
+          return { path: stored, bytes: Buffer.byteLength(content, "utf-8") };
         },
       ),
     }),
@@ -161,13 +167,14 @@ export const buildWriteTools = (ctx: ToolContext) => {
     delete_file: tool({
       description: "Delete a file or directory (recursively) inside the current project.",
       inputSchema: z.object({
-        path: z.string().describe("Path relative to the project root"),
+        path: z.string().describe("Path from the project root"),
       }),
       execute: idem("delete_file", async ({ path }: { path: string }) => {
         const abs = safeJoin(sandboxProjectId, path);
+        const stored = normalizeProjectPath(path);
         await rm(abs, { recursive: true, force: true });
-        if (dbProjectId) await deleteProjectFile(dbProjectId, path);
-        return { path, deleted: true };
+        if (dbProjectId) await deleteProjectFile(dbProjectId, stored);
+        return { path: stored, deleted: true };
       }),
     }),
 

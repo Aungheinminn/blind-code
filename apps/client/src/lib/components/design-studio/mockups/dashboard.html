@@ -1,0 +1,122 @@
+<div style="display: grid; grid-template-columns: 220px 1fr; min-height: 100vh;">
+  <aside style="background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--spacing-md);">
+    <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);">
+      <div style="width: 26px; height: 26px; background: var(--color-primary); border-radius: var(--rounded-md);"></div>
+      <strong style="font-family: var(--font-headline); font-size: 14px;">Fieldnote</strong>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 2px; font-size: var(--body-sm-size);">
+      <a style="padding: 8px 10px; border-radius: var(--rounded-md); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600;">Overview</a>
+      <a class="muted" style="padding: 8px 10px; border-radius: var(--rounded-md);">Notebooks</a>
+      <a class="muted" style="padding: 8px 10px; border-radius: var(--rounded-md);">Threads</a>
+      <a class="muted" style="padding: 8px 10px; border-radius: var(--rounded-md);">Archive</a>
+      <a class="muted" style="padding: 8px 10px; border-radius: var(--rounded-md);">Settings</a>
+    </nav>
+    <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+      <span class="kicker" style="font-size: 10px;">SHARED</span>
+      <div style="display: flex; flex-direction: column; gap: 2px; margin-top: var(--spacing-sm); font-size: var(--body-sm-size);">
+        <a class="muted" style="padding: 6px 10px; border-radius: var(--rounded-sm);">Grasslands ‘26</a>
+        <a class="muted" style="padding: 6px 10px; border-radius: var(--rounded-sm);">Editorial team</a>
+        <a class="muted" style="padding: 6px 10px; border-radius: var(--rounded-sm);">Winter release</a>
+      </div>
+    </div>
+  </aside>
+
+  <main style="padding: var(--spacing-lg) var(--spacing-xl); background: var(--color-neutral);">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-lg);">
+      <div>
+        <span class="kicker">OVERVIEW</span>
+        <h1 style="font-size: var(--h-md-size); font-weight: var(--h-md-weight); margin: 4px 0 0;">Good afternoon, Aung.</h1>
+      </div>
+      <div style="display: flex; gap: var(--spacing-sm);">
+        <button class="btn btn-secondary">Import</button>
+        <button class="btn btn-primary">New notebook</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+      <div class="card" style="box-shadow: var(--elev-sm);">
+        <span class="kicker" style="color: var(--color-muted-foreground);">DRAFTS</span>
+        <div style="font-family: var(--font-headline); font-size: 30px; font-weight: 700; margin-top: 6px;">14</div>
+        <p style="margin: 6px 0 0; font-size: var(--body-sm-size);" class="muted">+3 this week</p>
+      </div>
+      <div class="card" style="box-shadow: var(--elev-md);">
+        <span class="kicker" style="color: var(--color-muted-foreground);">PUBLISHED</span>
+        <div style="font-family: var(--font-headline); font-size: 30px; font-weight: 700; margin-top: 6px; color: var(--color-primary);">62</div>
+        <p style="margin: 6px 0 0; font-size: var(--body-sm-size);" class="muted">2.3k reads</p>
+      </div>
+      <div class="card" style="box-shadow: var(--elev-lg);">
+        <span class="kicker" style="color: var(--color-muted-foreground);">MENTIONS</span>
+        <div style="font-family: var(--font-headline); font-size: 30px; font-weight: 700; margin-top: 6px; color: var(--color-tertiary);">9</div>
+        <p style="margin: 6px 0 0; font-size: var(--body-sm-size);" class="muted">Across 4 threads</p>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 0; box-shadow: var(--elev-sm); overflow: hidden;">
+      <div style="padding: var(--spacing-md) var(--spacing-lg); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h2 style="font-size: 16px; font-weight: 600; margin: 0;">Recent activity</h2>
+          <p style="margin: 4px 0 0; font-size: var(--body-sm-size);" class="muted">Notebooks you touched in the last two weeks</p>
+        </div>
+        <button class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">Filter</button>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: var(--body-sm-size);">
+        <thead>
+          <tr style="background: color-mix(in srgb, var(--color-on-surface) 3%, transparent); text-align: left;">
+            <th style="padding: 10px var(--spacing-lg); font-family: var(--font-label); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted-foreground); font-weight: 500;">Notebook</th>
+            <th style="padding: 10px var(--spacing-md); font-family: var(--font-label); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted-foreground); font-weight: 500;">Section</th>
+            <th style="padding: 10px var(--spacing-md); font-family: var(--font-label); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted-foreground); font-weight: 500;">Words</th>
+            <th style="padding: 10px var(--spacing-md); font-family: var(--font-label); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted-foreground); font-weight: 500;">Status</th>
+            <th style="padding: 10px var(--spacing-lg); font-family: var(--font-label); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted-foreground); font-weight: 500;">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top: 1px solid var(--color-border);">
+            <td style="padding: 12px var(--spacing-lg); font-weight: 500;">Coastal grasslands</td>
+            <td style="padding: 12px var(--spacing-md);" class="muted">Field survey</td>
+            <td style="padding: 12px var(--spacing-md); font-family: var(--font-label); font-size: 12px;">3,204</td>
+            <td style="padding: 12px var(--spacing-md);">
+              <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: var(--rounded-full); background: color-mix(in srgb, var(--color-on-surface) 10%, transparent); color: var(--color-on-surface);">Draft</span>
+            </td>
+            <td style="padding: 12px var(--spacing-lg);" class="muted">2h ago</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--color-border);">
+            <td style="padding: 12px var(--spacing-lg); font-weight: 500;">Winter subscription pricing</td>
+            <td style="padding: 12px var(--spacing-md);" class="muted">Editorial</td>
+            <td style="padding: 12px var(--spacing-md); font-family: var(--font-label); font-size: 12px;">1,880</td>
+            <td style="padding: 12px var(--spacing-md);">
+              <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: var(--rounded-full); background: color-mix(in srgb, var(--color-secondary) 15%, transparent); color: var(--color-secondary);">In review</span>
+            </td>
+            <td style="padding: 12px var(--spacing-lg);" class="muted">6h ago</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--color-border);">
+            <td style="padding: 12px var(--spacing-lg); font-weight: 500;">Reader letters — Q4</td>
+            <td style="padding: 12px var(--spacing-md);" class="muted">Correspondence</td>
+            <td style="padding: 12px var(--spacing-md); font-family: var(--font-label); font-size: 12px;">512</td>
+            <td style="padding: 12px var(--spacing-md);">
+              <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: var(--rounded-full); background: color-mix(in srgb, var(--color-primary) 15%, transparent); color: var(--color-primary);">Published</span>
+            </td>
+            <td style="padding: 12px var(--spacing-lg);" class="muted">1d ago</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--color-border);">
+            <td style="padding: 12px var(--spacing-lg); font-weight: 500;">Interview: J. Ito</td>
+            <td style="padding: 12px var(--spacing-md);" class="muted">Long-form</td>
+            <td style="padding: 12px var(--spacing-md); font-family: var(--font-label); font-size: 12px;">6,420</td>
+            <td style="padding: 12px var(--spacing-md);">
+              <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: var(--rounded-full); background: color-mix(in srgb, var(--color-on-surface) 10%, transparent); color: var(--color-on-surface);">Draft</span>
+            </td>
+            <td style="padding: 12px var(--spacing-lg);" class="muted">2d ago</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--color-border);">
+            <td style="padding: 12px var(--spacing-lg); font-weight: 500;">House style guide 2027</td>
+            <td style="padding: 12px var(--spacing-md);" class="muted">Reference</td>
+            <td style="padding: 12px var(--spacing-md); font-family: var(--font-label); font-size: 12px;">2,110</td>
+            <td style="padding: 12px var(--spacing-md);">
+              <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: var(--rounded-full); background: color-mix(in srgb, var(--color-muted-foreground) 15%, transparent); color: var(--color-muted-foreground);">Archived</span>
+            </td>
+            <td style="padding: 12px var(--spacing-lg);" class="muted">4d ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>

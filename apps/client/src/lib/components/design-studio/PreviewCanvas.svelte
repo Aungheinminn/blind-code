@@ -5,6 +5,7 @@
   import SwatchPopover from "./SwatchPopover.svelte";
   import ShapePopover from "./ShapePopover.svelte";
   import ElevationPopover from "./ElevationPopover.svelte";
+  import SpacingPopover from "./SpacingPopover.svelte";
   import TypographyDialog from "./TypographyDialog.svelte";
   import ComponentsDialog from "./ComponentsDialog.svelte";
   import InlineText from "./InlineText.svelte";
@@ -89,6 +90,7 @@
     | { kind: "swatch"; name: string; value: string; anchor: AnchorRect }
     | { kind: "shape"; step: "sm" | "md" | "lg" | "full"; value: string; anchor: AnchorRect }
     | { kind: "elevation"; step: "sm" | "md" | "lg"; value: string; anchor: AnchorRect }
+    | { kind: "spacing"; step: "xs" | "sm" | "md" | "lg" | "xl"; value: string; anchor: AnchorRect }
     | { kind: "typography" }
     | { kind: "components" };
 
@@ -109,6 +111,11 @@
 
   const applyElevation = (step: string, value: string) => {
     applyDraftPatch((md) => patchFrontmatterBlockLeaf(md, "elevation", step, value));
+    closeEditor();
+  };
+
+  const applySpacing = (step: string, value: string) => {
+    applyDraftPatch((md) => patchFrontmatterBlockLeaf(md, "spacing", step, value));
     closeEditor();
   };
 
@@ -188,6 +195,17 @@
     if (!anchor) return;
     openEditor = { kind: "elevation", step, value, anchor };
   };
+  const openSpacing = (
+    event: Event,
+    step: "xs" | "sm" | "md" | "lg" | "xl",
+    value: string,
+  ) => {
+    if (!editable) return;
+    event.stopPropagation();
+    const anchor = rectFromEvent(event);
+    if (!anchor) return;
+    openEditor = { kind: "spacing", step, value, anchor };
+  };
   const openTypography = (event: Event) => {
     if (!editable) return;
     event.stopPropagation();
@@ -202,7 +220,11 @@
   const isAnchoredEditor = (
     e: OpenEditor | null,
   ): e is Extract<OpenEditor, { anchor: AnchorRect }> =>
-    !!e && (e.kind === "swatch" || e.kind === "shape" || e.kind === "elevation");
+    !!e &&
+    (e.kind === "swatch" ||
+      e.kind === "shape" ||
+      e.kind === "elevation" ||
+      e.kind === "spacing");
 
   $: popoverStyle = (() => {
     if (!isAnchoredEditor(openEditor)) return "";
@@ -241,6 +263,16 @@
         { step: "md", value: tokens.elevation.md },
         { step: "lg", value: tokens.elevation.lg },
       ] as Array<{ step: "sm" | "md" | "lg"; value: string }>)
+    : [];
+
+  $: spacingBars = parsed
+    ? ([
+        { step: "xs", value: parsed.spacing.xs ?? "4px" },
+        { step: "sm", value: parsed.spacing.sm ?? "8px" },
+        { step: "md", value: parsed.spacing.md ?? "16px" },
+        { step: "lg", value: parsed.spacing.lg ?? "24px" },
+        { step: "xl", value: parsed.spacing.xl ?? "40px" },
+      ] as Array<{ step: "xs" | "sm" | "md" | "lg" | "xl"; value: string }>)
     : [];
 </script>
 
@@ -459,6 +491,29 @@
         {/if}
       </section>
 
+      <section data-preview-section="spacing" class="preview-section">
+        <div class="section-label">Spacing</div>
+        <div class="spacing-rows">
+          {#each spacingBars as b}
+            <button
+              type="button"
+              class="spacing-row"
+              class:editable
+              disabled={!editable}
+              title="spacing.{b.step} — {b.value}{editable ? ' · click to edit' : ''}"
+              on:click={(e) => openSpacing(e, b.step, b.value)}
+              aria-label="Edit spacing {b.step}"
+            >
+              <span class="spacing-step">{b.step}</span>
+              <span class="spacing-track">
+                <span class="spacing-bar" style="width: {b.value};"></span>
+              </span>
+              <span class="spacing-value">{b.value}</span>
+            </button>
+          {/each}
+        </div>
+      </section>
+
       <section data-preview-section="components" class="preview-section">
         <div class="section-label">Components</div>
         <div class="component-grid">
@@ -579,6 +634,16 @@
       step={s.step}
       value={s.value}
       on:apply={(e) => applyElevation(s.step, e.detail)}
+      on:close={closeEditor}
+    />
+  </div>
+{:else if openEditor && openEditor.kind === "spacing"}
+  {@const s = openEditor}
+  <div class="popover-anchor" style={popoverStyle} bind:this={popoverEl}>
+    <SpacingPopover
+      step={s.step}
+      value={s.value}
+      on:apply={(e) => applySpacing(s.step, e.detail)}
       on:close={closeEditor}
     />
   </div>
@@ -819,6 +884,61 @@
   }
   .shape-tile:disabled {
     cursor: default;
+  }
+
+  .spacing-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 640px;
+  }
+  .spacing-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 72px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    text-align: left;
+    transition: outline-offset 120ms ease;
+  }
+  .spacing-row.editable {
+    cursor: pointer;
+  }
+  .spacing-row.editable:hover,
+  .spacing-row.editable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .spacing-row:disabled {
+    cursor: default;
+  }
+  .spacing-step {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .spacing-track {
+    display: flex;
+    align-items: center;
+    height: 12px;
+  }
+  .spacing-bar {
+    display: block;
+    height: 8px;
+    background-color: var(--accent);
+    border-radius: 4px;
+    min-width: 2px;
+    max-width: 100%;
+  }
+  .spacing-value {
+    text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
   }
 
   .component-grid {

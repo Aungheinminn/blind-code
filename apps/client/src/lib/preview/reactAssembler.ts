@@ -1,4 +1,4 @@
-import { DEFAULT_APP_TSX, SCAFFOLD_FILES } from "./scaffold";
+import { DEFAULT_APP_TSX, SCAFFOLD_FILES, WAITING_APP_TSX } from "./scaffold";
 
 const BASE_DEPS: Record<string, string> = {
   react: "^18.3.1",
@@ -127,7 +127,8 @@ export const assembleReactProject = (
     !files["/App.js"] &&
     !files["/App.ts"]
   ) {
-    files["/App.tsx"] = DEFAULT_APP_TSX;
+    files["/App.tsx"] =
+      Object.keys(raw).length === 0 ? DEFAULT_APP_TSX : WAITING_APP_TSX;
   }
 
   if (opts.supabase) {

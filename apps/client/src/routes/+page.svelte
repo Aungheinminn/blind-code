@@ -4,7 +4,10 @@
   import PromptGenerator from "$lib/components/landing/PromptGenerator.svelte";
   import SampleBuilds from "$lib/components/landing/SampleBuilds.svelte";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
-  import { createProjectFromPrompt } from "$lib/api/projects";
+  import {
+    createProjectFromPrompt,
+    setProjectDesignTemplate,
+  } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
   import { selectedModel } from "$lib/stores/agent";
 
@@ -13,6 +16,7 @@
   let prompt = "";
   let busy = false;
   let error = "";
+  let selectedTemplateId: string | null = null;
 
   const createFromPrompt = async (
     text: string,
@@ -44,6 +48,11 @@
         ...(preset ? { name: preset.name, description: preset.description ?? "" } : {}),
       });
       if (!project?.id) throw new Error("Failed to create project.");
+      if (selectedTemplateId) {
+        try {
+          await setProjectDesignTemplate(project.id, selectedTemplateId);
+        } catch {}
+      }
       try {
         sessionStorage.setItem(PENDING_PROMPT_PREFIX + project.id, trimmed);
       } catch {}
@@ -76,7 +85,14 @@
   class="w-full max-w-[900px] mx-auto px-6 pt-14 pb-20 flex flex-col gap-14"
   style="min-height: calc(100vh - 3.5rem);"
 >
-  <PromptGenerator bind:prompt {busy} {error} on:create={(e) => createFromPrompt(e.detail)} />
+  <PromptGenerator
+    bind:prompt
+    {busy}
+    {error}
+    {selectedTemplateId}
+    on:create={(e) => createFromPrompt(e.detail)}
+    on:pick-template={(e) => (selectedTemplateId = e.detail)}
+  />
   <SampleBuilds on:select={onSampleSelect} />
 </div>
 

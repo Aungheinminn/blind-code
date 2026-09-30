@@ -20,7 +20,6 @@
     todoStatuses,
     planError,
     assembledFiles,
-    projectFiles,
     projectIntegration,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
@@ -49,10 +48,7 @@
   let supabaseModalOpen = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
-  $: hasUserApp = Object.keys($projectFiles).some((p) =>
-    /^\/?App\.(tsx|jsx|ts|js)$/.test(p),
-  );
-  $: previewLoading = $isRunning && !hasUserApp;
+  $: previewLoading = $isRunning;
 
   onMount(() => {
     loadProviders();

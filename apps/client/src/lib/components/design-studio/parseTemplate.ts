@@ -4,6 +4,7 @@ export type ParsedDraft = {
   colors: Record<string, string>;
   rounded: Record<string, string>;
   elevation: Record<string, string>;
+  spacing: Record<string, string>;
   typography: Record<string, Record<string, string>>;
   components: Record<string, Record<string, string>>;
   sections: Record<string, string>;
@@ -170,6 +171,7 @@ export const parseDraft = (source: string): ParsedDraft | null => {
     colors: {},
     rounded: {},
     elevation: {},
+    spacing: {},
     typography: {},
     components: {},
     sections: parseBodySections(bodyAfterFrontmatter(source)),
@@ -215,6 +217,12 @@ export const parseDraft = (source: string): ParsedDraft | null => {
     if (key === "elevation") {
       const parsed = parseBlockMap(lines, i + 1, indent);
       result.elevation = parsed.entries;
+      i = parsed.nextIdx;
+      continue;
+    }
+    if (key === "spacing") {
+      const parsed = parseBlockMap(lines, i + 1, indent);
+      result.spacing = parsed.entries;
       i = parsed.nextIdx;
       continue;
     }

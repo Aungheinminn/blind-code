@@ -64,6 +64,20 @@ createRoot(document.getElementById("root")!).render(
 );
 `;
 
+export const WAITING_APP_TSX = `export default function App() {
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-background text-foreground p-8">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="w-8 h-8 rounded-full border-2 border-foreground/20 border-t-foreground/60 animate-spin" />
+        <p className="text-sm text-muted-foreground">
+          Waiting for the agent to write App.tsx…
+        </p>
+      </div>
+    </main>
+  );
+}
+`;
+
 export const DEFAULT_APP_TSX = `import { useState } from "react";
 import { Button } from "./components/ui/button";
 

@@ -1,7 +1,34 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+
   export let call: { id: string; name: string; input: unknown; output?: unknown };
 
   type IconKind = "list" | "read" | "write" | "todo" | "run" | "command" | "delete";
+
+  const isErrorOutput = (output: unknown): boolean => {
+    if (output == null) return false;
+    if (typeof output === "string") return /^\s*(error|failed)/i.test(output);
+    if (typeof output === "object") {
+      const o = output as Record<string, unknown>;
+      if (typeof o.error === "string" && o.error.length > 0) return true;
+      if (o.ok === false) return true;
+    }
+    return false;
+  };
+
+  const startedAt = Date.now();
+  let now = Date.now();
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const startTimer = () => {
+    if (timer) return;
+    timer = setInterval(() => (now = Date.now()), 1000);
+  };
+  const stopTimer = () => {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+  };
+  onDestroy(stopTimer);
 
   const iconFor = (name: string): IconKind => {
     const n = name.toLowerCase();
@@ -44,23 +71,38 @@
   };
 
   let open = false;
+  let didAutoOpenError = false;
   const toggle = () => {
+    if (!hasOutput) return;
     open = !open;
   };
 
   $: kind = iconFor(call.name);
   $: arg = formatArg(call.input);
   $: hasOutput = call.output !== undefined;
+  $: hasError = hasOutput && isErrorOutput(call.output);
   $: output = hasOutput ? formatOutput(call.output) : "";
+  $: elapsedSec = Math.max(0, Math.floor((now - startedAt) / 1000));
+  $: if (hasOutput) stopTimer();
+  else startTimer();
+  $: showElapsed = !hasOutput && elapsedSec >= 3;
+  $: isSlow = !hasOutput && elapsedSec >= 15;
+
+  $: if (hasError && !didAutoOpenError) {
+    open = true;
+    didAutoOpenError = true;
+  }
 </script>
 
 <div>
   <button
     type="button"
-    class="flex items-center gap-2.5 w-full px-3 py-2.5 text-left cursor-pointer tool-btn"
+    class="flex items-center gap-2.5 w-full px-3 py-2.5 text-left tool-btn"
+    class:no-output={!hasOutput}
     style="color: var(--text-secondary);"
     on:click={toggle}
     aria-expanded={open}
+    aria-disabled={!hasOutput}
   >
     <span
       class="grid place-items-center w-[18px] h-[18px] shrink-0"
@@ -114,22 +156,48 @@
     >
       {arg}
     </span>
-    {#if !hasOutput}
+    {#if !hasOutput && showElapsed}
       <span
-        class="shrink-0 w-2 h-2 rounded-full animate-pulse"
-        style="background-color: var(--accent);"
+        class="text-[11px] tabular-nums shrink-0"
+        style="color: {isSlow ? 'var(--warning, #d97706)' : 'var(--text-tertiary)'};"
+        title={isSlow ? "Taking longer than usual…" : "Elapsed"}
+      >
+        {elapsedSec}s
+      </span>
+    {/if}
+    {#if hasOutput}
+      {#if hasError}
+        <span
+          class="grid place-items-center shrink-0"
+          style="color: var(--danger, #e5484d); width: 14px; height: 14px;"
+          title="Tool returned an error"
+          aria-label="Error"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+          </svg>
+        </span>
+      {/if}
+      <span
+        class="grid place-items-center w-[14px] h-[14px] shrink-0"
+        style="color: var(--text-tertiary); transform: rotate({open ? 180 : 0}deg); transition: transform 180ms ease;"
         aria-hidden="true"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </span>
+    {:else}
+      <span
+        class="tool-spinner shrink-0"
+        class:tool-spinner--slow={isSlow}
+        style="border-color: color-mix(in srgb, {isSlow ? 'var(--warning, #d97706)' : 'var(--accent)'} 25%, transparent); border-top-color: {isSlow ? 'var(--warning, #d97706)' : 'var(--accent)'};"
+        aria-label={isSlow ? "Taking longer than usual…" : "Running…"}
+        title={isSlow ? "Taking longer than usual…" : "Running…"}
       ></span>
     {/if}
-    <span
-      class="grid place-items-center w-[14px] h-[14px] shrink-0"
-      style="color: var(--text-tertiary); transform: rotate({open ? 180 : 0}deg); transition: transform 180ms ease;"
-      aria-hidden="true"
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-        <path d="M6 9l6 6 6-6" />
-      </svg>
-    </span>
   </button>
 
   {#if open}
@@ -147,9 +215,28 @@
     background: transparent;
     border: 0;
     font-family: inherit;
+    cursor: pointer;
     transition: background-color 150ms ease;
   }
   .tool-btn:hover {
     background-color: var(--bg-panel);
+  }
+  .tool-btn.no-output {
+    cursor: default;
+  }
+  .tool-btn.no-output:hover {
+    background-color: transparent;
+  }
+  .tool-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-width: 1.5px;
+    border-style: solid;
+    border-radius: 50%;
+    animation: tool-spin 0.9s linear infinite;
+  }
+  @keyframes tool-spin {
+    to { transform: rotate(360deg); }
   }
 </style>
