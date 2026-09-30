@@ -300,6 +300,23 @@ export const ensureProject = async (
   return { id: created.id, created: true };
 };
 
+export const createProject = async (
+  name: string,
+  ownerId: string,
+  opts: { description?: string | null } = {},
+): Promise<{ id: string; created: boolean }> => {
+  if (!db) throw new Error("db unavailable");
+  const description =
+    typeof opts.description === "string" && opts.description.trim().length > 0
+      ? opts.description
+      : null;
+  const [created] = await db
+    .insert(schema.projects)
+    .values({ id: crypto.randomUUID(), ownerId, name, description })
+    .returning();
+  return { id: created.id, created: true };
+};
+
 export const listProjectsForOwner = async (
   ownerId: string,
   opts: { q?: string; page?: number; pageSize?: number } = {},
