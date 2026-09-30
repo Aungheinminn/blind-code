@@ -1,15 +1,21 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import ProviderChip from "./ProviderChip.svelte";
+  import DesignTemplatePicker from "$lib/components/workspace/agent/DesignTemplatePicker.svelte";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
+  import { auth } from "$lib/stores/auth";
 
   export let prompt = "";
   export let busy = false;
   export let error = "";
+  export let selectedTemplateId: string | null = null;
 
   let box: PromptBox | undefined;
 
-  const dispatch = createEventDispatcher<{ create: string }>();
+  const dispatch = createEventDispatcher<{
+    create: string;
+    "pick-template": string;
+  }>();
 
   const suggestions: Array<{ name: string; prompt: string }> = [
     {
@@ -57,6 +63,13 @@
     size="md"
   >
     <svelte:fragment slot="left">
+      {#if $auth.status === "authed"}
+        <DesignTemplatePicker
+          placement="down"
+          {selectedTemplateId}
+          on:pick={(e) => dispatch("pick-template", e.detail.id)}
+        />
+      {/if}
       <ProviderChip />
       {#if hintText}
         <span

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import Dropdown from "$lib/components/ui/Dropdown.svelte";
   import { portal } from "$lib/actions/portal";
   import {
@@ -14,6 +14,14 @@
 
   export let projectId = "";
   export let disabled = false;
+  export let placement: "up" | "down" = "up";
+  export let selectedTemplateId: string | null = null;
+
+  const dispatch = createEventDispatcher<{ pick: DesignTemplateSummary }>();
+
+  $: activeName = projectId
+    ? $activeDesignTemplateName
+    : (templates.find((t) => t.id === selectedTemplateId)?.name ?? null);
 
   let modalOpen = false;
   let templates: DesignTemplateSummary[] = [];
@@ -62,7 +70,12 @@
   };
 
   const pick = async (t: DesignTemplateSummary) => {
-    if (!projectId || saving) return;
+    if (saving) return;
+    if (!projectId) {
+      if (t.id !== selectedTemplateId) dispatch("pick", t);
+      modalOpen = false;
+      return;
+    }
     if (t.name === $activeDesignTemplateName) {
       closeModal();
       return;
@@ -89,7 +102,7 @@
   });
 </script>
 
-<Dropdown placement="up" align="left" {disabled} menuMinWidth={200}>
+<Dropdown {placement} align="left" {disabled} menuMinWidth={200}>
   <button
     slot="trigger"
     let:open
@@ -105,8 +118,8 @@
     title="Choose design template"
   >
     <svg
-      width="12"
-      height="12"
+      width="14"
+      height="14"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -194,7 +207,7 @@
             <div class="group-label">Built-in</div>
             <div class="grid">
               {#each builtins as t (t.id)}
-                {@const isActive = t.name === $activeDesignTemplateName}
+                {@const isActive = t.name === activeName}
                 {@const swatches = swatchesFor(t)}
                 <button
                   type="button"
@@ -234,7 +247,7 @@
             {:else}
               <div class="grid">
                 {#each others as t (t.id)}
-                  {@const isActive = t.name === $activeDesignTemplateName}
+                  {@const isActive = t.name === activeName}
                   {@const swatches = swatchesFor(t)}
                   <button
                     type="button"
@@ -276,10 +289,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     padding: 0;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid transparent;
     background-color: transparent;
     color: var(--text-tertiary);

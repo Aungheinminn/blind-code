@@ -297,6 +297,7 @@ const ensureSocket = async (): Promise<WebSocket> => {
     ws.addEventListener("error", (e) => reject(e));
     ws.addEventListener("message", (ev) => handleEvent(ev.data));
     ws.addEventListener("close", () => {
+      finalizePendingToolCalls("no_result");
       isRunning.set(false);
       currentAgentMessageId = null;
     });
@@ -383,6 +384,24 @@ const recordToolResult = (toolCallId: string, output: unknown) => {
       p.kind === "tool" && p.id === toolCallId ? { ...p, output } : p,
     ),
   }));
+};
+
+const finalizePendingToolCalls = (reason: "cancelled" | "no_result") => {
+  const output = { error: reason === "cancelled" ? "cancelled" : "no result" };
+  messages.update((list) =>
+    list.map((m) => {
+      if (m.role !== "agent" || !m.parts) return m;
+      let changed = false;
+      const parts = m.parts.map((p) => {
+        if (p.kind === "tool" && p.output === undefined) {
+          changed = true;
+          return { ...p, output };
+        }
+        return p;
+      });
+      return changed ? { ...m, parts } : m;
+    }),
+  );
 };
 
 const handleEvent = (raw: unknown) => {
@@ -553,6 +572,7 @@ const handleEvent = (raw: unknown) => {
       break;
     case "turn-terminal":
       appendText(undefined, `\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
+      finalizePendingToolCalls("no_result");
       isRunning.set(false);
       currentAgentMessageId = null;
       clearSavedTurn(activeProjectId);
@@ -560,6 +580,7 @@ const handleEvent = (raw: unknown) => {
       lastOrdinal = -1;
       break;
     case "done":
+      finalizePendingToolCalls("no_result");
       isRunning.set(false);
       currentAgentMessageId = null;
       clearSavedTurn(activeProjectId);
@@ -623,6 +644,7 @@ export const cancelAgent = () => {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: "cancel" }));
   }
+  finalizePendingToolCalls("cancelled");
   isRunning.set(false);
   clearSavedTurn(activeProjectId);
   activeTurnId = null;
