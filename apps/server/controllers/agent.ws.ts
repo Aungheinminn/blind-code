@@ -13,7 +13,6 @@ import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
 import {
-  ensureProject,
   createAgentSession,
   endAgentSession,
   recordAgentAction,
@@ -139,17 +138,19 @@ export const agentController = (app: Elysia) =>
 
         if (msg.type !== "run") return;
 
-        const dbProject = await ensureProject(msg.projectId, userId);
-        if (dbProject?.forbidden) {
-          ws.send({ type: "error", error: "forbidden" });
+        const projectRecord = hasDb
+          ? await getProjectForOwner(msg.projectId, userId)
+          : null;
+        if (hasDb && !projectRecord) {
+          ws.send({ type: "error", error: "not found" });
           return;
         }
-        const dbProjectId = dbProject?.id ?? null;
+        const dbProjectId = projectRecord?.id ?? null;
 
         await hydrateSandbox(msg.projectId, dbProjectId);
 
-        const [projectRow, userRow, activeTemplate] = await Promise.all([
-          dbProjectId ? getProjectForOwner(dbProjectId, userId) : Promise.resolve(null),
+        const projectRow = projectRecord;
+        const [userRow, activeTemplate] = await Promise.all([
           getUserById(userId),
           dbProjectId
             ? getActiveDesignTemplateForProject(dbProjectId, userId)

@@ -1,12 +1,11 @@
 import type { Elysia } from "elysia";
-import { randomInt } from "crypto";
 import { rm } from "fs/promises";
 import { join } from "path";
-import { isUuid, stringToUuid } from "../services/uuid";
 import {
   listProjectsForOwner,
   getProjectForOwner,
   ensureProject,
+  createProject,
   updateProjectForOwner,
   deleteProjectForOwner,
   getProjectHistory,
@@ -178,11 +177,7 @@ export const projectController = (app: Elysia) =>
       }
       const description = typeof b.description === "string" ? b.description : undefined;
       try {
-        const project = await ensureProject(name, user.id, { description });
-        if (!project || project.forbidden || !project.created) {
-          set.status = 409;
-          return { error: "A project with that name already exists." };
-        }
+        const project = await createProject(name, user.id, { description });
         return { data: project };
       } catch (err) {
         set.status = 500;
@@ -215,19 +210,13 @@ export const projectController = (app: Elysia) =>
       const { title, description } = presetName
         ? { title: presetName, description: presetDescription }
         : await generateProjectTitle({ prompt, provider, model });
-      let candidateName = title;
-      let project = await ensureProject(candidateName, user.id, { description });
-      let attempts = 0;
-      while (project && !project.forbidden && !project.created && attempts < 5) {
-        candidateName = `${title} ${randomInt(1000, 10000)}`;
-        project = await ensureProject(candidateName, user.id, { description });
-        attempts++;
-      }
-      if (!project || project.forbidden || !project.created) {
+      try {
+        const project = await createProject(title, user.id, { description });
+        return { data: { ...project, name: title, description, title } };
+      } catch (err) {
         set.status = 500;
-        return { error: "could not allocate project name" };
+        return { error: friendlyError(err, { entity: "project", field: "name" }) };
       }
-      return { data: { ...project, name: candidateName, description, title } };
     })
     .put("/projects/:id", async ({ params, body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
@@ -460,16 +449,8 @@ export const projectController = (app: Elysia) =>
         set.status = 404;
         return { error: "not found" };
       }
-      // Sandbox lives on disk keyed by the same id — the next create-with-same-name
-      // resolves to the same UUID, so leftover files would leak into the fresh project.
-      // Clean both the as-passed key and the canonical UUID in case the URL used a name.
-      const canonicalId = isUuid(params.id)
-        ? params.id.toLowerCase()
-        : stringToUuid(`${user.id}:${params.id}`);
-      for (const key of new Set([params.id, canonicalId])) {
-        try {
-          await rm(join("/tmp/vibe-sandbox", key), { recursive: true, force: true });
-        } catch {}
-      }
+      try {
+        await rm(join("/tmp/vibe-sandbox", params.id), { recursive: true, force: true });
+      } catch {}
       return { data: { id: params.id, deleted: true } };
     });
