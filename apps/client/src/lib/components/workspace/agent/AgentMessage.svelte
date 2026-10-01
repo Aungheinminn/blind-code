@@ -38,18 +38,25 @@
     return out;
   };
 
-  const chipStyle = (tone: ChipTone): string => {
+  type ChipKind = "active" | "check" | "warning" | "x" | "arrow";
+  const chipKind = (tone: ChipTone, label: string): ChipKind => {
+    if (/\bing\b|ing…|ing\.\.\./i.test(label.trim())) return "active";
+    if (tone === "verifier") return "check";
+    if (tone === "error") return /^verified/i.test(label.trim()) ? "warning" : "x";
+    return "arrow";
+  };
+  const chipColor = (tone: ChipTone): string => {
     switch (tone) {
-      case "planner":
-        return "background-color: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--accent);";
-      case "coder":
-        return "background-color: var(--bg-panel); border-color: var(--border-strong); color: var(--text-secondary);";
-      case "router":
-        return "background-color: var(--bg-panel); border-color: var(--border); color: var(--text-tertiary);";
       case "verifier":
-        return "background-color: color-mix(in srgb, #10b981 10%, transparent); border-color: color-mix(in srgb, #10b981 40%, transparent); color: #10b981;";
+        return "#10b981";
       case "error":
-        return "background-color: color-mix(in srgb, #ef4444 12%, transparent); border-color: color-mix(in srgb, #ef4444 45%, transparent); color: #ef4444;";
+        return "#ef4444";
+      case "planner":
+        return "var(--accent)";
+      case "coder":
+        return "var(--text-secondary)";
+      case "router":
+        return "var(--text-tertiary)";
     }
   };
 
@@ -111,12 +118,40 @@
       {#if group.tone === "planner" || group.tone === "coder"}
         <ThinkingIndicator label={group.label} />
       {:else}
+        {@const kind = chipKind(group.tone, group.label)}
         <span
-          class="phase-chip self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider"
-          style={chipStyle(group.tone)}
+          class="phase-note self-start inline-flex items-center gap-1.5 text-[12px] font-medium"
+          style="color: {chipColor(group.tone)};"
         >
-          <span class="chip-dot" aria-hidden="true"></span>
-          {group.label}
+          <span class="phase-icon grid place-items-center" aria-hidden="true">
+            {#if kind === "active"}
+              <span
+                class="phase-spinner"
+                style="border-color: color-mix(in srgb, {chipColor(group.tone)} 30%, transparent); border-top-color: {chipColor(group.tone)};"
+              ></span>
+            {:else if kind === "check"}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            {:else if kind === "warning"}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            {:else if kind === "x"}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            {:else}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            {/if}
+          </span>
+          <span>{group.label.replace(/:\s*/, " · ")}</span>
         </span>
       {/if}
     {/if}
@@ -169,15 +204,25 @@
     color: var(--text-primary);
     border-color: var(--border-strong);
   }
-  .phase-chip {
-    letter-spacing: 0.08em;
+  .phase-note {
     line-height: 1.4;
+    letter-spacing: -0.002em;
   }
-  .chip-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 999px;
-    background-color: currentColor;
-    opacity: 0.7;
+  .phase-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+  .phase-spinner {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-width: 1.5px;
+    border-style: solid;
+    border-radius: 50%;
+    animation: phase-spin 0.9s linear infinite;
+  }
+  @keyframes phase-spin {
+    to { transform: rotate(360deg); }
   }
 </style>
