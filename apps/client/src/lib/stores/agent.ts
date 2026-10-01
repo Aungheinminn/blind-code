@@ -177,7 +177,17 @@ export const loadHistory = async (projectId: string): Promise<void> => {
           const parts: MessagePart[] =
             m.parts?.map((p) =>
               p.kind === "tool"
-                ? { kind: "tool", id: p.id, name: p.name, input: p.input, output: p.output }
+                ? {
+                    kind: "tool",
+                    id: p.id,
+                    name: p.name,
+                    input: p.input,
+                    // Historical tool calls persisted without a result (crashed
+                    // turn, dropped tool-error, etc.) would otherwise show a
+                    // spinner forever on reload — there's no live turn to
+                    // finalize them. Treat missing output as "no result".
+                    output: p.output ?? { error: "no result" },
+                  }
                 : { kind: p.kind, text: p.text },
             ) ?? (m.content ? [{ kind: "text", text: m.content }] : []);
           return {
