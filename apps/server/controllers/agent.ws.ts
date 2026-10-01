@@ -411,8 +411,12 @@ export const agentController = (app: Elysia) =>
           }
         }
 
+        // Serialize handleEvent calls so a late tool-result can't race the final
+        // `done` publish — otherwise the client sees `done`, finalizes pending
+        // tool calls, and the trailing result arrives too late to stop the spinner.
+        let eventChain: Promise<void> = Promise.resolve();
         const forwardEvent = (event: CoderEvent | AgentEvent) => {
-          handleEvent(event).catch(() => {});
+          eventChain = eventChain.then(() => handleEvent(event)).catch(() => {});
           if (event.type === "error") {
             terminalStatus = "failed";
             terminalError = event.error;
@@ -445,6 +449,7 @@ export const agentController = (app: Elysia) =>
           if (terminalStatus === "failed") terminalError = extractErrorMessage(err);
         }
 
+        await eventChain;
         await flushAllBlocks();
         if (sessionId) await endAgentSession(sessionId);
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);

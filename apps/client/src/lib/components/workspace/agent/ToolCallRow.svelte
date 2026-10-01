@@ -1,9 +1,94 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import { activePlan } from "$lib/stores/agent";
 
   export let call: { id: string; name: string; input: unknown; output?: unknown };
 
   type IconKind = "list" | "read" | "write" | "todo" | "run" | "command" | "delete";
+
+  const DISPLAY_NAME: Record<string, string> = {
+    write_file: "write",
+    read_file: "read",
+    list_files: "list",
+    delete_file: "delete",
+    plan_task: "plan",
+    verify_task: "verify",
+    add_todo: "add todo",
+    update_todo: "update todo",
+    run_sql: "sql",
+    create_supabase_project: "create supabase project",
+    attach_supabase_project: "attach supabase project",
+  };
+  const displayName = (name: string): string => DISPLAY_NAME[name] ?? name;
+
+  const basename = (p: string): string => {
+    const trimmed = p.replace(/\/+$/, "");
+    const idx = trimmed.lastIndexOf("/");
+    return idx >= 0 ? trimmed.slice(idx + 1) || trimmed : trimmed;
+  };
+
+  const pickString = (
+    input: unknown,
+    keys: readonly string[],
+  ): string | null => {
+    if (!input || typeof input !== "object") return null;
+    const o = input as Record<string, unknown>;
+    for (const k of keys) {
+      const v = o[k];
+      if (typeof v === "string" && v.length > 0) return v;
+    }
+    return null;
+  };
+
+  const formatArgFor = (
+    name: string,
+    input: unknown,
+    todoTitles: Record<string, string>,
+  ): string => {
+    if (input == null) return "";
+    switch (name) {
+      case "write_file":
+      case "read_file":
+      case "delete_file": {
+        const p = pickString(input, ["path"]);
+        return p ? basename(p) : "";
+      }
+      case "list_files": {
+        const p = pickString(input, ["path"]);
+        return p ? basename(p) : "/";
+      }
+      case "plan_task": {
+        return pickString(input, ["task"]) ?? "";
+      }
+      case "verify_task": {
+        return pickString(input, ["focus", "task", "note"]) ?? "";
+      }
+      case "add_todo": {
+        return pickString(input, ["title"]) ?? "";
+      }
+      case "update_todo": {
+        const o = input as Record<string, unknown>;
+        const id = typeof o.id === "string" ? o.id : "";
+        const status = typeof o.status === "string" ? o.status : "";
+        const title = (id && todoTitles[id]) || id;
+        return status ? `${title} → ${status}` : title;
+      }
+      case "run_sql": {
+        const sql = pickString(input, ["sql"]);
+        if (!sql) return "";
+        const compact = sql.replace(/--.*$/gm, "").replace(/\s+/g, " ").trim();
+        return compact.length > 80 ? `${compact.slice(0, 80)}…` : compact;
+      }
+      case "create_supabase_project": {
+        return pickString(input, ["name"]) ?? "";
+      }
+      case "attach_supabase_project": {
+        return pickString(input, ["projectRef"]) ?? "";
+      }
+      default:
+        return formatArg(input);
+    }
+  };
 
   const isErrorOutput = (output: unknown): boolean => {
     if (output == null) return false;
@@ -78,7 +163,11 @@
   };
 
   $: kind = iconFor(call.name);
-  $: arg = formatArg(call.input);
+  $: todoTitles = Object.fromEntries(
+    ($activePlan?.todos ?? []).map((t) => [t.id, t.title]),
+  );
+  $: label = displayName(call.name);
+  $: arg = formatArgFor(call.name, call.input, todoTitles);
   $: hasOutput = call.output !== undefined;
   $: hasError = hasOutput && isErrorOutput(call.output);
   $: output = hasOutput ? formatOutput(call.output) : "";
@@ -148,7 +237,7 @@
       class="font-medium text-[12.5px] shrink-0"
       style="font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-primary);"
     >
-      {call.name}
+      {label}
     </span>
     <span
       class="text-[12px] truncate flex-1 min-w-0"

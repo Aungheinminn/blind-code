@@ -21,17 +21,17 @@
     {
       name: "Habit tracker with streaks",
       prompt:
-        "Build a habit tracker where the user can add habits, check them off each day, see current and longest streaks, and view a 7-day dot heatmap per habit. Persist state to localStorage.",
+        "Build a habit tracker backed by a database that syncs across devices. Users add habits (name + color), check off today (re-click uncompletes), and remove habits with a confirm step and cascade-delete of check-ins. Current streak = consecutive days ending today; longest streak = max over all history. Day boundary is the user's local timezone. Check-ins are idempotent (unique on habit + date). Toggles are optimistic — update UI immediately, roll back and surface a non-blocking error on server rejection. Debounce rename edits by 400ms before persisting. Show a skeleton on initial load and a retry affordance on load failure.",
     },
     {
       name: "Team standup board",
       prompt:
-        "Build a daily standup board with three columns per teammate: Yesterday, Today, and Blockers. Support adding/removing teammates and editing each field inline. Persist state to localStorage.",
+        "Build a team daily standup board backed by a database so the whole team sees the same state. Entries are keyed by (teammate, date). Users add and remove teammates, and edit Yesterday / Today / Blockers inline. Autosave on blur with a 600ms debounce and expose save status (saving / saved / error). On concurrent edits to the same field, last write wins but surface a subtle 'updated by someone else' notice. Default view is today; a date picker browses past standups which are read-only once older than 7 days. Removing a teammate preserves their historical entries but hides them from the active board.",
     },
     {
       name: "Recipe finder",
       prompt:
-        "Build a recipe finder. The user types an ingredient and sees matching mock recipes from a local list, each with a title, image placeholder, and cook time. Include a filter for recipes under 30 minutes.",
+        "Build a recipe finder backed by a database. Users add recipes (title, cook_time_minutes, image_url, ingredient list), search by ingredient with case-insensitive substring match, and toggle a 'under 30 minutes' filter that combines with search. Search input is debounced 250ms before querying. Results are paginated at 24 per page. Each recipe is deletable with a confirm step and cascade-delete of its ingredients. Validate image_url as a URL on submit; empty image_url is allowed and renders a placeholder. Store ingredient names normalized (trim + lowercase) for match; display original casing. All recipes save to the database and sync across devices.",
     },
   ];
 
