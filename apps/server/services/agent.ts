@@ -384,6 +384,14 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             output: (chunk as any).output ?? (chunk as any).result,
           });
           break;
+        case "tool-error" as any:
+          emit(opts.onEvent, {
+            type: "tool-result",
+            toolCallId: (chunk as any).toolCallId,
+            toolName: (chunk as any).toolName,
+            output: { error: extractErrorMessage((chunk as any).error) },
+          });
+          break;
         case "finish-step":
         case "step-finish" as any:
           emit(opts.onEvent, {
