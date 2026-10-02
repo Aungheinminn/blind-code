@@ -69,7 +69,8 @@
       case "update_todo": {
         const o = input as Record<string, unknown>;
         const id = typeof o.id === "string" ? o.id : "";
-        const title = (id && todoTitles[id]) || id;
+        const cached = typeof o._title === "string" ? o._title : "";
+        const title = cached || (id && todoTitles[id]) || id;
         return title;
       }
       case "run_sql": {
@@ -154,12 +155,14 @@
     }
   };
 
+  type FieldItem = { label: string; value: string; variant?: "code" | "link" | "chip" };
   type ExpandedView =
     | { kind: "code"; text: string; subtitle?: string }
     | { kind: "list"; items: Array<{ path: string; type: "file" | "dir"; size?: number }> }
     | { kind: "plan"; summary: string; todos: Array<{ id: string; title: string; rationale?: string }> }
     | { kind: "issues"; ok: boolean; issues: string[] }
     | { kind: "status"; lines: string[] }
+    | { kind: "fields"; items: FieldItem[] }
     | { kind: "error"; message: string }
     | { kind: "raw"; text: string }
     | { kind: "none" };
@@ -231,9 +234,27 @@
       }
       case "delete_file":
         return { kind: "none" };
+      case "create_supabase_project": {
+        const items: FieldItem[] = [];
+        if (typeof outObj.name === "string") items.push({ label: "Name", value: outObj.name });
+        if (typeof outObj.region === "string") items.push({ label: "Region", value: outObj.region, variant: "code" });
+        if (typeof outObj.status === "string") items.push({ label: "Status", value: outObj.status, variant: "chip" });
+        if (typeof outObj.dashboardUrl === "string") items.push({ label: "Dashboard", value: outObj.dashboardUrl, variant: "link" });
+        if (items.length > 0) return { kind: "fields", items };
+        break;
+      }
+      case "attach_supabase_project": {
+        const items: FieldItem[] = [];
+        if (typeof outObj.name === "string") items.push({ label: "Name", value: outObj.name });
+        if (typeof outObj.url === "string") items.push({ label: "URL", value: outObj.url, variant: "link" });
+        if (typeof outObj.anonKey === "string" && outObj.anonKey.length > 0) items.push({ label: "Anon key", value: "configured", variant: "chip" });
+        if (items.length > 0) return { kind: "fields", items };
+        break;
+      }
       case "update_todo": {
         const id = typeof inObj.id === "string" ? inObj.id : "";
-        const title = (id && todoTitles[id]) || id;
+        const cached = typeof inObj._title === "string" ? inObj._title : "";
+        const title = cached || (id && todoTitles[id]) || id;
         return { kind: "status", lines: [title] };
       }
       case "add_todo": {
@@ -417,7 +438,7 @@
   </button>
 
   {#if open && expanded && expanded.kind !== "none"}
-    <div class="px-3 pb-3">
+    <div class="p-3">
       {#if expanded.kind === "code"}
         <pre
           class="expand-code m-0 rounded-lg border"
@@ -478,12 +499,7 @@
           {:else}
             <ul class="expand-issues">
               {#each expanded.issues as issue}
-                <li class="expand-issue-item" style="color: var(--text-primary);">
-                  <span class="expand-issue-icon" style="color: #ef4444;" aria-hidden="true">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                  </span>
-                  <span>{issue}</span>
-                </li>
+                <li class="expand-issue-item" style="color: var(--text-primary);">{issue}</li>
               {/each}
             </ul>
           {/if}
@@ -493,6 +509,30 @@
           {#each expanded.lines as line, i}
             <div class="expand-status-line" class:first={i === 0} style="color: {i === 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'};">{line}</div>
           {/each}
+        </div>
+      {:else if expanded.kind === "fields"}
+        <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
+          <dl class="expand-fields">
+            {#each expanded.items as item}
+              <div class="expand-field">
+                <dt class="expand-field-label" style="color: var(--text-tertiary);">{item.label}</dt>
+                <dd class="expand-field-value">
+                  {#if item.variant === "link"}
+                    <a href={item.value} target="_blank" rel="noopener noreferrer" class="expand-field-link" style="color: var(--accent);">
+                      <span class="expand-field-link-text">{item.value}</span>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                    </a>
+                  {:else if item.variant === "code"}
+                    <code class="expand-field-code" style="background-color: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--text-primary);">{item.value}</code>
+                  {:else if item.variant === "chip"}
+                    <span class="expand-field-chip" style="color: #10b981; background-color: color-mix(in srgb, #10b981 12%, transparent);">{item.value}</span>
+                  {:else}
+                    <span style="color: var(--text-primary);">{item.value}</span>
+                  {/if}
+                </dd>
+              </div>
+            {/each}
+          </dl>
         </div>
       {:else if expanded.kind === "error"}
         <pre
@@ -663,19 +703,8 @@
     gap: 6px;
   }
   .expand-issue-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
     font-size: 12.5px;
     line-height: 1.5;
-  }
-  .expand-issue-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 12px;
-    height: 12px;
-    padding-top: 3px;
-    flex-shrink: 0;
   }
 
   .expand-status-line {
@@ -687,5 +716,62 @@
   }
   .expand-status-line + .expand-status-line {
     margin-top: 4px;
+  }
+
+  .expand-fields {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .expand-field {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .expand-field-label {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .expand-field-value {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .expand-field-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  .expand-field-link:hover {
+    text-decoration: underline;
+  }
+  .expand-field-link-text {
+    min-width: 0;
+  }
+  .expand-field-code {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 5px;
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    word-break: break-all;
+  }
+  .expand-field-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
   }
 </style>

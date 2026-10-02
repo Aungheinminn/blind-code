@@ -17,6 +17,7 @@ import {
 import {
   createSupabaseProject,
   getSupabaseApiKeys,
+  getSupabaseProject,
   listSupabaseOrganizations,
   runSupabaseManagementQuery,
   SupabaseManagementError,
@@ -452,12 +453,22 @@ export const buildWriteTools = (ctx: ToolContext) => {
           // Hot-swap so subsequent run_sql calls this turn go through Management API.
           ctx.supabaseProjectRef = projectRef;
 
+          // Best-effort fetch of project metadata so the client can show a
+          // human-readable name instead of just the ref. Failure here must not
+          // break the attach — the keys are already saved.
+          let name: string | null = null;
+          try {
+            const project = await getSupabaseProject(pat, projectRef);
+            if (project?.name) name = project.name;
+          } catch {}
+
           return {
             ok: true as const,
             projectRef,
             url,
             anonKey,
             attached: true,
+            ...(name ? { name } : {}),
           };
         },
       ),

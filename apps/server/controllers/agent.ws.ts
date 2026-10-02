@@ -213,6 +213,9 @@ export const agentController = (app: Elysia) =>
         const textBlocks = new Map<string, string>();
         const pendingWrites = new Map<string, { path: string; content: string }>();
         const pendingDeletes = new Map<string, { path: string }>();
+        // id → title so update_todo rows can show the real name even after a
+        // later plan replaces this one or the project is reopened later.
+        const todoTitleById = new Map<string, string>();
 
         const persistBlock = async (id: string, text: string) => {
           if (!sessionId || !text) return;
@@ -242,7 +245,23 @@ export const agentController = (app: Elysia) =>
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
 
         const handleEvent = async (event: CoderEvent | AgentEvent) => {
+          // Enrich update_todo tool-call input with the resolved title BEFORE
+          // publishing, so the client sees it live and the persisted payload
+          // keeps it for later reloads.
+          if (event.type === "tool-call" && event.toolName === "update_todo") {
+            const input = (event.input ?? {}) as Record<string, unknown>;
+            const id = typeof input.id === "string" ? input.id : null;
+            if (id && todoTitleById.has(id)) {
+              (event as any).input = { ...input, _title: todoTitleById.get(id) };
+            }
+          }
           await publish(event);
+          if (event.type === "plan") {
+            todoTitleById.clear();
+            for (const t of event.plan.todos) todoTitleById.set(t.id, t.title);
+          } else if (event.type === "plan-todo-added") {
+            todoTitleById.set(event.todo.id, event.todo.title);
+          }
           if (event.type === "plan" && sessionId && dbProjectId) {
             await createPlan(dbProjectId, sessionId, event.plan);
             return;
@@ -408,6 +427,7 @@ export const agentController = (app: Elysia) =>
             };
             existingPlanStatuses = {};
             for (const t of snapshot.todos) existingPlanStatuses[t.id] = t.status;
+            for (const t of snapshot.todos) todoTitleById.set(t.id, t.title);
           }
         }
 
