@@ -69,9 +69,8 @@
       case "update_todo": {
         const o = input as Record<string, unknown>;
         const id = typeof o.id === "string" ? o.id : "";
-        const status = typeof o.status === "string" ? o.status : "";
         const title = (id && todoTitles[id]) || id;
-        return status ? `${title} → ${status}` : title;
+        return title;
       }
       case "run_sql": {
         const sql = pickString(input, ["sql"]);
@@ -155,10 +154,109 @@
     }
   };
 
+  type ExpandedView =
+    | { kind: "code"; text: string; subtitle?: string }
+    | { kind: "list"; items: Array<{ path: string; type: "file" | "dir"; size?: number }> }
+    | { kind: "plan"; summary: string; todos: Array<{ id: string; title: string; rationale?: string }> }
+    | { kind: "issues"; ok: boolean; issues: string[] }
+    | { kind: "status"; lines: string[] }
+    | { kind: "error"; message: string }
+    | { kind: "raw"; text: string }
+    | { kind: "none" };
+
+  const errorFromOutput = (output: unknown): string | null => {
+    if (!output || typeof output !== "object") return null;
+    const o = output as Record<string, unknown>;
+    if (typeof o.error === "string" && o.error.length > 0) return o.error;
+    return null;
+  };
+
+  const expandedViewFor = (
+    name: string,
+    input: unknown,
+    output: unknown,
+    todoTitles: Record<string, string>,
+  ): ExpandedView => {
+    const err = errorFromOutput(output);
+    if (err) return { kind: "error", message: err };
+
+    const inObj = (input ?? {}) as Record<string, unknown>;
+    const outObj = (output ?? {}) as Record<string, unknown>;
+
+    switch (name) {
+      case "read_file": {
+        const content = typeof outObj.content === "string" ? outObj.content : null;
+        if (content != null) return { kind: "code", text: content };
+        break;
+      }
+      case "write_file": {
+        const content = typeof inObj.content === "string" ? inObj.content : null;
+        if (content != null) return { kind: "code", text: content };
+        break;
+      }
+      case "list_files": {
+        const entries = Array.isArray(outObj.entries) ? (outObj.entries as any[]) : null;
+        if (entries) {
+          const items = entries
+            .filter((e) => e && typeof e.path === "string")
+            .map((e) => ({ path: e.path as string, type: (e.type === "dir" ? "dir" : "file") as "file" | "dir", size: typeof e.size === "number" ? e.size : undefined }));
+          return { kind: "list", items };
+        }
+        break;
+      }
+      case "plan_task": {
+        const todos = Array.isArray(outObj.todos) ? (outObj.todos as any[]) : null;
+        if (todos) {
+          return {
+            kind: "plan",
+            summary: typeof outObj.summary === "string" ? outObj.summary : "",
+            todos: todos
+              .filter((t) => t && typeof t.id === "string" && typeof t.title === "string")
+              .map((t) => ({ id: t.id as string, title: t.title as string, rationale: typeof t.rationale === "string" ? t.rationale : undefined })),
+          };
+        }
+        break;
+      }
+      case "verify_task": {
+        const issues = Array.isArray(outObj.issues)
+          ? (outObj.issues as unknown[]).map(String).filter((s) => s.length > 0)
+          : [];
+        const ok = outObj.ok === true || (outObj.ok !== false && issues.length === 0);
+        return { kind: "issues", ok, issues };
+      }
+      case "run_sql": {
+        const sql = typeof inObj.sql === "string" ? inObj.sql : null;
+        if (sql) return { kind: "code", text: sql };
+        break;
+      }
+      case "delete_file":
+        return { kind: "none" };
+      case "update_todo": {
+        const id = typeof inObj.id === "string" ? inObj.id : "";
+        const title = (id && todoTitles[id]) || id;
+        return { kind: "status", lines: [title] };
+      }
+      case "add_todo": {
+        const title = typeof inObj.title === "string" ? inObj.title : "";
+        const rationale = typeof inObj.rationale === "string" && inObj.rationale.trim().length > 0 ? inObj.rationale.trim() : null;
+        const lines = [title];
+        if (rationale) lines.push(rationale);
+        return { kind: "status", lines };
+      }
+    }
+    return { kind: "raw", text: formatOutput(output) };
+  };
+
+  const formatBytes = (n: number): string => {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  };
+
   let open = false;
   let didAutoOpenError = false;
   const toggle = () => {
-    if (!hasOutput) return;
+    if (!hasExpand) return;
     open = !open;
   };
 
@@ -168,9 +266,28 @@
   );
   $: label = displayName(call.name);
   $: arg = formatArgFor(call.name, call.input, todoTitles);
+  $: statusPill = (() => {
+    if (call.name !== "update_todo") return null;
+    const input = (call.input ?? {}) as Record<string, unknown>;
+    const status = typeof input.status === "string" ? input.status : "";
+    return status || null;
+  })();
+  const pillColor = (status: string): string => {
+    switch (status) {
+      case "done":
+        return "#10b981";
+      case "active":
+        return "var(--accent)";
+      case "skipped":
+        return "var(--text-tertiary)";
+      default:
+        return "var(--text-tertiary)";
+    }
+  };
   $: hasOutput = call.output !== undefined;
   $: hasError = hasOutput && isErrorOutput(call.output);
-  $: output = hasOutput ? formatOutput(call.output) : "";
+  $: expanded = hasOutput ? expandedViewFor(call.name, call.input, call.output, todoTitles) : null;
+  $: hasExpand = !!expanded && expanded.kind !== "none";
   $: elapsedSec = Math.max(0, Math.floor((now - startedAt) / 1000));
   $: if (hasOutput) stopTimer();
   else startTimer();
@@ -187,11 +304,11 @@
   <button
     type="button"
     class="flex items-center gap-2.5 w-full px-3 py-2.5 text-left tool-btn"
-    class:no-output={!hasOutput}
+    class:no-output={!hasExpand}
     style="color: var(--text-secondary);"
     on:click={toggle}
     aria-expanded={open}
-    aria-disabled={!hasOutput}
+    aria-disabled={!hasExpand}
   >
     <span
       class="grid place-items-center w-[18px] h-[18px] shrink-0"
@@ -245,6 +362,14 @@
     >
       {arg}
     </span>
+    {#if statusPill}
+      <span
+        class="status-pill shrink-0"
+        style="color: {pillColor(statusPill)}; border-color: color-mix(in srgb, {pillColor(statusPill)} 35%, transparent); background-color: color-mix(in srgb, {pillColor(statusPill)} 10%, transparent);"
+      >
+        {statusPill}
+      </span>
+    {/if}
     {#if !hasOutput && showElapsed}
       <span
         class="text-[11px] tabular-nums shrink-0"
@@ -269,15 +394,17 @@
           </svg>
         </span>
       {/if}
-      <span
-        class="grid place-items-center w-[14px] h-[14px] shrink-0"
-        style="color: var(--text-tertiary); transform: rotate({open ? 180 : 0}deg); transition: transform 180ms ease;"
-        aria-hidden="true"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </span>
+      {#if hasExpand}
+        <span
+          class="grid place-items-center w-[14px] h-[14px] shrink-0"
+          style="color: var(--text-tertiary); transform: rotate({open ? 180 : 0}deg); transition: transform 180ms ease;"
+          aria-hidden="true"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+      {/if}
     {:else}
       <span
         class="tool-spinner shrink-0"
@@ -289,12 +416,95 @@
     {/if}
   </button>
 
-  {#if open}
-    <div class="px-3 pb-3 pl-[38px]">
-      <pre
-        class="m-0 px-3 py-2.5 rounded-lg border text-[12px] leading-[1.6] whitespace-pre-wrap break-words max-h-[220px] overflow-auto"
-        style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-secondary); font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;"
-      >{output || "(no output yet)"}</pre>
+  {#if open && expanded && expanded.kind !== "none"}
+    <div class="px-3 pb-3">
+      {#if expanded.kind === "code"}
+        <pre
+          class="expand-code m-0 rounded-lg border"
+          style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-primary);"
+        ><code>{expanded.text}</code></pre>
+      {:else if expanded.kind === "list"}
+        <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
+          {#if expanded.items.length === 0}
+            <div class="expand-empty" style="color: var(--text-tertiary);">(empty)</div>
+          {:else}
+            <ul class="expand-list">
+              {#each expanded.items as item}
+                <li class="expand-list-item">
+                  <span class="expand-list-icon" style="color: {item.type === 'dir' ? 'var(--accent)' : 'var(--text-tertiary)'};" aria-hidden="true">
+                    {#if item.type === "dir"}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      </svg>
+                    {:else}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <path d="M14 3v6h6" />
+                      </svg>
+                    {/if}
+                  </span>
+                  <span class="expand-list-path" style="color: var(--text-primary);">{item.path}</span>
+                  {#if item.size != null && item.type === "file"}
+                    <span class="expand-list-sub" style="color: var(--text-tertiary);">{formatBytes(item.size)}</span>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+      {:else if expanded.kind === "plan"}
+        <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
+          {#if expanded.summary}
+            <div class="expand-plan-summary" style="color: var(--text-secondary);">{expanded.summary}</div>
+          {/if}
+          <ol class="expand-plan-list">
+            {#each expanded.todos as todo}
+              <li class="expand-plan-item">
+                <div class="expand-plan-title" style="color: var(--text-primary);">{todo.title}</div>
+                {#if todo.rationale}
+                  <div class="expand-plan-rationale" style="color: var(--text-tertiary);">{todo.rationale}</div>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+        </div>
+      {:else if expanded.kind === "issues"}
+        <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
+          {#if expanded.ok}
+            <div class="expand-ok" style="color: #10b981;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+              <span>No issues found</span>
+            </div>
+          {:else}
+            <ul class="expand-issues">
+              {#each expanded.issues as issue}
+                <li class="expand-issue-item" style="color: var(--text-primary);">
+                  <span class="expand-issue-icon" style="color: #ef4444;" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  </span>
+                  <span>{issue}</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+      {:else if expanded.kind === "status"}
+        <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
+          {#each expanded.lines as line, i}
+            <div class="expand-status-line" class:first={i === 0} style="color: {i === 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'};">{line}</div>
+          {/each}
+        </div>
+      {:else if expanded.kind === "error"}
+        <pre
+          class="expand-code m-0 rounded-lg border"
+          style="background-color: color-mix(in srgb, #ef4444 8%, var(--bg-panel)); border-color: color-mix(in srgb, #ef4444 35%, var(--border)); color: #ef4444;"
+        ><code>{expanded.message}</code></pre>
+      {:else}
+        <pre
+          class="expand-code m-0 rounded-lg border"
+          style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-secondary);"
+        ><code>{expanded.text || "(no output)"}</code></pre>
+      {/if}
     </div>
   {/if}
 </div>
@@ -325,7 +535,157 @@
     border-radius: 50%;
     animation: tool-spin 0.9s linear infinite;
   }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border-width: 1px;
+    border-style: solid;
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: lowercase;
+    line-height: 1.4;
+  }
   @keyframes tool-spin {
     to { transform: rotate(360deg); }
+  }
+
+  .expand-code {
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.65;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    tab-size: 2;
+  }
+  .expand-code code {
+    display: block;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+  }
+  .expand-box {
+    padding: 10px 12px;
+    max-height: 320px;
+    overflow: auto;
+  }
+  .expand-empty {
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  .expand-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .expand-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 2px;
+    font-size: 12px;
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .expand-list-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+  .expand-list-path {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .expand-list-sub {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  .expand-plan-summary {
+    font-size: 12.5px;
+    line-height: 1.55;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .expand-plan-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .expand-plan-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .expand-plan-title {
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.45;
+  }
+  .expand-plan-rationale {
+    font-size: 11.5px;
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  .expand-ok {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .expand-issues {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .expand-issue-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .expand-issue-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 12px;
+    height: 12px;
+    padding-top: 3px;
+    flex-shrink: 0;
+  }
+
+  .expand-status-line {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .expand-status-line.first {
+    font-weight: 500;
+  }
+  .expand-status-line + .expand-status-line {
+    margin-top: 4px;
   }
 </style>
