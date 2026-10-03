@@ -51,6 +51,13 @@ export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResul
 
   const messages: ModelMessage[] = [
     {
+      role: "system",
+      content: VERIFIER_SYSTEM_PROMPT,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    } as ModelMessage,
+    {
       role: "user",
       content: `Verify this change: ${opts.whatWasBuilt}`,
     },
@@ -58,7 +65,6 @@ export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResul
 
   const result = await generateText({
     model,
-    system: VERIFIER_SYSTEM_PROMPT,
     messages,
     tools,
     stopWhen: stepCountIs(6),

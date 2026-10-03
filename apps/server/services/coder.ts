@@ -121,13 +121,6 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const tools = buildCoderTools(opts.toolContext);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
-  const messages: ModelMessage[] = [
-    ...(opts.history ?? []).map(
-      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-    ),
-    { role: "user", content: opts.prompt },
-  ];
-
   const baseSystem = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
   const withPlan = opts.plan
     ? baseSystem + buildPlanAppendix(opts.plan, opts.todoStatuses)
@@ -136,13 +129,26 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
     ? withPlan + buildSupabaseCoderAppendix({ canRunSql: Boolean(opts.supabaseCanRunSql) })
     : withPlan + buildLocalPersistenceCoderAppendix();
 
+  const messages: ModelMessage[] = [
+    {
+      role: "system",
+      content: system,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    } as ModelMessage,
+    ...(opts.history ?? []).map(
+      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    ),
+    { role: "user", content: opts.prompt },
+  ];
+
   // Each todo consumes ~6 model steps end-to-end, so a flat cap starves plans of 7+ todos.
   const derivedMax = Math.max(30, (opts.plan?.todos.length ?? 0) * 6 + 10);
 
   try {
     const result = streamText({
       model,
-      system,
       messages,
       tools,
       stopWhen: stepCountIs(opts.maxSteps ?? derivedMax),
