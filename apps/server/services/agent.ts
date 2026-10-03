@@ -315,13 +315,6 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     }),
   };
 
-  const messages: ModelMessage[] = [
-    ...(opts.history ?? []).map(
-      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-    ),
-    { role: "user", content: opts.prompt },
-  ];
-
   const withPlan = opts.existingPlan
     ? AGENT_SYSTEM_PROMPT + buildPlanAppendix(opts.existingPlan, opts.existingPlanStatuses)
     : AGENT_SYSTEM_PROMPT;
@@ -334,13 +327,26 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     ? withPersistence + buildDesignTemplateAppendix(opts.designTemplateName ?? null, opts.designTemplateBody)
     : withPersistence;
 
+  const messages: ModelMessage[] = [
+    {
+      role: "system",
+      content: system,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    } as ModelMessage,
+    ...(opts.history ?? []).map(
+      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    ),
+    { role: "user", content: opts.prompt },
+  ];
+
   const todoCount = opts.existingPlan?.todos.length ?? 0;
   const stepCap = Math.max(40, todoCount * 6 + 20);
 
   try {
     const result = streamText({
       model,
-      system,
       messages,
       tools,
       stopWhen: stepCountIs(stepCap),

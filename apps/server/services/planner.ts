@@ -80,13 +80,6 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
   const model = await resolveModel(opts.provider, opts.model);
   const tools = buildReadOnlyTools(opts.toolContext);
 
-  const messages: ModelMessage[] = [
-    ...(opts.history ?? []).map(
-      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-    ),
-    { role: "user", content: opts.prompt },
-  ];
-
   const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;
   const withCarry =
     opts.existingUnfinished && opts.existingUnfinished.todos.length > 0
@@ -98,9 +91,22 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
       ? withCarry + buildAutoProvisionSupabasePlannerAppendix()
       : withCarry + buildLocalPersistencePlannerAppendix();
 
+  const messages: ModelMessage[] = [
+    {
+      role: "system",
+      content: system,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    } as ModelMessage,
+    ...(opts.history ?? []).map(
+      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    ),
+    { role: "user", content: opts.prompt },
+  ];
+
   const result = await generateText({
     model,
-    system,
     messages,
     tools,
     stopWhen: stepCountIs(opts.maxSteps ?? 10),
