@@ -25,6 +25,12 @@ export type MessagePart =
   | { kind: "chip"; label: string; tone: ChipTone }
   | ToolPart;
 
+export type AgentUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
 export type AgentMessage = {
   id: string;
   role: "user" | "agent";
@@ -32,6 +38,7 @@ export type AgentMessage = {
   parts?: MessagePart[];
   timestamp: Date;
   interrupted?: boolean;
+  usage?: AgentUsage;
 };
 
 export type ProviderInfo = {
@@ -584,6 +591,35 @@ const handleEvent = (raw: unknown) => {
         projectIntegration.set(event.integration as PublicSupabaseIntegration);
       }
       break;
+    case "finish": {
+      const u = (event as { usage?: Record<string, unknown> }).usage;
+      if (u && typeof u === "object") {
+        const read = (...keys: string[]): number => {
+          for (const k of keys) {
+            const v = u[k];
+            if (typeof v === "number" && Number.isFinite(v)) return v;
+          }
+          return 0;
+        };
+        const input = read("inputTokens", "promptTokens");
+        const output = read("outputTokens", "completionTokens");
+        const total = read("totalTokens") || input + output;
+        if (total > 0) {
+          updateAgentMessage((m) => {
+            const prev = m.usage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+            return {
+              ...m,
+              usage: {
+                inputTokens: prev.inputTokens + input,
+                outputTokens: prev.outputTokens + output,
+                totalTokens: prev.totalTokens + total,
+              },
+            };
+          });
+        }
+      }
+      break;
+    }
     case "turn-terminal":
       appendText(undefined, `\n\n_Turn already ended: ${event.status}${event.lastError ? " — " + event.lastError : ""}_`);
       finalizePendingToolCalls("no_result");
