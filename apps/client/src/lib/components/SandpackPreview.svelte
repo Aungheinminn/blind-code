@@ -117,7 +117,22 @@
   {#if loading}
     <FullPageLoader
       scoped
-      title="Working…"
+      rotatingTitles={[
+        "Pondering…",
+        "Scheming…",
+        "Noodling…",
+        "Cogitating…",
+        "Conjuring…",
+        "Brewing…",
+        "Weaving…",
+        "Hatching…",
+        "Simmering…",
+        "Puzzling…",
+        "Crafting…",
+        "Summoning…",
+        "Forging…",
+        "Mulling…",
+      ]}
       subtitle="Waiting for the agent to finish."
     />
   {/if}

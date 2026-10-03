@@ -349,6 +349,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
       ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
     });
 
+    let emittedFinishWithUsage = false;
     for await (const chunk of result.fullStream) {
       switch (chunk.type) {
         case "text-start" as any:
@@ -405,6 +406,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             finishReason: (chunk as any).finishReason ?? "unknown",
             usage: (chunk as any).usage,
           });
+          if ((chunk as any).usage) emittedFinishWithUsage = true;
           break;
         case "error":
           emit(opts.onEvent, {
@@ -413,6 +415,18 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
           });
           break;
       }
+    }
+    if (!emittedFinishWithUsage) {
+      try {
+        const totalUsage = await (result as any).totalUsage;
+        if (totalUsage) {
+          emit(opts.onEvent, {
+            type: "finish",
+            finishReason: "stop",
+            usage: totalUsage,
+          });
+        }
+      } catch {}
     }
   } catch (err) {
     if (opts.signal?.aborted) return;

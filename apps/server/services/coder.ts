@@ -151,6 +151,7 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
       ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
     });
 
+    let emittedFinishWithUsage = false;
     for await (const chunk of result.fullStream) {
       switch (chunk.type) {
         case "text-start" as any:
@@ -199,6 +200,7 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
             finishReason: (chunk as any).finishReason ?? "unknown",
             usage: (chunk as any).usage,
           });
+          if ((chunk as any).usage) emittedFinishWithUsage = true;
           break;
         case "error":
           opts.onEvent({
@@ -207,6 +209,18 @@ export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
           });
           break;
       }
+    }
+    if (!emittedFinishWithUsage) {
+      try {
+        const totalUsage = await (result as any).totalUsage;
+        if (totalUsage) {
+          opts.onEvent({
+            type: "finish",
+            finishReason: "stop",
+            usage: totalUsage,
+          });
+        }
+      } catch {}
     }
   } catch (err) {
     opts.onEvent({ type: "error", error: extractErrorMessage(err) });
