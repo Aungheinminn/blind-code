@@ -8,18 +8,26 @@
   export let messages: AgentMessageType[] = [];
   export let isRunning = false;
 
-  const dispatch = createEventDispatcher<{ retry: void }>();
+  const dispatch = createEventDispatcher<{ retry: void; atTopChange: boolean }>();
 
   $: last = messages[messages.length - 1];
   $: showTypingIndicator = isRunning && (!last || last.role !== "agent");
 
   let scroller: HTMLDivElement;
   let stickToBottom = true;
+  let atTop = true;
+
+  const AT_TOP_THRESHOLD = 40;
 
   const onScroll = () => {
     if (!scroller) return;
     const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
     stickToBottom = distance < 40;
+    const nextAtTop = scroller.scrollTop < AT_TOP_THRESHOLD;
+    if (nextAtTop !== atTop) {
+      atTop = nextAtTop;
+      dispatch("atTopChange", atTop);
+    }
   };
 
   // Track messages/typing so this fires on every stream update; keep the

@@ -20,6 +20,8 @@
 
   $: showTray = plan !== null || (isRunning && !planError) || planError !== null;
 
+  let messageListAtTop = true;
+
   const dispatch = createEventDispatcher<{
     close: void;
     submit: string;
@@ -54,9 +56,20 @@
 
   <div class="flex-1 relative flex flex-col min-h-0">
     {#if showTray}
-      <TodoTray {plan} statuses={todoStatuses} {isRunning} {planError} />
+      <TodoTray
+        {plan}
+        statuses={todoStatuses}
+        {isRunning}
+        {planError}
+        compact={messageListAtTop}
+      />
     {/if}
-    <MessageList {messages} {isRunning} on:retry={() => dispatch("retry")} />
+    <MessageList
+      {messages}
+      {isRunning}
+      on:retry={() => dispatch("retry")}
+      on:atTopChange={(e) => (messageListAtTop = e.detail)}
+    />
   </div>
 
   <PromptComposer

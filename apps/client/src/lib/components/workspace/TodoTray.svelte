@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { slide } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
   import type { Plan, TodoStatus } from "$lib/stores/agent";
   import TodoList from "./TodoList.svelte";
 
@@ -6,8 +8,13 @@
   export let statuses: Record<string, TodoStatus> = {};
   export let isRunning = false;
   export let planError: string | null = null;
+  export let compact = false;
 
   let expanded = false;
+  let userOverride = false;
+
+  $: if (!compact) userOverride = false;
+  $: effectivelyCompact = compact && !userOverride;
 
   $: totalTodos = plan?.todos.length ?? 0;
   $: doneOrSkipped = plan
@@ -34,16 +41,30 @@
 
   const toggle = () => {
     if (!canExpand) return;
-    expanded = !expanded;
+    if (effectivelyCompact) {
+      userOverride = true;
+      expanded = true;
+      return;
+    }
+    if (expanded) {
+      expanded = false;
+      if (compact) userOverride = false;
+      return;
+    }
+    expanded = true;
   };
 </script>
 
 <div
-  class="absolute top-2 left-2 right-2 rounded-[12px] border overflow-hidden tray"
-  style="z-index: 10; border-color: var(--chrome-border); background: var(--chrome); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);"
+  class="absolute top-2 rounded-[12px] border overflow-hidden tray"
+  class:tray-compact={effectivelyCompact}
+  style="z-index: 10; border-color: var(--chrome-border); background: var(--chrome); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); {effectivelyCompact ? 'left: 10px; right: auto;' : 'left: 8px; right: 8px;'}"
 >
   {#if expanded && canExpand}
-    <div class="px-[14px] pt-[12px] pb-2 max-h-[240px] overflow-y-auto">
+    <div
+      class="px-[14px] pt-[12px] pb-2 max-h-[240px] overflow-y-auto"
+      transition:slide={{ duration: 220, easing: cubicOut }}
+    >
       {#if plan?.summary}
         <div
           class="text-[11px] uppercase tracking-wider font-semibold mb-1.5"
@@ -61,8 +82,9 @@
 
   <button
     type="button"
-    class="w-full flex items-center gap-[9px] px-[14px] py-[10px] text-left {canExpand ? 'cursor-pointer hover-row' : 'cursor-default'}"
+    class="flex items-center text-left tray-btn {canExpand ? 'cursor-pointer hover-row' : 'cursor-default'}"
     class:border-t={expanded && canExpand}
+    class:tray-btn-compact={effectivelyCompact}
     style="border-color: var(--border);"
     on:click={toggle}
     aria-expanded={expanded}
@@ -102,30 +124,32 @@
       </span>
     {/if}
 
-    <span
-      class="text-[12.5px] font-semibold tracking-tight truncate"
-      style="color: {finished ? 'var(--success)' : 'var(--text-primary)'};"
-    >
-      {statusText}
-    </span>
-
-    <div class="flex-1"></div>
-
-    {#if canExpand}
-      <svg
-        class="shrink-0 transition-transform duration-200"
-        style="transform: rotate({expanded ? 180 : 0}deg); color: var(--text-tertiary);"
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+    {#if !effectivelyCompact}
+      <span
+        class="text-[12.5px] font-semibold tracking-tight truncate tray-label"
+        style="color: {finished ? 'var(--success)' : 'var(--text-primary)'};"
       >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
+        {statusText}
+      </span>
+
+      <div class="flex-1"></div>
+
+      {#if canExpand}
+        <svg
+          class="shrink-0 transition-transform duration-200"
+          style="transform: rotate({expanded ? 180 : 0}deg); color: var(--text-tertiary);"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      {/if}
     {/if}
   </button>
 </div>
@@ -134,6 +158,34 @@
   .tray {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    transition:
+      left 220ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      right 220ms cubic-bezier(0.22, 0.8, 0.28, 1);
+  }
+  .tray-btn {
+    width: 100%;
+    padding: 10px 14px;
+    gap: 9px;
+    min-height: 36px;
+    transition: padding 220ms cubic-bezier(0.22, 0.8, 0.28, 1);
+  }
+  .tray-btn-compact {
+    width: auto;
+    padding: 10px 12px;
+    gap: 7px;
+  }
+  .tray-label {
+    animation: tray-label-fade 220ms ease-out;
+  }
+  @keyframes tray-label-fade {
+    from {
+      opacity: 0;
+      transform: translateX(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   .hover-row:hover {
     background: var(--chrome-hover);
