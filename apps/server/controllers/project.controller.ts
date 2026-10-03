@@ -7,7 +7,9 @@ import {
   ensureProject,
   createProject,
   updateProjectForOwner,
-  deleteProjectForOwner,
+  softDeleteProjectForOwner,
+  restoreProjectForOwner,
+  hardDeleteProjectForOwner,
   getProjectHistory,
   getLatestPlanForProject,
   listProjectFiles,
@@ -19,6 +21,7 @@ import {
   getUserById,
   getActiveDesignTemplateForProject,
   setDesignTemplateForProject,
+  type ProjectListFilter,
 } from "../db/repo";
 import { templateToCss } from "../services/designTemplate";
 import type { DesignTemplateFrontmatter } from "@vibe/shared";
@@ -298,7 +301,15 @@ export const projectController = (app: Elysia) =>
       const q = typeof query.q === "string" ? query.q : undefined;
       const page = query.page ? Number(query.page) : undefined;
       const pageSize = query.pageSize ? Number(query.pageSize) : undefined;
-      const result = await listProjectsForOwner(user.id, { q, page, pageSize });
+      const rawFilter = typeof query.filter === "string" ? query.filter : "active";
+      const filter: ProjectListFilter =
+        rawFilter === "archived" || rawFilter === "deleted" ? rawFilter : "active";
+      const result = await listProjectsForOwner(user.id, {
+        q,
+        page,
+        pageSize,
+        filter,
+      });
       return { data: { ...result, items: result.items.map(toPublicProject) } };
     })
     .get("/projects/:id", async ({ params, request, set }) => {
@@ -596,7 +607,29 @@ export const projectController = (app: Elysia) =>
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
-      const deleted = await deleteProjectForOwner(params.id, user.id);
+      const ok = await softDeleteProjectForOwner(params.id, user.id);
+      if (!ok) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: { id: params.id, deleted: true } };
+    })
+    .post("/projects/:id/restore", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const restored = await restoreProjectForOwner(params.id, user.id);
+      if (!restored) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: toPublicProject(restored) };
+    })
+    .delete("/projects/:id/permanent", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const deleted = await hardDeleteProjectForOwner(params.id, user.id);
       if (!deleted) {
         set.status = 404;
         return { error: "not found" };
