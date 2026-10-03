@@ -6,7 +6,8 @@
   "main": "./schema/index.ts",
   "exports": {
     ".": "./schema/index.ts",
-    "./schema": "./schema/index.ts"
+    "./schema": "./schema/index.ts",
+    "./preview/scaffold": "./preview/scaffold.ts"
   },
   "peerDependencies": {
     "drizzle-orm": "*"

@@ -16,6 +16,7 @@
     "@codesandbox/sandpack-client": "^2.19.8",
     "@sveltejs/adapter-auto": "^3.2.4",
     "@sveltejs/kit": "^2.7.1",
+    "@vibe/shared": "workspace:*",
     "svelte": "^4.2.18"
   },
   "devDependencies": {

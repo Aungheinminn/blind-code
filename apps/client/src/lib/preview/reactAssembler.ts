@@ -1,4 +1,8 @@
-import { DEFAULT_APP_TSX, SCAFFOLD_FILES, WAITING_APP_TSX } from "./scaffold";
+import {
+  DEFAULT_APP_TSX,
+  SCAFFOLD_FILES,
+  WAITING_APP_TSX,
+} from "@vibe/shared/preview/scaffold";
 
 const BASE_DEPS: Record<string, string> = {
   react: "^18.3.1",

@@ -105,6 +105,9 @@ selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
 export const projectIntegration = writable<PublicSupabaseIntegration | null>(null);
+export const projectVercel = writable<
+  import("$lib/api/projects").PublicVercelIntegration | null
+>(null);
 export const activeDesignTemplateCss = writable<string | null>(null);
 export const activeDesignTemplateName = writable<string | null>(null);
 
@@ -231,6 +234,7 @@ export const resetWorkspace = () => {
   resetPlan();
   projectFiles.set({});
   projectIntegration.set(null);
+  projectVercel.set(null);
   activeDesignTemplateCss.set(null);
   activeDesignTemplateName.set(null);
   currentAgentMessageId = null;
