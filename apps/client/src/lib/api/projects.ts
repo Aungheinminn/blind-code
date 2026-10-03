@@ -9,8 +9,18 @@ export type PublicSupabaseIntegration = {
   connectedAt: string;
 };
 
+export type PublicVercelIntegration = {
+  projectId: string;
+  projectName: string;
+  productionUrl?: string;
+  lastDeploymentUrl?: string;
+  lastDeploymentId?: string;
+  lastDeployedAt?: string;
+};
+
 export type PublicProjectIntegrations = {
   supabase?: PublicSupabaseIntegration;
+  vercel?: PublicVercelIntegration;
 };
 
 export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
@@ -238,3 +248,40 @@ export const attachSupabaseProject = (id: string, projectRef: string) =>
 
 export const listAttachedSupabaseRefs = () =>
   fetchJson<string[]>(`/projects/integrations/supabase/attached-refs`);
+
+export type DeployProgress =
+  | {
+      status: "deploying";
+      projectName: string;
+      startedAt: number;
+      deploymentId?: string;
+    }
+  | {
+      status: "ready";
+      projectName: string;
+      startedAt: number;
+      finishedAt: number;
+      deploymentId: string;
+      url: string;
+      deploymentUrl: string;
+    }
+  | {
+      status: "error";
+      projectName: string;
+      startedAt: number;
+      finishedAt: number;
+      error: string;
+    };
+
+export type VercelDeployStatus = {
+  active: DeployProgress | null;
+  integration: PublicVercelIntegration | null;
+};
+
+export const startVercelDeploy = (id: string) =>
+  fetchJson<{ active: DeployProgress }>(`/projects/${id}/deploy/vercel`, {
+    method: "POST",
+  });
+
+export const checkVercelDeploymentStatus = (id: string) =>
+  fetchJson<VercelDeployStatus>(`/projects/${id}/deploy/vercel/status`);

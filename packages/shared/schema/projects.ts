@@ -9,8 +9,18 @@ export type SupabaseIntegration = {
   connectedAt: string;
 };
 
+export type VercelIntegration = {
+  projectId: string;
+  projectName: string;
+  productionUrl?: string;
+  lastDeploymentUrl?: string;
+  lastDeploymentId?: string;
+  lastDeployedAt?: string;
+};
+
 export type ProjectIntegrations = {
   supabase?: SupabaseIntegration;
+  vercel?: VercelIntegration;
 };
 
 export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
@@ -39,6 +49,7 @@ export type PublicSupabaseIntegration = Omit<
 
 export type PublicProjectIntegrations = {
   supabase?: PublicSupabaseIntegration;
+  vercel?: VercelIntegration;
 };
 
 export const toPublicIntegrations = (
@@ -53,6 +64,9 @@ export const toPublicIntegrations = (
       hasServiceRoleKey: Boolean(serviceRoleKey),
       hasDatabaseUrl: Boolean(databaseUrl),
     };
+  }
+  if (integrations.vercel) {
+    out.vercel = integrations.vercel;
   }
   return out;
 };

@@ -21,13 +21,15 @@
     planError,
     assembledFiles,
     projectIntegration,
+    projectVercel,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
-  import { getProject } from "$lib/api/projects";
+  import DeployModal from "$lib/components/workspace/DeployModal.svelte";
+  import { checkVercelDeploymentStatus, getProject } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
 
   const openAgentPanel = () => {
@@ -46,6 +48,7 @@
   let sandpack: SandpackPreview | undefined;
   let projectName = "";
   let supabaseModalOpen = false;
+  let deployModalOpen = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
   $: previewLoading = $isRunning;
@@ -97,6 +100,15 @@
         if (!p || activeProjectId !== projectId) return;
         projectName = p.name;
         projectIntegration.set(p.integrations?.supabase ?? null);
+        projectVercel.set(p.integrations?.vercel ?? null);
+        if (p.integrations?.vercel?.projectId) {
+          checkVercelDeploymentStatus(projectId)
+            .then((res) => {
+              if (activeProjectId !== projectId) return;
+              projectVercel.set(res?.integration ?? null);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }
@@ -123,9 +135,11 @@
       {panelOpen}
       {launcherHidden}
       supabaseConnected={$projectIntegration !== null}
+      vercelDeployed={!!$projectVercel?.productionUrl}
       on:restart={() => sandpack?.refresh()}
       on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
       on:open-supabase={() => (supabaseModalOpen = true)}
+      on:open-deploy={() => (deployModalOpen = true)}
     />
     <div class="flex-1 min-h-0 relative">
       <SandpackPreview
@@ -172,6 +186,15 @@
       integration={$projectIntegration}
       on:close={() => (supabaseModalOpen = false)}
       on:changed={(e) => projectIntegration.set(e.detail)}
+    />
+  {/if}
+
+  {#if deployModalOpen}
+    <DeployModal
+      {projectId}
+      vercel={$projectVercel}
+      on:close={() => (deployModalOpen = false)}
+      on:deployed={(e) => projectVercel.set(e.detail)}
     />
   {/if}
 </div>

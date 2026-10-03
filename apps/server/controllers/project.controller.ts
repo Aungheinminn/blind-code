@@ -40,6 +40,19 @@ import {
   SupabaseManagementError,
 } from "../services/supabaseManagement";
 import {
+  createDeployment,
+  createProject as createVercelProject,
+  getProjectById as getVercelProjectById,
+  getProjectByName as getVercelProjectByName,
+  VercelManagementError,
+  waitForDeploymentReady,
+} from "../services/vercelManagement";
+import { assembleVercelProject } from "../services/vercelAssembler";
+import {
+  clearVercelIntegrationForOwner,
+  setVercelIntegrationForOwner,
+} from "../db/repo";
+import {
   toPublicIntegrations,
   type AgentToolPermissions,
   type ProjectIntegrations,
@@ -74,6 +87,145 @@ const unauthorized = (set: { status?: number | string }) => {
 const dbUnavailable = (set: { status?: number | string }) => {
   set.status = 503;
   return { error: "database not configured" };
+};
+
+type DeployProgress =
+  | {
+      status: "deploying";
+      projectName: string;
+      startedAt: number;
+      deploymentId?: string;
+    }
+  | {
+      status: "ready";
+      projectName: string;
+      startedAt: number;
+      finishedAt: number;
+      deploymentId: string;
+      url: string;
+      deploymentUrl: string;
+    }
+  | {
+      status: "error";
+      projectName: string;
+      startedAt: number;
+      finishedAt: number;
+      error: string;
+    };
+
+const activeDeploys = new Map<string, DeployProgress>();
+
+const slugifyProjectName = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+
+const randomProjectSuffix = () =>
+  (Math.random().toString(36) + Math.random().toString(36))
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 6)
+    .padEnd(6, "0");
+
+const runVercelDeploy = async (args: {
+  projectDbId: string;
+  ownerId: string;
+  projectName: string;
+  existingVercel: {
+    projectId?: string;
+    projectName?: string;
+    productionUrl?: string;
+    lastDeploymentUrl?: string;
+    lastDeploymentId?: string;
+    lastDeployedAt?: string;
+  } | null;
+  files: { file: string; data: string; encoding: "utf-8" | "base64" }[];
+}) => {
+  const { projectDbId, ownerId, projectName, existingVercel, files } = args;
+  const startedAt = activeDeploys.get(projectDbId)?.startedAt ?? Date.now();
+  try {
+    let vercelProject = existingVercel?.projectId
+      ? await getVercelProjectById(existingVercel.projectId)
+      : null;
+    if (!vercelProject) {
+      vercelProject = await getVercelProjectByName(projectName);
+    }
+    if (!vercelProject) {
+      vercelProject = await createVercelProject({
+        name: projectName,
+        framework: "vite",
+      });
+    }
+    const projectId = vercelProject.id;
+
+    if (!existingVercel || existingVercel.projectId !== projectId) {
+      await setVercelIntegrationForOwner(projectDbId, ownerId, {
+        ...(existingVercel ?? {}),
+        projectId,
+        projectName,
+      });
+    }
+
+    const deployment = await createDeployment({
+      name: projectName,
+      project: projectName,
+      files,
+      target: "production",
+      framework: "vite",
+    });
+
+    activeDeploys.set(projectDbId, {
+      status: "deploying",
+      projectName,
+      startedAt,
+      deploymentId: deployment.id,
+    });
+
+    const ready = await waitForDeploymentReady(deployment.id);
+    const deploymentUrl = ready.url
+      ? `https://${ready.url}`
+      : deployment.url
+        ? `https://${deployment.url}`
+        : "";
+    const alias = ready.alias?.[0];
+    const productionUrl = alias ? `https://${alias}` : deploymentUrl;
+
+    const nextIntegration = {
+      projectId,
+      projectName,
+      productionUrl,
+      lastDeploymentUrl: deploymentUrl,
+      lastDeploymentId: ready.id,
+      lastDeployedAt: new Date().toISOString(),
+    };
+    await setVercelIntegrationForOwner(projectDbId, ownerId, nextIntegration);
+
+    activeDeploys.set(projectDbId, {
+      status: "ready",
+      projectName,
+      startedAt,
+      finishedAt: Date.now(),
+      deploymentId: ready.id,
+      url: productionUrl,
+      deploymentUrl,
+    });
+  } catch (err) {
+    const message =
+      err instanceof VercelManagementError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    activeDeploys.set(projectDbId, {
+      status: "error",
+      projectName,
+      startedAt,
+      finishedAt: Date.now(),
+      error: message,
+    });
+  }
 };
 
 type ProjectRow = {
@@ -453,4 +605,117 @@ export const projectController = (app: Elysia) =>
         await rm(join("/tmp/vibe-sandbox", params.id), { recursive: true, force: true });
       } catch {}
       return { data: { id: params.id, deleted: true } };
+    })
+    .get("/projects/:id/deploy/vercel/status", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+
+      const active = activeDeploys.get(project.id);
+      let integration = project.integrations?.vercel ?? null;
+
+      if (integration?.projectId) {
+        try {
+          let live = await getVercelProjectById(integration.projectId);
+          if (!live && integration.projectName) {
+            live = await getVercelProjectByName(integration.projectName);
+          }
+          if (!live) {
+            await clearVercelIntegrationForOwner(project.id, user.id);
+            integration = null;
+          }
+        } catch (err) {
+          if (
+            err instanceof VercelManagementError &&
+            (err.status === 404 || err.status === 410)
+          ) {
+            await clearVercelIntegrationForOwner(project.id, user.id);
+            integration = null;
+          }
+        }
+      }
+
+      if (active && (active.status === "ready" || active.status === "error")) {
+        activeDeploys.delete(project.id);
+        if (active.status === "ready") {
+          const refreshed = await getProjectForOwner(project.id, user.id);
+          integration = refreshed?.integrations?.vercel ?? integration;
+        }
+      }
+
+      return { data: { active: active ?? null, integration } };
+    })
+    .post("/projects/:id/deploy/vercel", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+
+      const current = activeDeploys.get(project.id);
+      if (current && current.status === "deploying") {
+        return { data: { active: current } };
+      }
+
+      const [fileRows, designTemplate] = await Promise.all([
+        listProjectFiles(project.id),
+        getActiveDesignTemplateForProject(project.id, user.id),
+      ]);
+      const rawFiles: Record<string, string> = {};
+      for (const f of fileRows) {
+        if (f.isDirectory) continue;
+        rawFiles[f.path] = f.content;
+      }
+      const designCss = designTemplate
+        ? templateToCss(
+            (designTemplate.parsedTokens ?? {}) as DesignTemplateFrontmatter,
+          )
+        : null;
+
+      const supabase = project.integrations?.supabase;
+      const supabaseInject =
+        supabase?.url && supabase?.anonKey
+          ? { url: supabase.url, anonKey: supabase.anonKey }
+          : null;
+
+      const assembled = assembleVercelProject(rawFiles, {
+        supabase: supabaseInject,
+        designCss,
+      });
+
+      const vercelFiles = Object.entries(assembled).map(([path, content]) => ({
+        file: path,
+        data: content,
+        encoding: "utf-8" as const,
+      }));
+
+      const existingVercel = project.integrations?.vercel;
+      const nameSlug = slugifyProjectName(project.name) || "app";
+      const projectName =
+        existingVercel?.projectName ?? `${nameSlug}-${randomProjectSuffix()}`;
+
+      const initial: DeployProgress = {
+        status: "deploying",
+        projectName,
+        startedAt: Date.now(),
+      };
+      activeDeploys.set(project.id, initial);
+
+      runVercelDeploy({
+        projectDbId: project.id,
+        ownerId: user.id,
+        projectName,
+        existingVercel: existingVercel ?? null,
+        files: vercelFiles,
+      }).catch(() => {});
+
+      return { data: { active: initial } };
     });
