@@ -32,11 +32,14 @@ export type Project = {
   name: string;
   description: string | null;
   isArchived: boolean;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
   integrations?: PublicProjectIntegrations | null;
   agentToolPermissions?: AgentToolPermissions | null;
 };
+
+export type ProjectListFilter = "active" | "archived" | "deleted";
 
 export type ProjectPatch = Partial<{
   name: string;
@@ -56,6 +59,7 @@ export type ProjectListQuery = {
   q?: string;
   page?: number;
   pageSize?: number;
+  filter?: ProjectListFilter;
 };
 
 export const listProjects = (opts: ProjectListQuery = {}) => {
@@ -63,6 +67,7 @@ export const listProjects = (opts: ProjectListQuery = {}) => {
   if (opts.q && opts.q.trim()) params.set("q", opts.q.trim());
   if (opts.page && opts.page > 1) params.set("page", String(opts.page));
   if (opts.pageSize) params.set("pageSize", String(opts.pageSize));
+  if (opts.filter && opts.filter !== "active") params.set("filter", opts.filter);
   const qs = params.toString();
   return fetchJson<ProjectListPage>(`/projects${qs ? `?${qs}` : ""}`);
 };
@@ -104,6 +109,16 @@ export const updateProject = (id: string, patch: ProjectPatch) =>
 
 export const deleteProject = (id: string) =>
   fetchJson<{ id: string; deleted: boolean }>(`/projects/${id}`, {
+    method: "DELETE",
+  });
+
+export const restoreProject = (id: string) =>
+  fetchJson<Project>(`/projects/${id}/restore`, {
+    method: "POST",
+  });
+
+export const hardDeleteProject = (id: string) =>
+  fetchJson<{ id: string; deleted: boolean }>(`/projects/${id}/permanent`, {
     method: "DELETE",
   });
 
