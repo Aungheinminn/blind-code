@@ -3,6 +3,7 @@
   import {
     listDesignTemplates,
     deleteDesignTemplate,
+    setDesignTemplateArchived,
     getDesignTemplate,
     updateDesignTemplateFromDraft,
     type DesignTemplateSummary,
@@ -73,6 +74,18 @@
   const openDelete = (t: DesignTemplateSummary) => {
     deleteTarget = t;
     deleteError = "";
+  };
+
+  let archiveError = "";
+
+  const onArchive = async (t: DesignTemplateSummary) => {
+    archiveError = "";
+    try {
+      await setDesignTemplateArchived(t.id, true);
+      templates = templates.filter((x) => x.id !== t.id);
+    } catch (e) {
+      archiveError = e instanceof Error ? e.message : String(e);
+    }
   };
 
   const closeDelete = () => {
@@ -183,6 +196,10 @@
     </p>
   </header>
 
+  {#if archiveError}
+    <p class="status status-error">{archiveError}</p>
+  {/if}
+
   {#if loading}
     <p class="status">Loading…</p>
   {:else if error}
@@ -201,6 +218,7 @@
             template={tpl}
             swatches={swatchesFor(tpl)}
             on:rename={(e) => openRename(e.detail)}
+            on:archive={(e) => onArchive(e.detail)}
             on:delete={(e) => openDelete(e.detail)}
           />
         {/each}
@@ -253,6 +271,7 @@
             template={tpl}
             swatches={swatchesFor(tpl)}
             on:rename={(e) => openRename(e.detail)}
+            on:archive={(e) => onArchive(e.detail)}
             on:delete={(e) => openDelete(e.detail)}
           />
         {/each}
@@ -350,7 +369,7 @@
       <div class="px-5 pt-5 pb-4">
         <h2 id="delete-template-title" class="text-base font-semibold">Delete template</h2>
         <p class="mt-1 text-xs" style="color: var(--text-secondary);">
-          "{deleteTarget.name}" will be permanently deleted. Projects using it will fall back to the default template.
+          "{deleteTarget.name}" will be moved to Deleted. You can restore it from there. Projects using it will fall back to the default template.
         </p>
       </div>
 

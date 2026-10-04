@@ -4,10 +4,15 @@
 
   export let template: DesignTemplateSummary;
   export let swatches: { name: string; value: string }[] = [];
+  export let variant: "active" | "archived" | "deleted" = "active";
 
   const dispatch = createEventDispatcher<{
     rename: DesignTemplateSummary;
     delete: DesignTemplateSummary;
+    archive: DesignTemplateSummary;
+    unarchive: DesignTemplateSummary;
+    restore: DesignTemplateSummary;
+    permanentDelete: DesignTemplateSummary;
   }>();
 
   let menuOpen = false;
@@ -30,19 +35,20 @@
     if (e.key === "Escape") menuOpen = false;
   };
 
-  const onRename = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    menuOpen = false;
-    dispatch("rename", template);
-  };
+  const fire = (name: "rename" | "delete" | "archive" | "unarchive" | "restore" | "permanentDelete") =>
+    (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      menuOpen = false;
+      dispatch(name, template);
+    };
 
-  const onDelete = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    menuOpen = false;
-    dispatch("delete", template);
-  };
+  const onRename = fire("rename");
+  const onDelete = fire("delete");
+  const onArchive = fire("archive");
+  const onUnarchive = fire("unarchive");
+  const onRestore = fire("restore");
+  const onPermanentDelete = fire("permanentDelete");
 
   onDestroy(() => {
     menuOpen = false;
@@ -51,32 +57,56 @@
 
 <svelte:window on:click={handleWindowClick} on:keydown={handleKeydown} />
 
-<article class="card">
-  <a
-    class="card-body"
-    href={`/design/new?id=${encodeURIComponent(template.id)}`}
-    aria-label={canManage ? `Open ${template.name} in studio` : `Preview ${template.name}`}
-  >
-    <div class="card-head">
-      <h2>{template.name}</h2>
-      <span class="chip">{template.origin}</span>
-    </div>
-    {#if template.description}
-      <p class="desc">{template.description}</p>
-    {/if}
-    {#if swatches.length > 0}
-      <div class="swatches" role="list" aria-label="Color palette">
-        {#each swatches as s}
-          <span
-            class="swatch"
-            role="listitem"
-            title="{s.name} — {s.value}"
-            style="background-color: {s.value};"
-          ></span>
-        {/each}
+<article class="card" class:menu-open={menuOpen}>
+  {#if variant === "deleted"}
+    <div class="card-body">
+      <div class="card-head">
+        <h2>{template.name}</h2>
+        <span class="chip chip-danger">deleted</span>
       </div>
-    {/if}
-  </a>
+      {#if template.description}
+        <p class="desc">{template.description}</p>
+      {/if}
+      {#if swatches.length > 0}
+        <div class="swatches" role="list" aria-label="Color palette">
+          {#each swatches as s}
+            <span
+              class="swatch"
+              role="listitem"
+              title="{s.name} — {s.value}"
+              style="background-color: {s.value};"
+            ></span>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {:else}
+    <a
+      class="card-body"
+      href={`/design/new?id=${encodeURIComponent(template.id)}`}
+      aria-label={canManage ? `Open ${template.name} in studio` : `Preview ${template.name}`}
+    >
+      <div class="card-head">
+        <h2>{template.name}</h2>
+        <span class="chip">{variant === "archived" ? "archived" : template.origin}</span>
+      </div>
+      {#if template.description}
+        <p class="desc">{template.description}</p>
+      {/if}
+      {#if swatches.length > 0}
+        <div class="swatches" role="list" aria-label="Color palette">
+          {#each swatches as s}
+            <span
+              class="swatch"
+              role="listitem"
+              title="{s.name} — {s.value}"
+              style="background-color: {s.value};"
+            ></span>
+          {/each}
+        </div>
+      {/if}
+    </a>
+  {/if}
 
   {#if canManage}
     <div class="kebab-wrap" bind:this={menuAnchor}>
@@ -98,32 +128,68 @@
 
       {#if menuOpen}
         <div class="menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            on:click={onRename}
-            class="menu-item"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-            </svg>
-            <span>Edit title</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            on:click={onDelete}
-            class="menu-item menu-item-danger"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-            </svg>
-            <span>Delete</span>
-          </button>
+          {#if variant === "active"}
+            <button type="button" role="menuitem" on:click={onRename} class="menu-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+              <span>Edit title</span>
+            </button>
+            <button type="button" role="menuitem" on:click={onArchive} class="menu-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="4" rx="1" />
+                <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+                <line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
+              <span>Archive</span>
+            </button>
+            <button type="button" role="menuitem" on:click={onDelete} class="menu-item menu-item-danger">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span>Delete</span>
+            </button>
+          {:else if variant === "archived"}
+            <button type="button" role="menuitem" on:click={onUnarchive} class="menu-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="4" rx="1" />
+                <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+                <path d="M9 15l3 -3l3 3" />
+                <line x1="12" y1="12" x2="12" y2="19" />
+              </svg>
+              <span>Unarchive</span>
+            </button>
+            <button type="button" role="menuitem" on:click={onDelete} class="menu-item menu-item-danger">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span>Delete</span>
+            </button>
+          {:else}
+            <button type="button" role="menuitem" on:click={onRestore} class="menu-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                <polyline points="3 4 3 10 9 10" />
+              </svg>
+              <span>Restore</span>
+            </button>
+            <button type="button" role="menuitem" on:click={onPermanentDelete} class="menu-item menu-item-danger">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span>Delete forever</span>
+            </button>
+          {/if}
         </div>
       {/if}
     </div>
@@ -143,6 +209,9 @@
     border-color: var(--accent);
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
     transform: translateY(-1px);
+  }
+  .card.menu-open:hover {
+    transform: none;
   }
   .card-body {
     display: flex;
@@ -179,6 +248,10 @@
     border-radius: 999px;
     background-color: var(--bg-secondary);
     color: var(--text-secondary);
+  }
+  .chip-danger {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
   }
   .desc {
     margin: 0;
@@ -229,13 +302,14 @@
     position: absolute;
     top: 34px;
     right: 0;
-    width: 140px;
+    width: 160px;
     padding: 4px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background-color: var(--bg-panel);
-    box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.35);
-    z-index: 10;
+    background-color: var(--bg-tertiary);
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.6),
+      0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 50;
     display: flex;
     flex-direction: column;
     gap: 2px;
