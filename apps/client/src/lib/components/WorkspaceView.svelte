@@ -97,7 +97,11 @@
     bootstrapProject(projectId, pending);
     getProject(projectId)
       .then((p) => {
-        if (!p || activeProjectId !== projectId) return;
+        if (activeProjectId !== projectId) return;
+        if (!p) {
+          goto("/projects", { replaceState: true });
+          return;
+        }
         projectName = p.name;
         projectIntegration.set(p.integrations?.supabase ?? null);
         projectVercel.set(p.integrations?.vercel ?? null);
@@ -110,7 +114,11 @@
             .catch(() => {});
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (activeProjectId === projectId) {
+          goto("/projects", { replaceState: true });
+        }
+      });
   }
 
   const handleSubmit = (event: CustomEvent<string>) => {

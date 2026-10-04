@@ -67,6 +67,7 @@
 
 <div
   class="relative rounded-xl border project-card"
+  class:menu-open={menuOpen}
   style="border-color: var(--border); background-color: var(--bg-secondary); color: var(--text-primary);"
 >
   {#if variant === "deleted"}
@@ -130,8 +131,8 @@
     {#if menuOpen}
       <div
         role="menu"
-        class="absolute right-0 mt-1 w-44 rounded-lg border shadow-lg py-1 z-10"
-        style="border-color: var(--border); background-color: var(--bg-panel);"
+        class="absolute right-0 mt-1 w-44 rounded-lg border py-1 z-50"
+        style="border-color: var(--border); background-color: var(--bg-tertiary); box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);"
       >
         {#if variant === "active"}
           <button
@@ -250,6 +251,9 @@
     border-color: var(--accent) !important;
     box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.35);
     transform: translateY(-1px);
+  }
+  .project-card.menu-open:hover {
+    transform: none;
   }
   .kebab:hover {
     background-color: var(--bg-tertiary);

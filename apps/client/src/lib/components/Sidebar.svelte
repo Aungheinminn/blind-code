@@ -121,12 +121,12 @@
   {#each items as item}
     {@const active = item.isActive(activePath)}
     {#if item.children}
-      <button
-        type="button"
-        class="nav-item nav-item-btn"
+      <a
+        href={item.href}
+        class="nav-item"
         class:active
-        aria-expanded={expanded[item.label] ? true : false}
         aria-current={active ? "page" : undefined}
+        aria-expanded={expanded[item.label] ? true : false}
         title={item.label}
         on:click={() => toggleExpand(item.label)}
       >
@@ -134,7 +134,7 @@
           {@html iconSvg(item.icon)}
         </span>
         <span class="label">{item.label}</span>
-      </button>
+      </a>
       {#if expanded[item.label]}
         <div class="children" role="group" aria-label={`${item.label} views`}>
           {#each item.children as child}
@@ -142,7 +142,7 @@
             <a
               href={child.href}
               class="nav-item nav-sub"
-              class:active={childActive}
+              class:sub-active={childActive}
               aria-current={childActive ? "page" : undefined}
               title={child.label}
             >
@@ -222,13 +222,6 @@
     cursor: pointer;
     transition: background-color 150ms ease, color 150ms ease;
   }
-  .nav-item-btn {
-    appearance: none;
-    background: transparent;
-    border: 0;
-    width: 100%;
-    font: inherit;
-  }
   .nav-item:hover {
     background-color: var(--bg-panel);
     color: var(--text-primary);
@@ -245,6 +238,22 @@
   }
   .nav-sub {
     padding: 6px 2px;
+    opacity: 0.9;
+  }
+  .nav-sub .icon :global(svg) {
+    width: 14px;
+    height: 14px;
+  }
+  .nav-sub .label {
+    font-size: 9px;
+  }
+  .nav-sub.sub-active {
+    background-color: transparent;
+    color: var(--accent);
+  }
+  .nav-sub.sub-active:hover {
+    background-color: var(--bg-panel);
+    color: var(--accent);
   }
   .icon {
     display: inline-flex;
