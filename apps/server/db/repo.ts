@@ -1102,7 +1102,12 @@ export const getActiveDesignTemplateForProject = async (
     const rows = await db
       .select()
       .from(schema.designTemplates)
-      .where(eq(schema.designTemplates.id, project.designTemplateId))
+      .where(
+        and(
+          eq(schema.designTemplates.id, project.designTemplateId),
+          isNull(schema.designTemplates.deletedAt),
+        ),
+      )
       .limit(1);
     if (rows[0]) return rows[0];
   }
@@ -1193,23 +1198,60 @@ export const createAgentDesignTemplate = async (input: {
   return row;
 };
 
-export const listDesignTemplatesForUser = async (ownerUserId: string) => {
+export type DesignTemplateListFilter = "active" | "archived" | "deleted";
+
+const designTemplateSelect = {
+  id: schema.designTemplates.id,
+  slug: schema.designTemplates.slug,
+  name: schema.designTemplates.name,
+  description: schema.designTemplates.description,
+  origin: schema.designTemplates.origin,
+  parsedTokens: schema.designTemplates.parsedTokens,
+  isReadOnly: schema.designTemplates.isReadOnly,
+  isArchived: schema.designTemplates.isArchived,
+  deletedAt: schema.designTemplates.deletedAt,
+  sortOrder: schema.designTemplates.sortOrder,
+  ownerUserId: schema.designTemplates.ownerUserId,
+  sourceProjectId: schema.designTemplates.sourceProjectId,
+  createdAt: schema.designTemplates.createdAt,
+  updatedAt: schema.designTemplates.updatedAt,
+} as const;
+
+export const listDesignTemplatesForUser = async (
+  ownerUserId: string,
+  opts: { filter?: DesignTemplateListFilter } = {},
+) => {
   if (!db) return [];
+  const filter: DesignTemplateListFilter = opts.filter ?? "active";
+  if (filter === "deleted") {
+    return db
+      .select(designTemplateSelect)
+      .from(schema.designTemplates)
+      .where(
+        and(
+          eq(schema.designTemplates.ownerUserId, ownerUserId),
+          inArray(schema.designTemplates.origin, ["user", "agent"]),
+          isNotNull(schema.designTemplates.deletedAt),
+        ),
+      )
+      .orderBy(desc(schema.designTemplates.updatedAt));
+  }
+  if (filter === "archived") {
+    return db
+      .select(designTemplateSelect)
+      .from(schema.designTemplates)
+      .where(
+        and(
+          eq(schema.designTemplates.ownerUserId, ownerUserId),
+          inArray(schema.designTemplates.origin, ["user", "agent"]),
+          isNull(schema.designTemplates.deletedAt),
+          eq(schema.designTemplates.isArchived, true),
+        ),
+      )
+      .orderBy(desc(schema.designTemplates.updatedAt));
+  }
   return db
-    .select({
-      id: schema.designTemplates.id,
-      slug: schema.designTemplates.slug,
-      name: schema.designTemplates.name,
-      description: schema.designTemplates.description,
-      origin: schema.designTemplates.origin,
-      parsedTokens: schema.designTemplates.parsedTokens,
-      isReadOnly: schema.designTemplates.isReadOnly,
-      sortOrder: schema.designTemplates.sortOrder,
-      ownerUserId: schema.designTemplates.ownerUserId,
-      sourceProjectId: schema.designTemplates.sourceProjectId,
-      createdAt: schema.designTemplates.createdAt,
-      updatedAt: schema.designTemplates.updatedAt,
-    })
+    .select(designTemplateSelect)
     .from(schema.designTemplates)
     .where(
       or(
@@ -1217,6 +1259,8 @@ export const listDesignTemplatesForUser = async (ownerUserId: string) => {
         and(
           eq(schema.designTemplates.ownerUserId, ownerUserId),
           inArray(schema.designTemplates.origin, ["user", "agent"]),
+          isNull(schema.designTemplates.deletedAt),
+          eq(schema.designTemplates.isArchived, false),
         ),
       ),
     )
@@ -1226,14 +1270,22 @@ export const listDesignTemplatesForUser = async (ownerUserId: string) => {
     );
 };
 
-export const deleteDesignTemplateForOwner = async (
+type DesignTemplateMutResult =
+  | { ok: true }
+  | { forbidden: true }
+  | { notFound: true }
+  | null;
+
+const checkOwnedUserTemplate = async (
   id: string,
   ownerUserId: string,
+  opts: { includeDeleted?: boolean } = {},
 ): Promise<
-  { deleted: true } | { forbidden: true } | { notFound: true } | null
+  | { row: typeof schema.designTemplates.$inferSelect }
+  | { notFound: true }
+  | { forbidden: true }
 > => {
-  if (!db) return null;
-  const rows = await db
+  const rows = await db!
     .select()
     .from(schema.designTemplates)
     .where(eq(schema.designTemplates.id, id))
@@ -1242,6 +1294,70 @@ export const deleteDesignTemplateForOwner = async (
   if (!row) return { notFound: true };
   if (row.origin === "builtin" || row.isReadOnly) return { forbidden: true };
   if (row.ownerUserId !== ownerUserId) return { forbidden: true };
+  if (!opts.includeDeleted && row.deletedAt) return { notFound: true };
+  return { row };
+};
+
+export const softDeleteDesignTemplateForOwner = async (
+  id: string,
+  ownerUserId: string,
+): Promise<DesignTemplateMutResult> => {
+  if (!db) return null;
+  const check = await checkOwnedUserTemplate(id, ownerUserId);
+  if ("notFound" in check) return { notFound: true };
+  if ("forbidden" in check) return { forbidden: true };
+  await db
+    .update(schema.designTemplates)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(schema.designTemplates.id, id));
+  return { ok: true };
+};
+
+export const restoreDesignTemplateForOwner = async (
+  id: string,
+  ownerUserId: string,
+): Promise<DesignTemplateMutResult> => {
+  if (!db) return null;
+  const check = await checkOwnedUserTemplate(id, ownerUserId, {
+    includeDeleted: true,
+  });
+  if ("notFound" in check) return { notFound: true };
+  if ("forbidden" in check) return { forbidden: true };
+  await db
+    .update(schema.designTemplates)
+    .set({ deletedAt: null, updatedAt: new Date() })
+    .where(eq(schema.designTemplates.id, id));
+  return { ok: true };
+};
+
+export const setArchivedForDesignTemplate = async (
+  id: string,
+  ownerUserId: string,
+  isArchived: boolean,
+): Promise<DesignTemplateMutResult> => {
+  if (!db) return null;
+  const check = await checkOwnedUserTemplate(id, ownerUserId);
+  if ("notFound" in check) return { notFound: true };
+  if ("forbidden" in check) return { forbidden: true };
+  await db
+    .update(schema.designTemplates)
+    .set({ isArchived, updatedAt: new Date() })
+    .where(eq(schema.designTemplates.id, id));
+  return { ok: true };
+};
+
+export const hardDeleteDesignTemplateForOwner = async (
+  id: string,
+  ownerUserId: string,
+): Promise<
+  { deleted: true } | { forbidden: true } | { notFound: true } | null
+> => {
+  if (!db) return null;
+  const check = await checkOwnedUserTemplate(id, ownerUserId, {
+    includeDeleted: true,
+  });
+  if ("notFound" in check) return { notFound: true };
+  if ("forbidden" in check) return { forbidden: true };
   await db
     .delete(schema.designTemplates)
     .where(eq(schema.designTemplates.id, id));
@@ -1262,6 +1378,7 @@ export const getDesignTemplateForReader = async (
   if (!row) return { notFound: true as const };
   if (row.origin === "builtin") return { row };
   if (row.ownerUserId !== ownerUserId) return { forbidden: true as const };
+  if (row.deletedAt) return { notFound: true as const };
   return { row };
 };
 
@@ -1290,6 +1407,7 @@ export const updateDesignTemplateForOwner = async (
   if (!row) return { notFound: true };
   if (row.origin === "builtin" || row.isReadOnly) return { forbidden: true };
   if (row.ownerUserId !== ownerUserId) return { forbidden: true };
+  if (row.deletedAt) return { notFound: true };
   const [updated] = await db
     .update(schema.designTemplates)
     .set({

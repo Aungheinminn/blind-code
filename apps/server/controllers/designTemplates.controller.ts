@@ -4,10 +4,14 @@ import { db, hasDb, schema } from "../db/client";
 import { getUserFromRequest } from "../services/authGuard";
 import {
   listDesignTemplatesForUser,
-  deleteDesignTemplateForOwner,
+  softDeleteDesignTemplateForOwner,
+  restoreDesignTemplateForOwner,
+  setArchivedForDesignTemplate,
+  hardDeleteDesignTemplateForOwner,
   createAgentDesignTemplate,
   getDesignTemplateForReader,
   updateDesignTemplateForOwner,
+  type DesignTemplateListFilter,
 } from "../db/repo";
 import { parseTemplate } from "../services/designTemplate";
 import { friendlyError } from "../services/errors";
@@ -23,15 +27,19 @@ const checkNameLength = (
 
 export const designTemplatesController = (app: Elysia) =>
   app
-    .get("/design-templates", async ({ request, set }) => {
+    .get("/design-templates", async ({ request, query, set }) => {
       if (!hasDb || !db) {
         set.status = 503;
         return { error: "database not configured" };
       }
+      const rawFilter = typeof query.filter === "string" ? query.filter : "active";
+      const filter: DesignTemplateListFilter =
+        rawFilter === "archived" || rawFilter === "deleted" ? rawFilter : "active";
       const user = await getUserFromRequest(request);
       if (user) {
-        return { data: await listDesignTemplatesForUser(user.id) };
+        return { data: await listDesignTemplatesForUser(user.id, { filter }) };
       }
+      if (filter !== "active") return { data: [] };
       const rows = await db
         .select({
           id: schema.designTemplates.id,
@@ -210,7 +218,7 @@ export const designTemplatesController = (app: Elysia) =>
         set.status = 401;
         return { error: "unauthorized" };
       }
-      const result = await deleteDesignTemplateForOwner(params.id, user.id);
+      const result = await softDeleteDesignTemplateForOwner(params.id, user.id);
       if (!result) {
         set.status = 503;
         return { error: "database not configured" };
@@ -224,4 +232,82 @@ export const designTemplatesController = (app: Elysia) =>
         return { error: "forbidden" };
       }
       return { data: { id: params.id, deleted: true } };
+    })
+    .post("/design-templates/:id/restore", async ({ params, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const result = await restoreDesignTemplateForOwner(params.id, user.id);
+      if (!result) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      if ("notFound" in result) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if ("forbidden" in result) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      return { data: { id: params.id, restored: true } };
+    })
+    .delete("/design-templates/:id/permanent", async ({ params, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const result = await hardDeleteDesignTemplateForOwner(params.id, user.id);
+      if (!result) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      if ("notFound" in result) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if ("forbidden" in result) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      return { data: { id: params.id, deleted: true } };
+    })
+    .patch("/design-templates/:id/archive", async ({ params, body, request, set }) => {
+      if (!hasDb) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      const b = (body as Record<string, unknown>) ?? {};
+      const isArchived =
+        typeof b.isArchived === "boolean" ? b.isArchived : true;
+      const result = await setArchivedForDesignTemplate(params.id, user.id, isArchived);
+      if (!result) {
+        set.status = 503;
+        return { error: "database not configured" };
+      }
+      if ("notFound" in result) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if ("forbidden" in result) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      return { data: { id: params.id, isArchived } };
     });
