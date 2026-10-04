@@ -32,11 +32,14 @@ export type Project = {
   name: string;
   description: string | null;
   isArchived: boolean;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
   integrations?: PublicProjectIntegrations | null;
   agentToolPermissions?: AgentToolPermissions | null;
 };
+
+export type ProjectListFilter = "active" | "archived" | "deleted";
 
 export type ProjectPatch = Partial<{
   name: string;
@@ -56,6 +59,7 @@ export type ProjectListQuery = {
   q?: string;
   page?: number;
   pageSize?: number;
+  filter?: ProjectListFilter;
 };
 
 export const listProjects = (opts: ProjectListQuery = {}) => {
@@ -63,6 +67,7 @@ export const listProjects = (opts: ProjectListQuery = {}) => {
   if (opts.q && opts.q.trim()) params.set("q", opts.q.trim());
   if (opts.page && opts.page > 1) params.set("page", String(opts.page));
   if (opts.pageSize) params.set("pageSize", String(opts.pageSize));
+  if (opts.filter && opts.filter !== "active") params.set("filter", opts.filter);
   const qs = params.toString();
   return fetchJson<ProjectListPage>(`/projects${qs ? `?${qs}` : ""}`);
 };
@@ -104,6 +109,16 @@ export const updateProject = (id: string, patch: ProjectPatch) =>
 
 export const deleteProject = (id: string) =>
   fetchJson<{ id: string; deleted: boolean }>(`/projects/${id}`, {
+    method: "DELETE",
+  });
+
+export const restoreProject = (id: string) =>
+  fetchJson<Project>(`/projects/${id}/restore`, {
+    method: "POST",
+  });
+
+export const hardDeleteProject = (id: string) =>
+  fetchJson<{ id: string; deleted: boolean }>(`/projects/${id}/permanent`, {
     method: "DELETE",
   });
 
@@ -166,9 +181,13 @@ export type DesignTemplateSummary = {
     [k: string]: unknown;
   } | null;
   isReadOnly: boolean;
+  isArchived?: boolean;
+  deletedAt?: string | null;
   sortOrder: number;
   updatedAt: string;
 };
+
+export type DesignTemplateListFilter = "active" | "archived" | "deleted";
 
 export type DesignTemplateFull = DesignTemplateSummary & {
   content: string;
@@ -177,8 +196,13 @@ export type DesignTemplateFull = DesignTemplateSummary & {
   createdAt: string;
 };
 
-export const listDesignTemplates = () =>
-  fetchJson<DesignTemplateSummary[]>(`/design-templates`);
+export const listDesignTemplates = (
+  opts: { filter?: DesignTemplateListFilter } = {},
+) => {
+  const qs =
+    opts.filter && opts.filter !== "active" ? `?filter=${opts.filter}` : "";
+  return fetchJson<DesignTemplateSummary[]>(`/design-templates${qs}`);
+};
 
 export const getDesignTemplate = (id: string) =>
   fetchJson<DesignTemplateFull>(`/design-templates/${id}`);
@@ -206,6 +230,27 @@ export const deleteDesignTemplate = (id: string) =>
   fetchJson<{ id: string; deleted: boolean }>(`/design-templates/${id}`, {
     method: "DELETE",
   });
+
+export const restoreDesignTemplate = (id: string) =>
+  fetchJson<{ id: string; restored: boolean }>(
+    `/design-templates/${id}/restore`,
+    { method: "POST" },
+  );
+
+export const hardDeleteDesignTemplate = (id: string) =>
+  fetchJson<{ id: string; deleted: boolean }>(
+    `/design-templates/${id}/permanent`,
+    { method: "DELETE" },
+  );
+
+export const setDesignTemplateArchived = (id: string, isArchived: boolean) =>
+  fetchJson<{ id: string; isArchived: boolean }>(
+    `/design-templates/${id}/archive`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ isArchived }),
+    },
+  );
 
 export const getProjectDesignTemplate = (id: string) =>
   fetchJson<ProjectDesignTemplate>(`/projects/${id}/design-template`);

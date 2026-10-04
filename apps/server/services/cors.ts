@@ -13,7 +13,7 @@ export const withCors = (app: Elysia) =>
         set.headers["vary"] = "Origin";
       }
       if (request.method === "OPTIONS") {
-        set.headers["access-control-allow-methods"] = "GET,POST,PUT,DELETE,OPTIONS";
+        set.headers["access-control-allow-methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
         set.headers["access-control-allow-headers"] =
           request.headers.get("access-control-request-headers") || "content-type";
         set.headers["access-control-max-age"] = "600";

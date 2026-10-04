@@ -27,6 +27,8 @@ export const designTemplates = pgTable("design_templates", {
   ownerUserId: uuid("owner_user_id"),
   sourceProjectId: uuid("source_project_id"),
   isReadOnly: boolean("is_read_only").notNull().default(false),
+  isArchived: boolean("is_archived").notNull().default(false),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

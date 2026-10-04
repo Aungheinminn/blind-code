@@ -46,6 +46,8 @@
   let deleteBusy = false;
   let deleteError = "";
 
+  let archiveError = "";
+
   onMount(() => {
     const params = $pageStore.url.searchParams;
     q = params.get("q") ?? "";
@@ -205,6 +207,23 @@
     deleteError = "";
   };
 
+  const onArchive = async (project: Project) => {
+    archiveError = "";
+    try {
+      await updateProject(project.id, { isArchived: true });
+      items = items.filter((p) => p.id !== project.id);
+      total = Math.max(0, total - 1);
+      if (items.length === 0 && page > 1) {
+        page = page - 1;
+      } else {
+        lastKey = "";
+        load();
+      }
+    } catch (e) {
+      archiveError = e instanceof Error ? e.message : String(e);
+    }
+  };
+
   const closeDelete = () => {
     if (deleteBusy) return;
     deleteTarget = null;
@@ -308,12 +327,12 @@
       {/if}
     </div>
 
-    {#if error}
+    {#if error || archiveError}
       <div
         class="mt-6 rounded-lg border px-4 py-3 text-sm"
         style="border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.08);"
       >
-        {error}
+        {error || archiveError}
       </div>
     {/if}
 
@@ -346,6 +365,7 @@
           <ProjectCard
             {project}
             on:edit={(e) => openEdit(e.detail)}
+            on:archive={(e) => onArchive(e.detail)}
             on:delete={(e) => openDelete(e.detail)}
           />
         {/each}
@@ -566,7 +586,7 @@
       <div class="px-5 pt-5 pb-4">
         <h2 id="delete-project-title" class="text-base font-semibold">Delete project</h2>
         <p class="mt-1 text-xs" style="color: var(--text-secondary);">
-          "{deleteTarget.name}" will be permanently deleted. This cannot be undone.
+          "{deleteTarget.name}" will be moved to Deleted. You can restore it from there.
         </p>
       </div>
 
