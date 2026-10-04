@@ -28,9 +28,29 @@
     { label: "Home", href: "/", icon: "home", isActive: (p) => p === "/" },
     {
       label: "Design",
-      href: "/design",
+      href: "/design/new",
       icon: "design",
       isActive: (p) => p === "/design" || p.startsWith("/design/"),
+      children: [
+        {
+          label: "All",
+          href: "/design",
+          icon: "all",
+          isActive: (p) => p === "/design",
+        },
+        {
+          label: "Archive",
+          href: "/design/archive",
+          icon: "archive",
+          isActive: (p) => p === "/design/archive",
+        },
+        {
+          label: "Deleted",
+          href: "/design/deleted",
+          icon: "trash",
+          isActive: (p) => p === "/design/deleted",
+        },
+      ],
     },
     {
       label: "Projects",
