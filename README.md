@@ -14,7 +14,9 @@ Every provider (Anthropic, OpenAI, Google, OpenRouter, Supabase, Vercel) has a *
 1. **User key** — if the signed-in user has one configured for that provider, it's used.
 2. **Platform key** — otherwise, the server uses the `*_API_KEY` / `*_ACCESS_TOKEN` env var.
 
-Platform keys are **required**. The server fails to start if any of `ENCRYPTION_KEY`, `DATABASE_URL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENROUTER_API_KEY`, `SUPABASE_ACCESS_TOKEN`, or `VERCEL_API_TOKEN` is missing — see `apps/server/.env.example` and `services/envCheck.ts`.
+Infra env is **required**: `ENCRYPTION_KEY`, `DATABASE_URL`, `SUPABASE_ACCESS_TOKEN`, `VERCEL_API_TOKEN`. The server refuses to start if any is missing.
+
+Platform provider keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENROUTER_API_KEY`) are **optional** — set the ones you have. Any provider without a platform key just means users must bring their own key for that provider in Settings → Providers.
 
 User keys are encrypted at rest with `ENCRYPTION_KEY` (AES-256-GCM).
 
