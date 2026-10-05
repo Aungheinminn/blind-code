@@ -126,6 +126,12 @@ export type HistoryPart =
   | { kind: "text"; text: string }
   | { kind: "tool"; id: string; name: string; input: unknown; output?: unknown };
 
+export type HistoryUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
 export type HistoryMessage = {
   id: string;
   role: "user" | "agent";
@@ -133,6 +139,7 @@ export type HistoryMessage = {
   parts?: HistoryPart[];
   timestamp: string;
   interrupted?: boolean;
+  usage?: HistoryUsage;
 };
 
 export type HistoryPlanTodoStatus = "pending" | "active" | "done" | "skipped";

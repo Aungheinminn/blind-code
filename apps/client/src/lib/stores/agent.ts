@@ -207,6 +207,7 @@ export const loadHistory = async (projectId: string): Promise<void> => {
             parts: m.role === "agent" ? parts : undefined,
             timestamp: new Date(m.timestamp),
             ...(m.interrupted ? { interrupted: true } : {}),
+            ...(m.usage ? { usage: m.usage } : {}),
           };
         }),
       );
@@ -490,28 +491,28 @@ const handleEvent = (raw: unknown) => {
       }
       break;
     case "router-decision": {
-      const label =
-        event.tool === "plan_task"
-          ? "Planning"
-          : event.tool === "code_task"
-          ? "Coding"
-          : event.tool === "verify_task"
-          ? "Verifying"
-          : event.tool === "answer_question"
-          ? "Answering"
-          : "Routing";
-      const tone: ChipTone =
-        event.tool === "plan_task"
-          ? "planner"
-          : event.tool === "code_task"
-          ? "coder"
-          : event.tool === "verify_task"
-          ? "verifier"
-          : "router";
-      appendChip(label, tone);
-      if (event.tool === "plan_task") {
-        activePlan.set(null);
-        todoStatuses.set({});
+      // Verify phase skips a header chip because tool rows already show
+      // live spinners while the verifier reads files.
+      if (event.tool !== "verify_task") {
+        const label =
+          event.tool === "plan_task"
+            ? "Planning"
+            : event.tool === "code_task"
+            ? "Coding"
+            : event.tool === "answer_question"
+            ? "Answering"
+            : "Routing";
+        const tone: ChipTone =
+          event.tool === "plan_task"
+            ? "planner"
+            : event.tool === "code_task"
+            ? "coder"
+            : "router";
+        appendChip(label, tone);
+        if (event.tool === "plan_task") {
+          activePlan.set(null);
+          todoStatuses.set({});
+        }
       }
       break;
     }
