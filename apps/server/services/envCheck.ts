@@ -1,19 +1,13 @@
-// Required platform env vars. The product posture is that Blind Code's
-// defaults are always available, so these must be set at startup. Users layer
-// their own keys on top via Settings — never as the sole source.
+// Infrastructure vars the server can't run without. Platform provider keys
+// (ANTHROPIC_API_KEY, OPENAI_API_KEY, …) are intentionally NOT in here — any
+// provider without a platform key just means users must bring their own key
+// for that provider via Settings.
 const REQUIRED_ENV: ReadonlyArray<{ name: string; help: string }> = [
   {
     name: "ENCRYPTION_KEY",
     help: "32 bytes base64. Generate: openssl rand -base64 32",
   },
   { name: "DATABASE_URL", help: "postgres://user:pass@host:5432/db" },
-  { name: "ANTHROPIC_API_KEY", help: "https://console.anthropic.com/" },
-  { name: "OPENAI_API_KEY", help: "https://platform.openai.com/api-keys" },
-  {
-    name: "GOOGLE_GENERATIVE_AI_API_KEY",
-    help: "https://aistudio.google.com/apikey",
-  },
-  { name: "OPENROUTER_API_KEY", help: "https://openrouter.ai/keys" },
   {
     name: "SUPABASE_ACCESS_TOKEN",
     help: "Blind Code org PAT: https://supabase.com/dashboard/account/tokens",
@@ -24,17 +18,33 @@ const REQUIRED_ENV: ReadonlyArray<{ name: string; help: string }> = [
   },
 ];
 
+const PROVIDER_ENV: ReadonlyArray<string> = [
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
+  "OPENROUTER_API_KEY",
+];
+
 export const assertRequiredEnv = (): void => {
   const missing = REQUIRED_ENV.filter(({ name }) => !process.env[name]?.trim());
-  if (missing.length === 0) return;
-
-  console.error("\n[env] Missing required environment variables:\n");
-  for (const { name, help } of missing) {
-    console.error(`  - ${name}`);
-    console.error(`      ${help}`);
+  if (missing.length > 0) {
+    console.error("\n[env] Missing required environment variables:\n");
+    for (const { name, help } of missing) {
+      console.error(`  - ${name}`);
+      console.error(`      ${help}`);
+    }
+    console.error("\nSee apps/server/.env.example.\n");
+    process.exit(1);
   }
-  console.error(
-    "\nSee apps/server/.env.example. Platform keys are the default; users layer their own on top in Settings.\n",
-  );
-  process.exit(1);
+
+  const providersMissing = PROVIDER_ENV.filter((name) => !process.env[name]?.trim());
+  if (providersMissing.length === PROVIDER_ENV.length) {
+    console.warn(
+      "\n[env] No platform provider keys set. Users must bring their own key in Settings → Providers for any provider they want to use.\n",
+    );
+  } else if (providersMissing.length > 0) {
+    console.warn(
+      `[env] No platform key for: ${providersMissing.join(", ")} — users must bring their own for those providers.`,
+    );
+  }
 };
