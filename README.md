@@ -7,15 +7,16 @@ bun install
 bun run dev           # client + server
 ```
 
-## API keys & platform fallback
+## API keys & platform defaults
 
-Every provider (Anthropic, OpenAI, Google, OpenRouter, Supabase, Vercel) supports two sources: a **user key** that lives in the database (Settings → …) and a **platform key** that lives in the server env. The server resolves them in this order:
+Every provider (Anthropic, OpenAI, Google, OpenRouter, Supabase, Vercel) has a **platform key** that lives in the server env and is always available to signed-in users. On top of that, each user can configure their **own key** in Settings → … to override the platform key. The server resolves them in this order:
 
 1. **User key** — if the signed-in user has one configured for that provider, it's used.
-2. **Platform key** — otherwise, the server falls back to the `*_API_KEY` / `*_ACCESS_TOKEN` env var.
-3. **Nothing** — the agent errors with a message that tells the user where to add a key.
+2. **Platform key** — otherwise, the server uses the `*_API_KEY` / `*_ACCESS_TOKEN` env var.
 
-See `apps/server/.env.example` for the full list of env vars. User keys are encrypted at rest with `ENCRYPTION_KEY` (AES-256-GCM).
+Platform keys are **required**. The server fails to start if any of `ENCRYPTION_KEY`, `DATABASE_URL`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENROUTER_API_KEY`, `SUPABASE_ACCESS_TOKEN`, or `VERCEL_API_TOKEN` is missing — see `apps/server/.env.example` and `services/envCheck.ts`.
+
+User keys are encrypted at rest with `ENCRYPTION_KEY` (AES-256-GCM).
 
 ### Per-prompt override
 
