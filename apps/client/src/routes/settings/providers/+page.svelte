@@ -110,7 +110,7 @@
               </span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              {#if p.configured && p.source === "file"}
+              {#if p.configured && p.source === "user"}
                 <button
                   class="px-2.5 py-1.5 text-xs rounded-md border cursor-pointer"
                   style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"

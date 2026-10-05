@@ -45,7 +45,7 @@ export type ProviderInfo = {
   name: string;
   defaultModel: string;
   configured: boolean;
-  source?: "file" | "env" | null;
+  source?: "user" | "env" | null;
   last4?: string | null;
 };
 

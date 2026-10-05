@@ -81,6 +81,7 @@ export type GenerateTitleOptions = {
   prompt: string;
   provider: string;
   model?: string;
+  userId?: string | null;
   timeoutMs?: number;
   signal?: AbortSignal;
 };
@@ -105,7 +106,7 @@ export const generateProjectTitle = async (
   const fallbackDescription = heuristicFallback(prompt).description;
 
   try {
-    const model = await resolveModel(opts.provider, opts.model);
+    const model = await resolveModel(opts.provider, opts.model, opts.userId ?? null);
 
     try {
       const result = await generateObject({

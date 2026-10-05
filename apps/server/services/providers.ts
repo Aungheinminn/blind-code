@@ -13,7 +13,8 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { getStoredKey, last4 } from "./authStore";
+import { getUserProviderKey } from "../db/repo";
+import type { UserProviderKeys } from "@vibe/shared";
 
 const thinkTagMiddleware = extractReasoningMiddleware({ tagName: "think" });
 
@@ -35,7 +36,7 @@ const wrapIfThinkTag = (
     ? wrapLanguageModel({ model, middleware: thinkTagMiddleware })
     : model;
 
-export type ProviderName = "anthropic" | "openai" | "google" | "openrouter";
+export type ProviderName = keyof UserProviderKeys;
 
 type ProviderEntry = {
   envVar: string;
@@ -67,11 +68,12 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
   },
 };
 
-export type ProviderKeySource = "file" | "env" | null;
+export type ProviderKeySource = "user" | "env" | null;
 
 export type ResolvedKey = {
   apiKey: string;
   source: Exclude<ProviderKeySource, null>;
+  last4: string;
 };
 
 const envValue = (envVar: string): string | null => {
@@ -80,26 +82,36 @@ const envValue = (envVar: string): string | null => {
   return trimmed ? trimmed : null;
 };
 
-export const resolveKey = async (provider: string): Promise<ResolvedKey | null> => {
+export const resolveKey = async (
+  provider: string,
+  userId?: string | null,
+): Promise<ResolvedKey | null> => {
   const entry = PROVIDERS[provider as ProviderName];
   if (!entry) return null;
-  const fromFile = await getStoredKey(provider);
-  if (fromFile) return { apiKey: fromFile, source: "file" };
+  if (userId) {
+    const stored = await getUserProviderKey(userId, provider as ProviderName);
+    if (stored?.apiKey) {
+      return { apiKey: stored.apiKey, source: "user", last4: stored.last4 };
+    }
+  }
   const fromEnv = envValue(entry.envVar);
-  if (fromEnv) return { apiKey: fromEnv, source: "env" };
+  if (fromEnv) {
+    return { apiKey: fromEnv, source: "env", last4: fromEnv.slice(-4) };
+  }
   return null;
 };
 
 export const resolveModel = async (
   provider: string,
   modelId?: string,
+  userId?: string | null,
 ): Promise<LanguageModel> => {
   const entry = PROVIDERS[provider as ProviderName];
   if (!entry) throw new Error(`Unknown provider: ${provider}`);
-  const key = await resolveKey(provider);
+  const key = await resolveKey(provider, userId);
   if (!key) {
     throw new Error(
-      `No API key for provider ${provider}. Set one in /connect or export ${entry.envVar}.`,
+      `No API key for provider ${provider}. Set one in Settings → Providers or export ${entry.envVar}.`,
     );
   }
   return entry.build(modelId?.trim() || entry.defaultModel, key.apiKey);
@@ -150,17 +162,19 @@ export const getReasoningProviderOptions = (
   }
 };
 
-export const listAvailableProviders = async (): Promise<ProviderStatus[]> => {
+export const listAvailableProviders = async (
+  userId?: string | null,
+): Promise<ProviderStatus[]> => {
   const entries = Object.entries(PROVIDERS) as Array<[ProviderName, ProviderEntry]>;
   return Promise.all(
     entries.map(async ([name, entry]) => {
-      const key = await resolveKey(name);
+      const key = await resolveKey(name, userId);
       return {
         name,
         defaultModel: entry.defaultModel,
         configured: Boolean(key),
         source: key?.source ?? null,
-        last4: key ? last4(key.apiKey) : null,
+        last4: key?.last4 ?? null,
       };
     }),
   );

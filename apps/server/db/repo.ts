@@ -3,36 +3,73 @@ import { db, hasDb, schema } from "./client";
 import type {
   AgentToolPermissions,
   ProjectIntegrations,
+  ProviderKey,
   SupabaseAccountIntegration,
   SupabaseIntegration,
   UserIntegrations,
+  UserProviderKeys,
 } from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
 import { encrypt, decryptMaybe } from "../services/crypto";
 
+const encryptProviderKeys = (
+  providers: UserProviderKeys | undefined,
+): UserProviderKeys | undefined => {
+  if (!providers) return providers;
+  const out: UserProviderKeys = {};
+  for (const [name, blob] of Object.entries(providers) as Array<
+    [keyof UserProviderKeys, ProviderKey | undefined]
+  >) {
+    if (!blob) continue;
+    out[name] = { ...blob, apiKey: encrypt(blob.apiKey) };
+  }
+  return out;
+};
+
+const decryptProviderKeys = (
+  providers: UserProviderKeys | undefined,
+): UserProviderKeys | undefined => {
+  if (!providers) return providers;
+  const out: UserProviderKeys = {};
+  for (const [name, blob] of Object.entries(providers) as Array<
+    [keyof UserProviderKeys, ProviderKey | undefined]
+  >) {
+    if (!blob) continue;
+    const plain = decryptMaybe(blob.apiKey);
+    out[name] = { ...blob, apiKey: plain ?? "" };
+  }
+  return out;
+};
+
 const encryptUserIntegrations = (
   integrations: UserIntegrations,
 ): UserIntegrations => {
-  if (!integrations.supabase) return integrations;
-  return {
-    ...integrations,
-    supabase: {
+  const out: UserIntegrations = { ...integrations };
+  if (integrations.supabase) {
+    out.supabase = {
       ...integrations.supabase,
       accessToken: encrypt(integrations.supabase.accessToken),
-    },
-  };
+    };
+  }
+  if (integrations.providers) {
+    out.providers = encryptProviderKeys(integrations.providers);
+  }
+  return out;
 };
 
 const decryptUserIntegrations = (
   integrations: UserIntegrations | null | undefined,
 ): UserIntegrations | null => {
   if (!integrations) return null;
-  if (!integrations.supabase) return integrations;
-  const at = decryptMaybe(integrations.supabase.accessToken);
-  return {
-    ...integrations,
-    supabase: { ...integrations.supabase, accessToken: at ?? "" },
-  };
+  const out: UserIntegrations = { ...integrations };
+  if (integrations.supabase) {
+    const at = decryptMaybe(integrations.supabase.accessToken);
+    out.supabase = { ...integrations.supabase, accessToken: at ?? "" };
+  }
+  if (integrations.providers) {
+    out.providers = decryptProviderKeys(integrations.providers);
+  }
+  return out;
 };
 
 const decryptUserRow = <T extends { integrations?: UserIntegrations | null }>(
@@ -273,6 +310,63 @@ export const clearUserSupabaseIntegration = async (userId: string) => {
     .where(eq(schema.users.id, userId))
     .returning();
   return decryptUserRow(updated ?? null);
+};
+
+export const getUserProviderKey = async (
+  userId: string,
+  provider: keyof UserProviderKeys,
+): Promise<ProviderKey | null> => {
+  const user = await getUserById(userId);
+  return user?.integrations?.providers?.[provider] ?? null;
+};
+
+export const setUserProviderKey = async (
+  userId: string,
+  provider: keyof UserProviderKeys,
+  apiKey: string,
+): Promise<boolean> => {
+  if (!db) return false;
+  const trimmed = apiKey.trim();
+  if (!trimmed) throw new Error("apiKey must be non-empty");
+  const existing = await getUserById(userId);
+  if (!existing) return false;
+  const current = existing.integrations ?? {};
+  const providers: UserProviderKeys = { ...(current.providers ?? {}) };
+  providers[provider] = {
+    apiKey: trimmed,
+    last4: trimmed.slice(-4),
+    updatedAt: new Date().toISOString(),
+  };
+  const merged: UserIntegrations = { ...current, providers };
+  await db
+    .update(schema.users)
+    .set({ integrations: encryptUserIntegrations(merged), updatedAt: new Date() })
+    .where(eq(schema.users.id, userId));
+  return true;
+};
+
+export const removeUserProviderKey = async (
+  userId: string,
+  provider: keyof UserProviderKeys,
+): Promise<boolean> => {
+  if (!db) return false;
+  const existing = await getUserById(userId);
+  if (!existing?.integrations?.providers?.[provider]) return false;
+  const current = existing.integrations;
+  const { [provider]: _drop, ...restProviders } = current.providers ?? {};
+  const nextProviders = Object.keys(restProviders).length ? restProviders : undefined;
+  const nextIntegrations: UserIntegrations = { ...current };
+  if (nextProviders) nextIntegrations.providers = nextProviders;
+  else delete nextIntegrations.providers;
+  const isEmpty = Object.keys(nextIntegrations).length === 0;
+  await db
+    .update(schema.users)
+    .set({
+      integrations: isEmpty ? null : encryptUserIntegrations(nextIntegrations),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.users.id, userId));
+  return true;
 };
 
 export const ensureProject = async (

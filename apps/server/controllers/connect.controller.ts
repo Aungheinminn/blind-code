@@ -6,7 +6,7 @@ import {
   PROVIDERS,
   type ProviderName,
 } from "../services/providers";
-import { removeStoredKey, setStoredKey } from "../services/authStore";
+import { removeUserProviderKey, setUserProviderKey } from "../db/repo";
 
 const providerParam = z.enum(
   Object.keys(PROVIDERS) as [ProviderName, ...ProviderName[]],
@@ -36,7 +36,7 @@ export const connectController = (app: Elysia) =>
     .get("/connect", async ({ request, set }) => {
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
-      const providers = await listAvailableProviders();
+      const providers = await listAvailableProviders(user.id);
       return { data: { providers } };
     })
     .put("/connect/:provider/key", async ({ params, body, request, set }) => {
@@ -48,7 +48,7 @@ export const connectController = (app: Elysia) =>
       if (!parsed.success) {
         return badRequest(set, parsed.error.issues[0]?.message ?? "invalid input");
       }
-      await setStoredKey(p.data, parsed.data.apiKey);
+      await setUserProviderKey(user.id, p.data, parsed.data.apiKey);
       return { data: { provider: p.data, saved: true } };
     })
     .delete("/connect/:provider/key", async ({ params, request, set }) => {
@@ -56,6 +56,6 @@ export const connectController = (app: Elysia) =>
       if (!user) return unauthorized(set);
       const p = providerParam.safeParse(params.provider);
       if (!p.success) return notFound(set);
-      const removed = await removeStoredKey(p.data);
+      const removed = await removeUserProviderKey(user.id, p.data);
       return { data: { provider: p.data, removed } };
     });

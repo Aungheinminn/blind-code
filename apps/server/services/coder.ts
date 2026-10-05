@@ -117,7 +117,11 @@ Workflow:
 Tools available: list_files, read_file, write_file, delete_file, update_todo. Do not use run_command.`;
 
 export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(
+    opts.provider,
+    opts.model,
+    opts.toolContext.ownerId ?? null,
+  );
   const tools = buildCoderTools(opts.toolContext);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 

@@ -5,8 +5,22 @@ export type SupabaseAccountIntegration = {
   connectedAt: string;
 };
 
+export type ProviderKey = {
+  apiKey: string;
+  last4: string;
+  updatedAt: string;
+};
+
+export type UserProviderKeys = {
+  anthropic?: ProviderKey;
+  openai?: ProviderKey;
+  google?: ProviderKey;
+  openrouter?: ProviderKey;
+};
+
 export type UserIntegrations = {
   supabase?: SupabaseAccountIntegration;
+  providers?: UserProviderKeys;
 };
 
 export type PublicSupabaseAccountIntegration = {

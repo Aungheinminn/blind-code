@@ -372,7 +372,7 @@ export const projectController = (app: Elysia) =>
       }
       const { title, description } = presetName
         ? { title: presetName, description: presetDescription }
-        : await generateProjectTitle({ prompt, provider, model });
+        : await generateProjectTitle({ prompt, provider, model, userId: user.id });
       try {
         const project = await createProject(title, user.id, { description });
         return { data: { ...project, name: title, description, title } };

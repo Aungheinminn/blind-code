@@ -178,7 +178,8 @@ const buildPlanAppendix = (
 };
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const userId = opts.toolContext.ownerId ?? null;
+  const model = await resolveModel(opts.provider, opts.model, userId);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
   // Leaf tools from tools.ts — file/DB/HTTP operations that only need ToolContext.

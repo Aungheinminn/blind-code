@@ -77,7 +77,11 @@ const buildCarryForwardAppendix = (unfinished: Plan): string => {
 };
 
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(
+    opts.provider,
+    opts.model,
+    opts.toolContext.ownerId ?? null,
+  );
   const tools = buildReadOnlyTools(opts.toolContext);
 
   const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;

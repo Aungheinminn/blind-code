@@ -46,7 +46,11 @@ What does NOT count as an issue (do not report these):
 Be terse. Each issue should be one line, actionable, and reference a file path.`;
 
 export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResult> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(
+    opts.provider,
+    opts.model,
+    opts.toolContext.ownerId ?? null,
+  );
   const tools = buildReadOnlyTools(opts.toolContext);
 
   const messages: ModelMessage[] = [
