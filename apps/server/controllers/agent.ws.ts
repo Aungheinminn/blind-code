@@ -12,6 +12,7 @@ import { providerForModel } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
+import { resolveSupabasePAT } from "../services/supabasePAT";
 import {
   createAgentSession,
   endAgentSession,
@@ -21,7 +22,6 @@ import {
   getLatestPlanForProject,
   listProjectFiles,
   getProjectForOwner,
-  getUserById,
   getActiveDesignTemplateForProject,
   hasDb,
 } from "../db/repo";
@@ -157,12 +157,9 @@ export const agentController = (app: Elysia) =>
         await hydrateSandbox(msg.projectId, dbProjectId);
 
         const projectRow = projectRecord;
-        const [userRow, activeTemplate] = await Promise.all([
-          getUserById(userId),
-          dbProjectId
-            ? getActiveDesignTemplateForProject(dbProjectId, userId)
-            : Promise.resolve(null),
-        ]);
+        const activeTemplate = dbProjectId
+          ? await getActiveDesignTemplateForProject(dbProjectId, userId)
+          : null;
         const templateName = activeTemplate?.name ?? null;
         const templateBody = activeTemplate?.content
           ? sanitizeTemplateBody(matter(activeTemplate.content).content)
@@ -171,7 +168,8 @@ export const agentController = (app: Elysia) =>
         const supabaseConnected = Boolean(supabase);
         const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
         const supabaseProjectRef = supabase?.projectRef ?? null;
-        const supabasePat = userRow?.integrations?.supabase?.accessToken ?? null;
+        const resolvedPat = await resolveSupabasePAT(userId);
+        const supabasePat = resolvedPat?.pat ?? null;
         const supabaseCanRunSqlViaMgmt = Boolean(supabasePat && supabaseProjectRef);
         const supabaseCanRunSql =
           supabaseCanRunSqlViaMgmt || Boolean(supabaseDatabaseUrl);

@@ -15,6 +15,7 @@ import {
   validatePat,
   SupabaseManagementError,
 } from "../services/supabaseManagement";
+import { platformSupabasePatAvailable } from "../services/supabasePAT";
 import { toPublicUserIntegrations } from "@vibe/shared";
 
 const unauthorized = (set: { status?: number | string }) => {
@@ -39,7 +40,13 @@ export const accountController = (app: Elysia) =>
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
       const row = await getUserById(user.id);
-      return { data: toPublicUserIntegrations(row?.integrations) };
+      const pub = toPublicUserIntegrations(row?.integrations) ?? {};
+      return {
+        data: {
+          ...pub,
+          supabaseFallbackAvailable: platformSupabasePatAvailable(),
+        },
+      };
     })
     .put("/account/integrations/supabase", async ({ body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

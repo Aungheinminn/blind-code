@@ -8,6 +8,10 @@ export type PublicUserIntegrations = {
   supabase?: PublicSupabaseAccountIntegration;
 };
 
+export type AccountIntegrationsResponse = PublicUserIntegrations & {
+  supabaseFallbackAvailable: boolean;
+};
+
 export type SupabaseAccountProject = {
   id: string;
   organization_id: string;
@@ -18,7 +22,7 @@ export type SupabaseAccountProject = {
 };
 
 export const getAccountIntegrations = () =>
-  fetchJson<PublicUserIntegrations | null>("/account/integrations");
+  fetchJson<AccountIntegrationsResponse | null>("/account/integrations");
 
 export const connectSupabaseAccount = (accessToken: string) =>
   fetchJson<PublicUserIntegrations | null>("/account/integrations/supabase", {
