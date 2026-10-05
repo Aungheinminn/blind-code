@@ -1,7 +1,7 @@
 import { streamText, stepCountIs, tool, type ModelMessage } from "ai";
 import { z } from "zod";
 import type { AgentToolPermissions } from "@vibe/shared";
-import { getReasoningProviderOptions, resolveModel } from "./providers";
+import { getReasoningProviderOptions, resolveModel, type KeyPreference } from "./providers";
 import { buildCoderTools, type ToolContext } from "./tools";
 import { runPlanner, type Plan } from "./planner";
 import { runVerifier, type VerifyResult } from "./verifier";
@@ -70,6 +70,7 @@ export type RunAgentOptions = {
   agentToolPermissions?: AgentToolPermissions;
   designTemplateName?: string | null;
   designTemplateBody?: string | null;
+  keyPreference?: KeyPreference;
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
 };
@@ -179,7 +180,8 @@ const buildPlanAppendix = (
 
 export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const userId = opts.toolContext.ownerId ?? null;
-  const model = await resolveModel(opts.provider, opts.model, userId);
+  const preference = opts.keyPreference ?? "auto";
+  const model = await resolveModel(opts.provider, opts.model, userId, preference);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
   // Leaf tools from tools.ts — file/DB/HTTP operations that only need ToolContext.
@@ -222,6 +224,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             history: opts.history,
             supabaseConnected: opts.supabaseConnected,
             userSupabasePatConnected: opts.userSupabasePatConnected,
+            keyPreference: preference,
             signal: opts.signal,
             existingUnfinished,
           });
@@ -303,6 +306,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             model: opts.model,
             toolContext: opts.toolContext,
             whatWasBuilt: what_was_built,
+            keyPreference: preference,
             signal: opts.signal,
           });
           emit(opts.onEvent, { type: "verify-result", result });

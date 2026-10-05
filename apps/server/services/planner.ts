@@ -1,6 +1,6 @@
 import { generateText, Output, stepCountIs, type ModelMessage } from "ai";
 import { z } from "zod";
-import { resolveModel } from "./providers";
+import { resolveModel, type KeyPreference } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 import type { CoderChatMessage } from "./coder";
 import {
@@ -37,6 +37,7 @@ export type RunPlannerOptions = {
   systemPrompt?: string;
   supabaseConnected?: boolean;
   userSupabasePatConnected?: boolean;
+  keyPreference?: KeyPreference;
   signal?: AbortSignal;
   existingUnfinished?: Plan | null;
 };
@@ -81,6 +82,7 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
     opts.provider,
     opts.model,
     opts.toolContext.ownerId ?? null,
+    opts.keyPreference ?? "auto",
   );
   const tools = buildReadOnlyTools(opts.toolContext);
 

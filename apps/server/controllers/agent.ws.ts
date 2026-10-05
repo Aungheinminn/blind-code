@@ -40,6 +40,7 @@ type AgentIncoming =
       prompt: string;
       history?: CoderChatMessage[];
       persistPrompt?: boolean;
+      keyPreference?: "auto" | "user" | "platform";
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
@@ -461,6 +462,7 @@ export const agentController = (app: Elysia) =>
             agentToolPermissions: resolvedPerms,
             designTemplateName: templateName,
             designTemplateBody: templateBody,
+            keyPreference: msg.keyPreference ?? "auto",
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,

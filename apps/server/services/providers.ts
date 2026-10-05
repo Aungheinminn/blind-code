@@ -70,6 +70,8 @@ export const PROVIDERS: Record<ProviderName, ProviderEntry> = {
 
 export type ProviderKeySource = "user" | "env" | null;
 
+export type KeyPreference = "auto" | "user" | "platform";
+
 export type ResolvedKey = {
   apiKey: string;
   source: Exclude<ProviderKeySource, null>;
@@ -85,14 +87,16 @@ const envValue = (envVar: string): string | null => {
 export const resolveKey = async (
   provider: string,
   userId?: string | null,
+  preference: KeyPreference = "auto",
 ): Promise<ResolvedKey | null> => {
   const entry = PROVIDERS[provider as ProviderName];
   if (!entry) return null;
-  if (userId) {
+  if (userId && preference !== "platform") {
     const stored = await getUserProviderKey(userId, provider as ProviderName);
     if (stored?.apiKey) {
       return { apiKey: stored.apiKey, source: "user", last4: stored.last4 };
     }
+    if (preference === "user") return null;
   }
   const fromEnv = envValue(entry.envVar);
   if (fromEnv) {
@@ -105,14 +109,19 @@ export const resolveModel = async (
   provider: string,
   modelId?: string,
   userId?: string | null,
+  preference: KeyPreference = "auto",
 ): Promise<LanguageModel> => {
   const entry = PROVIDERS[provider as ProviderName];
   if (!entry) throw new Error(`Unknown provider: ${provider}`);
-  const key = await resolveKey(provider, userId);
+  const key = await resolveKey(provider, userId, preference);
   if (!key) {
-    throw new Error(
-      `No API key for provider ${provider}. Set one in Settings → Providers or export ${entry.envVar}.`,
-    );
+    const detail =
+      preference === "user"
+        ? `No user key for ${provider}. Add one in Settings → Providers, or switch the composer toggle to Auto to fall back to the platform default.`
+        : preference === "platform"
+          ? `No platform key for ${provider}. Set ${entry.envVar} on the server, or switch the composer toggle to Auto to use your own key.`
+          : `No API key for provider ${provider}. Set one in Settings → Providers or export ${entry.envVar}.`;
+    throw new Error(detail);
   }
   return entry.build(modelId?.trim() || entry.defaultModel, key.apiKey);
 };

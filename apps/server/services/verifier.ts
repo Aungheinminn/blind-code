@@ -1,6 +1,6 @@
 import { generateText, Output, stepCountIs, type ModelMessage } from "ai";
 import { z } from "zod";
-import { resolveModel } from "./providers";
+import { resolveModel, type KeyPreference } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 
 export const verifyResultSchema = z.object({
@@ -21,6 +21,7 @@ export type RunVerifierOptions = {
   model?: string;
   toolContext: ToolContext;
   whatWasBuilt: string;
+  keyPreference?: KeyPreference;
   signal?: AbortSignal;
 };
 
@@ -50,6 +51,7 @@ export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResul
     opts.provider,
     opts.model,
     opts.toolContext.ownerId ?? null,
+    opts.keyPreference ?? "auto",
   );
   const tools = buildReadOnlyTools(opts.toolContext);
 

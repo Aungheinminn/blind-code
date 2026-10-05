@@ -78,7 +78,10 @@ export const messages = writable<AgentMessage[]>([
 export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
 
+export type KeyPreference = "auto" | "user" | "platform";
+
 const MODEL_KEY = "vibe-selected-model";
+const KEY_PREF_KEY = "vibe-key-preference";
 
 const readStored = (key: string, fallback: string): string => {
   if (typeof localStorage === "undefined") return fallback;
@@ -109,6 +112,15 @@ export const selectedModel = writable<string>(
 );
 
 selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
+
+const validateKeyPreference = (v: string): KeyPreference =>
+  v === "user" || v === "platform" ? v : "auto";
+
+export const keyPreference = writable<KeyPreference>(
+  validateKeyPreference(readStored(KEY_PREF_KEY, "auto")),
+);
+
+keyPreference.subscribe((v) => writeStored(KEY_PREF_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
 export const projectIntegration = writable<PublicSupabaseIntegration | null>(null);
@@ -683,6 +695,7 @@ export const sendPrompt = async (
         history,
         mode: "router",
         persistPrompt: !opts.skipUserAppend,
+        keyPreference: get(keyPreference),
       }),
     );
   } catch (e) {
