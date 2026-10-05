@@ -6,6 +6,8 @@ import {
   setUserSupabaseIntegration,
   clearUserSupabaseIntegration,
   clearSupabaseIntegrationsByRefForOwner,
+  setUserVercelIntegration,
+  clearUserVercelIntegration,
 } from "../db/repo";
 import {
   listSupabaseProjects,
@@ -15,6 +17,9 @@ import {
   validatePat,
   SupabaseManagementError,
 } from "../services/supabaseManagement";
+import { platformSupabasePatAvailable } from "../services/supabasePAT";
+import { platformVercelTokenAvailable } from "../services/vercelToken";
+import { validateToken as validateVercelToken } from "../services/vercelManagement";
 import { toPublicUserIntegrations } from "@vibe/shared";
 
 const unauthorized = (set: { status?: number | string }) => {
@@ -39,7 +44,14 @@ export const accountController = (app: Elysia) =>
       const user = await getUserFromRequest(request);
       if (!user) return unauthorized(set);
       const row = await getUserById(user.id);
-      return { data: toPublicUserIntegrations(row?.integrations) };
+      const pub = toPublicUserIntegrations(row?.integrations) ?? {};
+      return {
+        data: {
+          ...pub,
+          supabaseFallbackAvailable: platformSupabasePatAvailable(),
+          vercelFallbackAvailable: platformVercelTokenAvailable(),
+        },
+      };
     })
     .put("/account/integrations/supabase", async ({ body, request, set }) => {
       if (!hasDb) return dbUnavailable(set);
@@ -173,6 +185,43 @@ export const accountController = (app: Elysia) =>
         return { data: { ref, deleted: true, detachedBcProjects: detached } };
       },
     )
+    .put("/account/integrations/vercel", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      const apiToken = typeof b.apiToken === "string" ? b.apiToken.trim() : "";
+      if (!apiToken) {
+        set.status = 400;
+        return { error: "apiToken required" };
+      }
+      const ok = await validateVercelToken(apiToken);
+      if (!ok) {
+        set.status = 400;
+        return { error: "Vercel API token was rejected" };
+      }
+      const updated = await setUserVercelIntegration(user.id, {
+        apiToken,
+        last4: apiToken.slice(-4),
+        connectedAt: new Date().toISOString(),
+      });
+      if (!updated) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      return { data: toPublicUserIntegrations(updated.integrations) };
+    })
+    .delete("/account/integrations/vercel", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const updated = await clearUserVercelIntegration(user.id);
+      if (!updated) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      return { data: toPublicUserIntegrations(updated.integrations) };
+    })
     .get("/account/integrations/supabase/organizations", async ({ request, set }) => {
       if (!hasDb) return dbUnavailable(set);
       const user = await getUserFromRequest(request);

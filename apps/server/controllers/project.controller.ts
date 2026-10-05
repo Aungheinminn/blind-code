@@ -50,6 +50,7 @@ import {
   VercelManagementError,
   waitForDeploymentReady,
 } from "../services/vercelManagement";
+import { resolveVercelToken } from "../services/vercelToken";
 import { assembleVercelProject } from "../services/vercelAssembler";
 import {
   clearVercelIntegrationForOwner,
@@ -145,21 +146,22 @@ const runVercelDeploy = async (args: {
     lastDeployedAt?: string;
   } | null;
   files: { file: string; data: string; encoding: "utf-8" | "base64" }[];
+  vercelToken: string | null;
 }) => {
-  const { projectDbId, ownerId, projectName, existingVercel, files } = args;
+  const { projectDbId, ownerId, projectName, existingVercel, files, vercelToken } = args;
   const startedAt = activeDeploys.get(projectDbId)?.startedAt ?? Date.now();
   try {
     let vercelProject = existingVercel?.projectId
-      ? await getVercelProjectById(existingVercel.projectId)
+      ? await getVercelProjectById(existingVercel.projectId, vercelToken)
       : null;
     if (!vercelProject) {
-      vercelProject = await getVercelProjectByName(projectName);
+      vercelProject = await getVercelProjectByName(projectName, vercelToken);
     }
     if (!vercelProject) {
-      vercelProject = await createVercelProject({
-        name: projectName,
-        framework: "vite",
-      });
+      vercelProject = await createVercelProject(
+        { name: projectName, framework: "vite" },
+        vercelToken,
+      );
     }
     const projectId = vercelProject.id;
 
@@ -171,13 +173,16 @@ const runVercelDeploy = async (args: {
       });
     }
 
-    const deployment = await createDeployment({
-      name: projectName,
-      project: projectName,
-      files,
-      target: "production",
-      framework: "vite",
-    });
+    const deployment = await createDeployment(
+      {
+        name: projectName,
+        project: projectName,
+        files,
+        target: "production",
+        framework: "vite",
+      },
+      vercelToken,
+    );
 
     activeDeploys.set(projectDbId, {
       status: "deploying",
@@ -186,7 +191,7 @@ const runVercelDeploy = async (args: {
       deploymentId: deployment.id,
     });
 
-    const ready = await waitForDeploymentReady(deployment.id);
+    const ready = await waitForDeploymentReady(deployment.id, { token: vercelToken });
     const deploymentUrl = ready.url
       ? `https://${ready.url}`
       : deployment.url
@@ -372,7 +377,7 @@ export const projectController = (app: Elysia) =>
       }
       const { title, description } = presetName
         ? { title: presetName, description: presetDescription }
-        : await generateProjectTitle({ prompt, provider, model });
+        : await generateProjectTitle({ prompt, provider, model, userId: user.id });
       try {
         const project = await createProject(title, user.id, { description });
         return { data: { ...project, name: title, description, title } };
@@ -653,10 +658,12 @@ export const projectController = (app: Elysia) =>
       let integration = project.integrations?.vercel ?? null;
 
       if (integration?.projectId) {
+        const resolved = await resolveVercelToken(user.id);
+        const vercelToken = resolved?.token ?? null;
         try {
-          let live = await getVercelProjectById(integration.projectId);
+          let live = await getVercelProjectById(integration.projectId, vercelToken);
           if (!live && integration.projectName) {
-            live = await getVercelProjectByName(integration.projectName);
+            live = await getVercelProjectByName(integration.projectName, vercelToken);
           }
           if (!live) {
             await clearVercelIntegrationForOwner(project.id, user.id);
@@ -742,12 +749,14 @@ export const projectController = (app: Elysia) =>
       };
       activeDeploys.set(project.id, initial);
 
+      const resolvedToken = await resolveVercelToken(user.id);
       runVercelDeploy({
         projectDbId: project.id,
         ownerId: user.id,
         projectName,
         existingVercel: existingVercel ?? null,
         files: vercelFiles,
+        vercelToken: resolvedToken?.token ?? null,
       }).catch(() => {});
 
       return { data: { active: initial } };

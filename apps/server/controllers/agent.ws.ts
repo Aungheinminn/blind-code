@@ -12,6 +12,7 @@ import { providerForModel } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
+import { resolveSupabasePAT } from "../services/supabasePAT";
 import {
   createAgentSession,
   endAgentSession,
@@ -21,7 +22,6 @@ import {
   getLatestPlanForProject,
   listProjectFiles,
   getProjectForOwner,
-  getUserById,
   getActiveDesignTemplateForProject,
   hasDb,
 } from "../db/repo";
@@ -40,6 +40,7 @@ type AgentIncoming =
       prompt: string;
       history?: CoderChatMessage[];
       persistPrompt?: boolean;
+      keyPreference?: "auto" | "user" | "platform";
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
@@ -60,7 +61,14 @@ const hydrateSandbox = async (sandboxProjectId: string, dbProjectId: string | nu
 
 export const agentController = (app: Elysia) =>
   app
-    .get("/agent/providers", async () => ({ data: await listAvailableProviders() }))
+    .get("/agent/providers", async ({ request, set }) => {
+      const user = await getUserFromRequest(request);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      return { data: await listAvailableProviders(user.id) };
+    })
     .ws("/ws/agent", {
       open: async (ws) => {
         const data = ws.data as any;
@@ -150,12 +158,9 @@ export const agentController = (app: Elysia) =>
         await hydrateSandbox(msg.projectId, dbProjectId);
 
         const projectRow = projectRecord;
-        const [userRow, activeTemplate] = await Promise.all([
-          getUserById(userId),
-          dbProjectId
-            ? getActiveDesignTemplateForProject(dbProjectId, userId)
-            : Promise.resolve(null),
-        ]);
+        const activeTemplate = dbProjectId
+          ? await getActiveDesignTemplateForProject(dbProjectId, userId)
+          : null;
         const templateName = activeTemplate?.name ?? null;
         const templateBody = activeTemplate?.content
           ? sanitizeTemplateBody(matter(activeTemplate.content).content)
@@ -164,7 +169,8 @@ export const agentController = (app: Elysia) =>
         const supabaseConnected = Boolean(supabase);
         const supabaseDatabaseUrl = supabase?.databaseUrl ?? null;
         const supabaseProjectRef = supabase?.projectRef ?? null;
-        const supabasePat = userRow?.integrations?.supabase?.accessToken ?? null;
+        const resolvedPat = await resolveSupabasePAT(userId);
+        const supabasePat = resolvedPat?.pat ?? null;
         const supabaseCanRunSqlViaMgmt = Boolean(supabasePat && supabaseProjectRef);
         const supabaseCanRunSql =
           supabaseCanRunSqlViaMgmt || Boolean(supabaseDatabaseUrl);
@@ -456,6 +462,7 @@ export const agentController = (app: Elysia) =>
             agentToolPermissions: resolvedPerms,
             designTemplateName: templateName,
             designTemplateBody: templateBody,
+            keyPreference: msg.keyPreference ?? "auto",
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,

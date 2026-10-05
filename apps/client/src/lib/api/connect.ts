@@ -1,6 +1,6 @@
 import { fetchJson } from "./http";
 
-export type ProviderKeySource = "file" | "env" | null;
+export type ProviderKeySource = "user" | "env" | null;
 
 export type ProviderStatus = {
   name: string;

@@ -45,7 +45,7 @@ export type ProviderInfo = {
   name: string;
   defaultModel: string;
   configured: boolean;
-  source?: "file" | "env" | null;
+  source?: "user" | "env" | null;
   last4?: string | null;
 };
 
@@ -78,7 +78,10 @@ export const messages = writable<AgentMessage[]>([
 export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
 
+export type KeyPreference = "auto" | "user" | "platform";
+
 const MODEL_KEY = "vibe-selected-model";
+const KEY_PREF_KEY = "vibe-key-preference";
 
 const readStored = (key: string, fallback: string): string => {
   if (typeof localStorage === "undefined") return fallback;
@@ -109,6 +112,15 @@ export const selectedModel = writable<string>(
 );
 
 selectedModel.subscribe((v) => writeStored(MODEL_KEY, v));
+
+const validateKeyPreference = (v: string): KeyPreference =>
+  v === "user" || v === "platform" ? v : "auto";
+
+export const keyPreference = writable<KeyPreference>(
+  validateKeyPreference(readStored(KEY_PREF_KEY, "auto")),
+);
+
+keyPreference.subscribe((v) => writeStored(KEY_PREF_KEY, v));
 
 export const projectFiles = writable<Record<string, string>>({});
 export const projectIntegration = writable<PublicSupabaseIntegration | null>(null);
@@ -207,6 +219,7 @@ export const loadHistory = async (projectId: string): Promise<void> => {
             parts: m.role === "agent" ? parts : undefined,
             timestamp: new Date(m.timestamp),
             ...(m.interrupted ? { interrupted: true } : {}),
+            ...(m.usage ? { usage: m.usage } : {}),
           };
         }),
       );
@@ -490,28 +503,28 @@ const handleEvent = (raw: unknown) => {
       }
       break;
     case "router-decision": {
-      const label =
-        event.tool === "plan_task"
-          ? "Planning"
-          : event.tool === "code_task"
-          ? "Coding"
-          : event.tool === "verify_task"
-          ? "Verifying"
-          : event.tool === "answer_question"
-          ? "Answering"
-          : "Routing";
-      const tone: ChipTone =
-        event.tool === "plan_task"
-          ? "planner"
-          : event.tool === "code_task"
-          ? "coder"
-          : event.tool === "verify_task"
-          ? "verifier"
-          : "router";
-      appendChip(label, tone);
-      if (event.tool === "plan_task") {
-        activePlan.set(null);
-        todoStatuses.set({});
+      // Verify phase skips a header chip because tool rows already show
+      // live spinners while the verifier reads files.
+      if (event.tool !== "verify_task") {
+        const label =
+          event.tool === "plan_task"
+            ? "Planning"
+            : event.tool === "code_task"
+            ? "Coding"
+            : event.tool === "answer_question"
+            ? "Answering"
+            : "Routing";
+        const tone: ChipTone =
+          event.tool === "plan_task"
+            ? "planner"
+            : event.tool === "code_task"
+            ? "coder"
+            : "router";
+        appendChip(label, tone);
+        if (event.tool === "plan_task") {
+          activePlan.set(null);
+          todoStatuses.set({});
+        }
       }
       break;
     }
@@ -682,6 +695,7 @@ export const sendPrompt = async (
         history,
         mode: "router",
         persistPrompt: !opts.skipUserAppend,
+        keyPreference: get(keyPreference),
       }),
     );
   } catch (e) {

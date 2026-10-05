@@ -68,9 +68,15 @@
   };
 
   const sourceLabel = (p: ProviderStatus): string => {
-    if (!p.configured) return "not connected";
-    if (p.source === "env") return `from env · ••••${p.last4 ?? ""}`;
-    return `••••${p.last4 ?? ""}`;
+    if (!p.configured) return "not configured";
+    if (p.source === "env") return `platform default · ••••${p.last4 ?? ""}`;
+    return `your key · ••••${p.last4 ?? ""}`;
+  };
+
+  const sourceDotColor = (p: ProviderStatus): string => {
+    if (!p.configured) return "var(--text-tertiary)";
+    if (p.source === "env") return "var(--accent)";
+    return "#22c55e";
   };
 </script>
 
@@ -105,12 +111,20 @@
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
               <span class="text-sm font-medium capitalize">{p.name}</span>
-              <span class="text-[11px]" style="color: var(--text-tertiary);">
+              <span
+                class="inline-flex items-center gap-1.5 text-[11px]"
+                style="color: var(--text-tertiary);"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full shrink-0"
+                  style="background-color: {sourceDotColor(p)};"
+                  aria-hidden="true"
+                ></span>
                 {sourceLabel(p)}
               </span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              {#if p.configured && p.source === "file"}
+              {#if p.configured && p.source === "user"}
                 <button
                   class="px-2.5 py-1.5 text-xs rounded-md border cursor-pointer"
                   style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"

@@ -4,8 +4,19 @@ export type PublicSupabaseAccountIntegration = {
   connectedAt: string;
 };
 
+export type PublicVercelAccountIntegration = {
+  last4: string;
+  connectedAt: string;
+};
+
 export type PublicUserIntegrations = {
   supabase?: PublicSupabaseAccountIntegration;
+  vercel?: PublicVercelAccountIntegration;
+};
+
+export type AccountIntegrationsResponse = PublicUserIntegrations & {
+  supabaseFallbackAvailable: boolean;
+  vercelFallbackAvailable: boolean;
 };
 
 export type SupabaseAccountProject = {
@@ -18,7 +29,7 @@ export type SupabaseAccountProject = {
 };
 
 export const getAccountIntegrations = () =>
-  fetchJson<PublicUserIntegrations | null>("/account/integrations");
+  fetchJson<AccountIntegrationsResponse | null>("/account/integrations");
 
 export const connectSupabaseAccount = (accessToken: string) =>
   fetchJson<PublicUserIntegrations | null>("/account/integrations/supabase", {
@@ -83,3 +94,14 @@ export const deleteAccountSupabaseProject = (ref: string) =>
     `/account/integrations/supabase/projects/${encodeURIComponent(ref)}`,
     { method: "DELETE" },
   );
+
+export const connectVercelAccount = (apiToken: string) =>
+  fetchJson<PublicUserIntegrations | null>("/account/integrations/vercel", {
+    method: "PUT",
+    body: JSON.stringify({ apiToken }),
+  });
+
+export const disconnectVercelAccount = () =>
+  fetchJson<PublicUserIntegrations | null>("/account/integrations/vercel", {
+    method: "DELETE",
+  });

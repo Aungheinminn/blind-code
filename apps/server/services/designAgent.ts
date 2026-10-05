@@ -183,7 +183,7 @@ const readBuiltinFromDb = async (
 export const runDesignAgent = async (
   opts: RunDesignAgentOptions,
 ): Promise<void> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(opts.provider, opts.model, opts.ownerUserId);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
   const draftState: { markdown: string | null } = {

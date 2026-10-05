@@ -40,7 +40,8 @@
 
   type ChipKind = "active" | "check" | "warning" | "x" | "arrow";
   const chipKind = (tone: ChipTone, label: string): ChipKind => {
-    if (/\bing\b|ing…|ing\.\.\./i.test(label.trim())) return "active";
+    const trimmed = label.trim();
+    if (/\w+ing(?:[…\.\s].*)?$/i.test(trimmed)) return "active";
     if (tone === "verifier") return "check";
     if (tone === "error") return /^verified/i.test(label.trim()) ? "warning" : "x";
     return "arrow";

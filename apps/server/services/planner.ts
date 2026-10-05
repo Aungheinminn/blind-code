@@ -1,6 +1,6 @@
 import { generateText, Output, stepCountIs, type ModelMessage } from "ai";
 import { z } from "zod";
-import { resolveModel } from "./providers";
+import { resolveModel, type KeyPreference } from "./providers";
 import { buildReadOnlyTools, type ToolContext } from "./tools";
 import type { CoderChatMessage } from "./coder";
 import {
@@ -37,6 +37,7 @@ export type RunPlannerOptions = {
   systemPrompt?: string;
   supabaseConnected?: boolean;
   userSupabasePatConnected?: boolean;
+  keyPreference?: KeyPreference;
   signal?: AbortSignal;
   existingUnfinished?: Plan | null;
 };
@@ -77,7 +78,12 @@ const buildCarryForwardAppendix = (unfinished: Plan): string => {
 };
 
 export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
-  const model = await resolveModel(opts.provider, opts.model);
+  const model = await resolveModel(
+    opts.provider,
+    opts.model,
+    opts.toolContext.ownerId ?? null,
+    opts.keyPreference ?? "auto",
+  );
   const tools = buildReadOnlyTools(opts.toolContext);
 
   const baseSystem = opts.systemPrompt ?? DEFAULT_PLANNER_PROMPT;

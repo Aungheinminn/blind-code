@@ -3,7 +3,7 @@
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ModelDropdown from "./ModelDropdown.svelte";
   import DesignTemplatePicker from "./DesignTemplatePicker.svelte";
-  import type { ProviderInfo } from "$lib/stores/agent";
+  import { keyPreference, type ProviderInfo, type KeyPreference } from "$lib/stores/agent";
 
   export let isRunning = false;
   export let statusText = "idle";
@@ -18,6 +18,25 @@
     cancel: void;
     "model-change": string;
   }>();
+
+  const PREF_LABELS: Record<KeyPreference, string> = {
+    auto: "Key: Auto",
+    user: "Key: Yours",
+    platform: "Key: Platform",
+  };
+  const PREF_TITLES: Record<KeyPreference, string> = {
+    auto: "Auto — use your key when set, fall back to platform. Click to change.",
+    user: "Your key only — error if not configured. Click to change.",
+    platform: "Platform key only — ignores your key. Click to change.",
+  };
+  const PREF_CYCLE: Record<KeyPreference, KeyPreference> = {
+    auto: "user",
+    user: "platform",
+    platform: "auto",
+  };
+  const cyclePref = () => {
+    keyPreference.update((p) => PREF_CYCLE[p]);
+  };
 
   const submit = () => {
     const trimmed = prompt.trim();
@@ -49,6 +68,16 @@
         {#if projectId}
           <DesignTemplatePicker {projectId} disabled={isRunning} />
         {/if}
+        <button
+          type="button"
+          class="shrink-0 px-2 py-0.5 rounded-md border cursor-pointer key-pref-btn"
+          style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-panel);"
+          on:click={cyclePref}
+          disabled={isRunning}
+          title={PREF_TITLES[$keyPreference]}
+        >
+          {PREF_LABELS[$keyPreference]}
+        </button>
         <span class="truncate">{statusText}</span>
       </div>
     </svelte:fragment>
@@ -111,5 +140,17 @@
   .stop-btn:hover {
     border-color: var(--border-strong);
     color: var(--text-primary);
+  }
+  .key-pref-btn {
+    transition: border-color 150ms ease, color 150ms ease;
+    font-variant-numeric: tabular-nums;
+  }
+  .key-pref-btn:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+  .key-pref-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>

@@ -1,4 +1,8 @@
 import { Elysia } from "elysia";
+import { assertRequiredEnv } from "./services/envCheck";
+
+assertRequiredEnv();
+
 import { Orchestrator } from "./services/orchestrator";
 import { runtimeWsController } from "./controllers/runtime.ws";
 import { projectController } from "./controllers/project.controller";
