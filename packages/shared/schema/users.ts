@@ -5,6 +5,12 @@ export type SupabaseAccountIntegration = {
   connectedAt: string;
 };
 
+export type VercelAccountIntegration = {
+  apiToken: string;
+  last4: string;
+  connectedAt: string;
+};
+
 export type ProviderKey = {
   apiKey: string;
   last4: string;
@@ -20,6 +26,7 @@ export type UserProviderKeys = {
 
 export type UserIntegrations = {
   supabase?: SupabaseAccountIntegration;
+  vercel?: VercelAccountIntegration;
   providers?: UserProviderKeys;
 };
 
@@ -27,8 +34,14 @@ export type PublicSupabaseAccountIntegration = {
   connectedAt: string;
 };
 
+export type PublicVercelAccountIntegration = {
+  last4: string;
+  connectedAt: string;
+};
+
 export type PublicUserIntegrations = {
   supabase?: PublicSupabaseAccountIntegration;
+  vercel?: PublicVercelAccountIntegration;
 };
 
 export const toPublicUserIntegrations = (
@@ -38,6 +51,12 @@ export const toPublicUserIntegrations = (
   const out: PublicUserIntegrations = {};
   if (integrations.supabase) {
     out.supabase = { connectedAt: integrations.supabase.connectedAt };
+  }
+  if (integrations.vercel) {
+    out.vercel = {
+      last4: integrations.vercel.last4,
+      connectedAt: integrations.vercel.connectedAt,
+    };
   }
   return out;
 };

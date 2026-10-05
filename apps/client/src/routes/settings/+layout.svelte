@@ -19,6 +19,11 @@
       label: "Supabase",
       match: (p) => p === "/settings/supabase" || p.startsWith("/settings/supabase/"),
     },
+    {
+      href: "/settings/vercel",
+      label: "Vercel",
+      match: (p) => p === "/settings/vercel" || p.startsWith("/settings/vercel/"),
+    },
   ];
 
   $: activePath = $page.url.pathname;

@@ -8,7 +8,8 @@ export class VercelManagementError extends Error {
   }
 }
 
-const getToken = (): string => {
+const resolveTokenOrEnv = (override?: string | null): string => {
+  if (override) return override;
   const t = process.env.VERCEL_API_TOKEN;
   if (!t) {
     throw new VercelManagementError(
@@ -23,6 +24,7 @@ const vercelFetch = async <T>(
   path: string,
   init: RequestInit = {},
   teamId?: string,
+  tokenOverride?: string | null,
 ): Promise<T> => {
   const url = new URL(`${API_BASE}${path}`);
   if (teamId) url.searchParams.set("teamId", teamId);
@@ -30,7 +32,7 @@ const vercelFetch = async <T>(
     ...init,
     headers: {
       ...(init.headers ?? {}),
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${resolveTokenOrEnv(tokenOverride)}`,
       "Content-Type": "application/json",
     },
   });
@@ -55,7 +57,11 @@ const vercelFetch = async <T>(
   return (await res.json()) as T;
 };
 
-const TEAM_ID = process.env.VERCEL_TEAM_ID || undefined;
+// Only honored when the Vercel API call runs against the platform token.
+// User tokens target the user's own personal/team scope and should not inherit
+// the server-side team hint.
+const platformTeamId = (tokenOverride?: string | null): string | undefined =>
+  tokenOverride ? undefined : process.env.VERCEL_TEAM_ID || undefined;
 
 export type VercelProject = {
   id: string;
@@ -69,9 +75,9 @@ export type CreateVercelProjectInput = {
   framework?: string;
 };
 
-export const validateToken = async (): Promise<boolean> => {
+export const validateToken = async (token?: string | null): Promise<boolean> => {
   try {
-    await vercelFetch("/v2/user");
+    await vercelFetch("/v2/user", {}, undefined, token);
     return true;
   } catch {
     return false;
@@ -80,12 +86,14 @@ export const validateToken = async (): Promise<boolean> => {
 
 export const getProjectByName = async (
   name: string,
+  token?: string | null,
 ): Promise<VercelProject | null> => {
   try {
     return await vercelFetch<VercelProject>(
       `/v9/projects/${encodeURIComponent(name)}`,
       {},
-      TEAM_ID,
+      platformTeamId(token),
+      token,
     );
   } catch (err) {
     if (err instanceof VercelManagementError && err.status === 404) return null;
@@ -95,12 +103,14 @@ export const getProjectByName = async (
 
 export const getProjectById = async (
   id: string,
+  token?: string | null,
 ): Promise<VercelProject | null> => {
   try {
     return await vercelFetch<VercelProject>(
       `/v9/projects/${encodeURIComponent(id)}`,
       {},
-      TEAM_ID,
+      platformTeamId(token),
+      token,
     );
   } catch (err) {
     if (err instanceof VercelManagementError && err.status === 404) return null;
@@ -108,7 +118,10 @@ export const getProjectById = async (
   }
 };
 
-export const createProject = (input: CreateVercelProjectInput) =>
+export const createProject = (
+  input: CreateVercelProjectInput,
+  token?: string | null,
+) =>
   vercelFetch<VercelProject>(
     "/v10/projects",
     {
@@ -118,14 +131,16 @@ export const createProject = (input: CreateVercelProjectInput) =>
         framework: input.framework ?? "vite",
       }),
     },
-    TEAM_ID,
+    platformTeamId(token),
+    token,
   );
 
-export const deleteProject = (idOrName: string) =>
+export const deleteProject = (idOrName: string, token?: string | null) =>
   vercelFetch<unknown>(
     `/v9/projects/${encodeURIComponent(idOrName)}`,
     { method: "DELETE" },
-    TEAM_ID,
+    platformTeamId(token),
+    token,
   );
 
 export type VercelEnvTarget = "production" | "preview" | "development";
@@ -140,6 +155,7 @@ export type UpsertEnvInput = {
 export const upsertProjectEnv = (
   projectId: string,
   envs: UpsertEnvInput[],
+  token?: string | null,
 ) =>
   vercelFetch<unknown>(
     `/v10/projects/${encodeURIComponent(projectId)}/env?upsert=true`,
@@ -154,7 +170,8 @@ export const upsertProjectEnv = (
         })),
       ),
     },
-    TEAM_ID,
+    platformTeamId(token),
+    token,
   );
 
 export type DeploymentFile = {
@@ -187,7 +204,10 @@ export type DeploymentResponse = {
   errorMessage?: string;
 };
 
-export const createDeployment = (input: CreateDeploymentInput) =>
+export const createDeployment = (
+  input: CreateDeploymentInput,
+  token?: string | null,
+) =>
   vercelFetch<DeploymentResponse>(
     "/v13/deployments?skipAutoDetectionConfirmation=1",
     {
@@ -206,14 +226,16 @@ export const createDeployment = (input: CreateDeploymentInput) =>
         },
       }),
     },
-    TEAM_ID,
+    platformTeamId(token),
+    token,
   );
 
-export const getDeployment = (id: string) =>
+export const getDeployment = (id: string, token?: string | null) =>
   vercelFetch<DeploymentResponse>(
     `/v13/deployments/${encodeURIComponent(id)}`,
     {},
-    TEAM_ID,
+    platformTeamId(token),
+    token,
   );
 
 export type WaitForDeploymentOptions = {
@@ -221,6 +243,7 @@ export type WaitForDeploymentOptions = {
   pollMs?: number;
   signal?: AbortSignal;
   onState?: (state: DeploymentResponse) => void;
+  token?: string | null;
 };
 
 export const waitForDeploymentReady = async (
@@ -235,7 +258,7 @@ export const waitForDeploymentReady = async (
     if (opts.signal?.aborted) {
       throw new VercelManagementError(499, "wait aborted");
     }
-    last = await getDeployment(id);
+    last = await getDeployment(id, opts.token ?? null);
     opts.onState?.(last);
     if (last.readyState === "READY") return last;
     if (

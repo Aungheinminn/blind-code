@@ -8,6 +8,7 @@ import type {
   SupabaseIntegration,
   UserIntegrations,
   UserProviderKeys,
+  VercelAccountIntegration,
 } from "@vibe/shared";
 import { isUuid, stringToUuid } from "../services/uuid";
 import { encrypt, decryptMaybe } from "../services/crypto";
@@ -51,6 +52,12 @@ const encryptUserIntegrations = (
       accessToken: encrypt(integrations.supabase.accessToken),
     };
   }
+  if (integrations.vercel) {
+    out.vercel = {
+      ...integrations.vercel,
+      apiToken: encrypt(integrations.vercel.apiToken),
+    };
+  }
   if (integrations.providers) {
     out.providers = encryptProviderKeys(integrations.providers);
   }
@@ -65,6 +72,10 @@ const decryptUserIntegrations = (
   if (integrations.supabase) {
     const at = decryptMaybe(integrations.supabase.accessToken);
     out.supabase = { ...integrations.supabase, accessToken: at ?? "" };
+  }
+  if (integrations.vercel) {
+    const tok = decryptMaybe(integrations.vercel.apiToken);
+    out.vercel = { ...integrations.vercel, apiToken: tok ?? "" };
   }
   if (integrations.providers) {
     out.providers = decryptProviderKeys(integrations.providers);
@@ -296,6 +307,47 @@ export const clearUserSupabaseIntegration = async (userId: string) => {
   if (!existing) return null;
   const current = existing.integrations ?? {};
   const { supabase: _drop, ...rest } = current;
+  const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({
+      integrations: nextIntegrations
+        ? encryptUserIntegrations(nextIntegrations)
+        : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
+export const setUserVercelIntegration = async (
+  userId: string,
+  integration: VercelAccountIntegration,
+) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const merged: UserIntegrations = {
+    ...(existing.integrations ?? {}),
+    vercel: integration,
+  };
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: encryptUserIntegrations(merged), updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
+export const clearUserVercelIntegration = async (userId: string) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const current = existing.integrations ?? {};
+  const { vercel: _drop, ...rest } = current;
   const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
     ? rest
     : null;
