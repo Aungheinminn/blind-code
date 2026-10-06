@@ -24,6 +24,12 @@
       label: "Vercel",
       match: (p) => p === "/settings/vercel" || p.startsWith("/settings/vercel/"),
     },
+    {
+      href: "/settings/information",
+      label: "Information",
+      match: (p) =>
+        p === "/settings/information" || p.startsWith("/settings/information/"),
+    },
   ];
 
   $: activePath = $page.url.pathname;
