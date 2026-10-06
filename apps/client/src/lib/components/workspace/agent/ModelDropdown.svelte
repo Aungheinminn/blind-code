@@ -28,7 +28,7 @@
   const KEY_OPTIONS: Array<{ value: KeyPreference; label: string; title: string }> = [
     { value: "auto", label: "Auto", title: "Use your key when set, otherwise the platform default." },
     { value: "user", label: "Yours", title: "Force your key. Errors if you haven't added one." },
-    { value: "platform", label: "Platform", title: "Force the platform default, even when you have your own key." },
+    { value: "platform", label: "Default", title: "Force the platform default key, even when you have your own key." },
   ];
 </script>
 
