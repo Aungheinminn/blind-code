@@ -188,8 +188,8 @@
     color: var(--text-primary);
   }
   .key-segment-btn--active {
-    color: var(--text-primary);
-    background-color: var(--bg-tertiary);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
   }
 </style>
