@@ -91,21 +91,23 @@
 
     <div class="key-source-divider" role="separator" aria-hidden="true"></div>
     <div class="dropdown-section-label">Key source</div>
-    <div class="key-segment" role="radiogroup" aria-label="Key source">
-      {#each KEY_OPTIONS as opt (opt.value)}
-        {@const isActive = $keyPreference === opt.value}
-        <button
-          type="button"
-          role="radio"
-          aria-checked={isActive}
-          class="key-segment-btn"
-          class:key-segment-btn--active={isActive}
-          title={opt.title}
-          on:click={() => keyPreference.set(opt.value)}
-        >
-          {opt.label}
-        </button>
-      {/each}
+    <div class="key-segment-wrap">
+      <div class="key-segment" role="radiogroup" aria-label="Key source">
+        {#each KEY_OPTIONS as opt (opt.value)}
+          {@const isActive = $keyPreference === opt.value}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            class="key-segment-btn"
+            class:key-segment-btn--active={isActive}
+            title={opt.title}
+            on:click={() => keyPreference.set(opt.value)}
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
     </div>
   </svelte:fragment>
 </Dropdown>
@@ -155,35 +157,39 @@
     margin: 6px 10px;
     background-color: var(--border);
   }
+  .key-segment-wrap {
+    padding: 2px 10px 8px;
+  }
   .key-segment {
     display: flex;
-    gap: 4px;
-    padding: 2px 10px 8px;
+    width: 100%;
+    padding: 2px;
+    border-radius: 7px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
   }
   .key-segment-btn {
     flex: 1;
-    height: 24px;
+    height: 22px;
     padding: 0 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
+    border-radius: 5px;
+    border: 0;
     background-color: transparent;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     font-size: 11px;
     font-family: inherit;
     cursor: pointer;
     outline: none;
     transition:
       color 120ms ease,
-      border-color 120ms ease,
       background-color 120ms ease;
   }
-  .key-segment-btn:hover {
+  .key-segment-btn:hover:not(.key-segment-btn--active) {
     color: var(--text-primary);
-    border-color: var(--border-strong);
   }
   .key-segment-btn--active {
     color: var(--text-primary);
-    background-color: var(--accent-subtle, var(--bg-tertiary));
-    border-color: var(--accent);
+    background-color: var(--bg-tertiary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 </style>

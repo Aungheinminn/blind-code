@@ -39,9 +39,9 @@
     {
       title: "Providers (Anthropic, OpenAI, Google, OpenRouter)",
       status: "neutral",
-      statusLabel: "Cascade: your key → platform default",
+      statusLabel: "Cascade: your key → default",
       body:
-        "When you add a key in Settings → Providers, Blind Code uses it. If you haven't, we fall back to our platform default for that provider (when one is configured). The 'Key' chip in the composer lets you force your key or the platform key for a single prompt.",
+        "When you add a key in Settings → Providers, Blind Code uses it. If you haven't, we fall back to our default for that provider (when one is configured). Open the model picker in the composer to switch between Auto, Yours, and Default for a single prompt.",
     } satisfies Card,
     {
       title: "Supabase",
