@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import Dropdown from "$lib/components/ui/Dropdown.svelte";
   import { TIER_MODELS, TIER_ORDER, type TierModel } from "$lib/tierModels";
-  import type { ProviderInfo } from "$lib/stores/agent";
+  import { keyPreference, type ProviderInfo, type KeyPreference } from "$lib/stores/agent";
 
   export let value: string = "";
   export let providers: ProviderInfo[] = [];
@@ -24,6 +24,12 @@
     if (m.id !== value) dispatch("change", m.id);
     close();
   };
+
+  const KEY_OPTIONS: Array<{ value: KeyPreference; label: string; title: string }> = [
+    { value: "auto", label: "Auto", title: "Use your key when set, otherwise the platform default." },
+    { value: "user", label: "Yours", title: "Force your key. Errors if you haven't added one." },
+    { value: "platform", label: "Platform", title: "Force the platform default, even when you have your own key." },
+  ];
 </script>
 
 <Dropdown {placement} {disabled} menuMinWidth={220}>
@@ -82,6 +88,25 @@
         </button>
       {/each}
     {/each}
+
+    <div class="key-source-divider" role="separator" aria-hidden="true"></div>
+    <div class="dropdown-section-label">Key source</div>
+    <div class="key-segment" role="radiogroup" aria-label="Key source">
+      {#each KEY_OPTIONS as opt (opt.value)}
+        {@const isActive = $keyPreference === opt.value}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={isActive}
+          class="key-segment-btn"
+          class:key-segment-btn--active={isActive}
+          title={opt.title}
+          on:click={() => keyPreference.set(opt.value)}
+        >
+          {opt.label}
+        </button>
+      {/each}
+    </div>
   </svelte:fragment>
 </Dropdown>
 
@@ -124,5 +149,41 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .key-source-divider {
+    height: 1px;
+    margin: 6px 10px;
+    background-color: var(--border);
+  }
+  .key-segment {
+    display: flex;
+    gap: 4px;
+    padding: 2px 10px 8px;
+  }
+  .key-segment-btn {
+    flex: 1;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition:
+      color 120ms ease,
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+  .key-segment-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .key-segment-btn--active {
+    color: var(--text-primary);
+    background-color: var(--accent-subtle, var(--bg-tertiary));
+    border-color: var(--accent);
   }
 </style>
