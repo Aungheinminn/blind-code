@@ -67,17 +67,11 @@
     }
   };
 
-  const sourceLabel = (p: ProviderStatus): string => {
-    if (!p.configured) return "not configured";
-    if (p.source === "env") return `platform default · ••••${p.last4 ?? ""}`;
-    return `your key · ••••${p.last4 ?? ""}`;
-  };
+  const sourceLabel = (p: ProviderStatus): string =>
+    p.source === "user" ? `your key · ••••${p.last4 ?? ""}` : "not configured";
 
-  const sourceDotColor = (p: ProviderStatus): string => {
-    if (!p.configured) return "var(--text-tertiary)";
-    if (p.source === "env") return "var(--accent)";
-    return "#22c55e";
-  };
+  const sourceDotColor = (p: ProviderStatus): string =>
+    p.source === "user" ? "#22c55e" : "var(--text-tertiary)";
 </script>
 
 <svelte:head>
@@ -124,7 +118,7 @@
               </span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              {#if p.configured && p.source === "user"}
+              {#if p.source === "user"}
                 <button
                   class="px-2.5 py-1.5 text-xs rounded-md border cursor-pointer"
                   style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
@@ -140,15 +134,6 @@
                   disabled={savingKey[p.name]}
                 >
                   Remove
-                </button>
-              {:else if p.configured && p.source === "env"}
-                <button
-                  class="px-2.5 py-1.5 text-xs rounded-md border cursor-pointer"
-                  style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
-                  on:click={() => startEdit(p.name)}
-                  disabled={savingKey[p.name]}
-                >
-                  Override
                 </button>
               {:else}
                 <button

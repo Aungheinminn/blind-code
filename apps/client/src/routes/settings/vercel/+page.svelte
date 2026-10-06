@@ -9,7 +9,6 @@
   } from "$lib/api/account";
 
   let integration: PublicVercelAccountIntegration | null = null;
-  let platformFallbackAvailable = false;
   let loading = true;
   let busy = false;
   let error = "";
@@ -21,7 +20,6 @@
     try {
       const data = await getAccountIntegrations();
       integration = data?.vercel ?? null;
-      platformFallbackAvailable = Boolean(data?.vercelFallbackAvailable);
     } catch (e) {
       integration = null;
       error = e instanceof Error ? e.message : "Could not load Vercel account.";
@@ -169,26 +167,5 @@
         </form>
       {/if}
     </div>
-
-    {#if !integration && platformFallbackAvailable}
-      <div
-        class="mt-4 rounded-lg border px-4 py-3 text-sm"
-        style="border-color: var(--border); background-color: var(--bg-secondary); color: var(--text-secondary);"
-      >
-        <div class="flex items-center gap-2">
-          <span
-            class="w-2 h-2 rounded-full shrink-0"
-            style="background-color: var(--accent);"
-            aria-hidden="true"
-          ></span>
-          <span class="text-[13px] font-medium" style="color: var(--text-primary);">
-            Using platform Vercel
-          </span>
-        </div>
-        <p class="mt-1.5 text-xs" style="color: var(--text-tertiary);">
-          You haven't connected your own account. Deploys will go to Blind Code's Vercel. Connect your own token above to deploy under your own Vercel account instead.
-        </p>
-      </div>
-    {/if}
   {/if}
 </div>
