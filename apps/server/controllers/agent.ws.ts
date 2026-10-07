@@ -7,12 +7,14 @@ import {
   type CoderEvent,
 } from "../services/coder";
 import { runAgent, type AgentEvent } from "../services/agent";
-import { listAvailableProviders } from "../services/providers";
+import { listAvailableProviders, resolveKey } from "../services/providers";
 import { providerForModel } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
 import { resolveSupabasePAT } from "../services/supabasePAT";
+import { creditsFor, hasPricing } from "../services/pricing";
+import { debit } from "../services/credits";
 import {
   createAgentSession,
   endAgentSession,
@@ -391,6 +393,13 @@ export const agentController = (app: Elysia) =>
               break;
             case "finish":
               await flushAllBlocks();
+              if (event.usage && typeof event.usage === "object") {
+                const u = event.usage as Record<string, unknown>;
+                const inp = Number(u.inputTokens ?? u.promptTokens ?? 0);
+                const out = Number(u.outputTokens ?? u.completionTokens ?? 0);
+                if (Number.isFinite(inp)) totalInputTokens += inp;
+                if (Number.isFinite(out)) totalOutputTokens += out;
+              }
               await recordAgentAction(sessionId, "finish", {
                 summary: event.finishReason,
                 payload: { finishReason: event.finishReason, usage: event.usage },
@@ -407,6 +416,8 @@ export const agentController = (app: Elysia) =>
 
         let terminalStatus: "done" | "failed" | "cancelled" = "done";
         let terminalError: string | null = null;
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
 
         const toolContext = {
           sandboxProjectId: msg.projectId,
@@ -478,6 +489,38 @@ export const agentController = (app: Elysia) =>
 
         await eventChain;
         await flushAllBlocks();
+
+        // Debit credits for platform-key usage. User-key usage is free.
+        // Fail-safe: a debit failure never breaks the turn — we log and move on.
+        if (
+          (totalInputTokens > 0 || totalOutputTokens > 0) &&
+          hasPricing(resolvedModelId)
+        ) {
+          try {
+            const resolved = await resolveKey(
+              provider,
+              userId,
+              msg.keyPreference ?? "auto",
+            );
+            if (resolved?.source === "env") {
+              const credits = creditsFor(resolvedModelId, {
+                inputTokens: totalInputTokens,
+                outputTokens: totalOutputTokens,
+              });
+              if (credits > 0) {
+                await debit(userId, credits, "agent_run", {
+                  provider,
+                  model: resolvedModelId,
+                  inputTokens: totalInputTokens,
+                  outputTokens: totalOutputTokens,
+                });
+              }
+            }
+          } catch (err) {
+            console.warn("[credits] debit after agent run failed:", err);
+          }
+        }
+
         if (sessionId) await endAgentSession(sessionId);
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 

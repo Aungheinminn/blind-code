@@ -1,4 +1,4 @@
-import { jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export type SupabaseAccountIntegration = {
   accessToken: string;
@@ -68,6 +68,7 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   passwordHash: text("password_hash").notNull(),
   integrations: jsonb("integrations").$type<UserIntegrations>(),
+  creditsBalance: integer("credits_balance").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

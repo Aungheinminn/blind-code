@@ -8,3 +8,4 @@ export * from "./designTemplates";
 export * from "./designTemplateContent";
 export * from "./relations";
 export * from "./models";
+export * from "./credits";
