@@ -5,6 +5,7 @@
   import DesignTemplatePicker from "./DesignTemplatePicker.svelte";
   import { creditsBalance, keyPreference, type ProviderInfo } from "$lib/stores/agent";
   import { providerForModel } from "$lib/tierModels";
+  import { formatCompact } from "$lib/format";
 
   export let isRunning = false;
   export let statusText = "idle";
@@ -37,7 +38,9 @@
   $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
   $: criticallyLow =
     showCreditsChip && $creditsBalance !== null && $creditsBalance < 200;
-  $: creditsLabel = $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
+  $: creditsLabel = $creditsBalance === null ? "—" : formatCompact($creditsBalance);
+  $: creditsFullLabel =
+    $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
 
   // Per-session dismiss: dismisses while open; shows again on next page load
   // so the user doesn't forget they're running on fumes.
@@ -59,7 +62,7 @@
   {#if criticallyLow && !bannerDismissed}
     <div class="low-balance-banner">
       <span class="flex-1">
-        Low on platform credits ({creditsLabel} left). Add your own API key in
+        Low on platform credits ({creditsFullLabel} left). Add your own API key in
         <a href="/settings/providers" class="banner-link">Settings → Providers</a>
         to keep running for free.
       </span>
@@ -97,8 +100,8 @@
             class="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border no-underline credits-chip"
             class:credits-chip--low={lowBalance}
             title={lowBalance
-              ? `Low balance: ${creditsLabel} credits. Add your own API key in Settings → Providers to run for free.`
-              : `${creditsLabel} credits remaining. Add your own API key in Settings → Providers to run for free.`}
+              ? `Low balance: ${creditsFullLabel} credits. Add your own API key in Settings → Providers to run for free.`
+              : `${creditsFullLabel} credits remaining. Add your own API key in Settings → Providers to run for free.`}
           >
             <span
               class="w-1.5 h-1.5 rounded-full shrink-0"

@@ -9,6 +9,7 @@
   import OutOfCreditsModal from "$lib/components/OutOfCreditsModal.svelte";
   import WelcomeModal from "$lib/components/WelcomeModal.svelte";
   import { creditsBalance, refreshCreditsBalance } from "$lib/stores/agent";
+  import { formatCompact } from "$lib/format";
   import "../app.css";
 
   const PUBLIC_ROUTES = ["/", "/login", "/signup"];
@@ -38,6 +39,8 @@
   $: if ($auth.status === "authed") refreshCreditsBalance();
 
   $: creditsLabel =
+    $creditsBalance === null ? "—" : formatCompact($creditsBalance);
+  $: creditsFullLabel =
     $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
   $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
 
@@ -132,8 +135,8 @@
             class="credits-chip no-underline"
             class:credits-chip--low={lowBalance}
             title={lowBalance
-              ? `Low balance: ${creditsLabel} credits`
-              : `${creditsLabel} credits`}
+              ? `Low balance: ${creditsFullLabel} credits`
+              : `${creditsFullLabel} credits`}
           >
             <span
               class="w-1.5 h-1.5 rounded-full shrink-0"
