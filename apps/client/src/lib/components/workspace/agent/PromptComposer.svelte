@@ -35,7 +35,14 @@
   })();
   $: showCreditsChip = resolvedSource === "env" && $creditsBalance !== null;
   $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
+  $: criticallyLow =
+    showCreditsChip && $creditsBalance !== null && $creditsBalance < 200;
   $: creditsLabel = $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
+
+  // Per-session dismiss: dismisses while open; shows again on next page load
+  // so the user doesn't forget they're running on fumes.
+  let bannerDismissed = false;
+  const dismissBanner = () => (bannerDismissed = true);
 
   const submit = () => {
     const trimmed = prompt.trim();
@@ -49,6 +56,23 @@
 </script>
 
 <div class="px-4 pt-3 pb-3.5">
+  {#if criticallyLow && !bannerDismissed}
+    <div class="low-balance-banner">
+      <span class="flex-1">
+        Low on platform credits ({creditsLabel} left). Add your own API key in
+        <a href="/settings/providers" class="banner-link">Settings → Providers</a>
+        to keep running for free.
+      </span>
+      <button
+        type="button"
+        class="banner-close"
+        on:click={dismissBanner}
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  {/if}
   <PromptBox
     bind:this={box}
     bind:value={prompt}
@@ -160,5 +184,35 @@
   .credits-chip--low {
     color: #eab308;
     border-color: color-mix(in srgb, #eab308 40%, transparent);
+  }
+  .low-balance-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 8px 12px;
+    margin-bottom: 8px;
+    border: 1px solid color-mix(in srgb, #eab308 40%, transparent);
+    background-color: color-mix(in srgb, #eab308 10%, transparent);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+  .banner-link {
+    color: #eab308;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .banner-close {
+    border: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .banner-close:hover {
+    color: var(--text-primary);
   }
 </style>

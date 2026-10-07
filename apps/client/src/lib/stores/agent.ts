@@ -4,6 +4,7 @@ import { loadConnect, providersState } from "./connect";
 import { TIER_MODELS, providerForModel } from "$lib/tierModels";
 import { getWsTicket } from "$lib/api/auth";
 import { getCreditsBalance } from "$lib/api/credits";
+import { openOutOfCreditsModal } from "./outOfCreditsModal";
 import {
   getProjectDesignTemplate,
   getProjectFiles,
@@ -594,7 +595,18 @@ const handleEvent = (raw: unknown) => {
       recordToolResult(event.toolCallId, event.output);
       break;
     case "error":
-      appendText(undefined, `\n\n_Error: ${event.error}_`);
+      // Credits pre-flight errors get a modal (actionable) instead of an
+      // inline text error (dead-end). Still refresh in case something drifted.
+      if (
+        typeof event.error === "string" &&
+        /out of credits/i.test(event.error)
+      ) {
+        openOutOfCreditsModal();
+        isRunning.set(false);
+        refreshCreditsBalance();
+      } else {
+        appendText(undefined, `\n\n_Error: ${event.error}_`);
+      }
       break;
     case "file-updated":
       if (typeof event.path === "string" && typeof event.content === "string") {
