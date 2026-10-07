@@ -12,7 +12,7 @@
 
   const viewCredits = () => {
     closeOutOfCreditsModal();
-    goto("/settings/credits");
+    goto("/settings/credits/topup");
   };
 
   const handleKeydown = (e: KeyboardEvent) => {
