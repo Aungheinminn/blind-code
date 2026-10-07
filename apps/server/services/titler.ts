@@ -86,9 +86,11 @@ export type GenerateTitleOptions = {
   signal?: AbortSignal;
 };
 
+export type GenerateTitleResult = ProjectTitle & { usage?: unknown };
+
 export const generateProjectTitle = async (
   opts: GenerateTitleOptions,
-): Promise<ProjectTitle> => {
+): Promise<GenerateTitleResult> => {
   const prompt = opts.prompt.trim();
   if (!prompt) return heuristicFallback(prompt);
 
@@ -118,7 +120,11 @@ export const generateProjectTitle = async (
       });
       const normalized = normalizeTitle(result.object);
       if (normalized) {
-        return { ...normalized, description: normalized.description || fallbackDescription };
+        return {
+          ...normalized,
+          description: normalized.description || fallbackDescription,
+          usage: (result as any).usage,
+        };
       }
     } catch (err) {
       console.warn("[titler] generateObject failed, retrying in text mode:", err);
@@ -138,7 +144,11 @@ export const generateProjectTitle = async (
         const parsed = JSON.parse(jsonText) as Record<string, unknown>;
         const normalized = normalizeTitle(parsed);
         if (normalized) {
-          return { ...normalized, description: normalized.description || fallbackDescription };
+          return {
+            ...normalized,
+            description: normalized.description || fallbackDescription,
+            usage: (result as any).usage,
+          };
         }
       }
     } catch (err) {

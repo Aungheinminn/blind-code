@@ -77,7 +77,12 @@ const buildCarryForwardAppendix = (unfinished: Plan): string => {
   return `\n\nCARRY-FORWARD CONTEXT:\nThe user has an existing plan with unfinished work. Your new plan MUST include the following unfinished todos alongside anything new the user asked for. Preserve their intent — rephrase only if you need to consolidate with genuinely related new work:\n${list}\n\nOrdering: place carried-over unfinished todos FIRST in the new plan, then the new work. Merged todos (where old and new work touch the same file) can go wherever fits the flow best.\n\nMerging rules:\n- Do NOT collapse multiple unfinished todos into one to shorten the list. Each carried-over todo represents concrete work the user has already invested in — losing granularity means losing trackability.\n- Only merge an unfinished todo with a new one when they touch the same file AND the new work naturally supersedes or extends the unfinished intent.\n- If the combined plan gets long, that is fine. Length should reflect actual scope, not an arbitrary ceiling.\n\nDo not repeat todos that are already implicit in the unfinished list. The user is extending, not replacing.`;
 };
 
-export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
+export type RunPlannerResult = {
+  plan: Plan;
+  usage?: unknown;
+};
+
+export const runPlanner = async (opts: RunPlannerOptions): Promise<RunPlannerResult> => {
   const model = await resolveModel(
     opts.provider,
     opts.model,
@@ -120,5 +125,5 @@ export const runPlanner = async (opts: RunPlannerOptions): Promise<Plan> => {
     abortSignal: opts.signal,
   });
 
-  return result.experimental_output;
+  return { plan: result.experimental_output, usage: (result as any).usage };
 };

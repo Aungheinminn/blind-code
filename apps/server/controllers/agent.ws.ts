@@ -278,7 +278,28 @@ export const agentController = (app: Elysia) =>
 
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
 
+        // Accumulated across the whole turn: main stream `finish` events +
+        // every `sub-agent-usage` event (planner / verifier). Read at turn end
+        // for the credits debit.
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+
+        const addUsage = (usage: unknown) => {
+          if (!usage || typeof usage !== "object") return;
+          const u = usage as Record<string, unknown>;
+          const inp = Number(u.inputTokens ?? u.promptTokens ?? 0);
+          const out = Number(u.outputTokens ?? u.completionTokens ?? 0);
+          if (Number.isFinite(inp)) totalInputTokens += inp;
+          if (Number.isFinite(out)) totalOutputTokens += out;
+        };
+
         const handleEvent = async (event: CoderEvent | AgentEvent) => {
+          // sub-agent-usage is an internal metering signal — accumulate and
+          // skip publishing it to the client (it's not a user-facing event).
+          if ((event as { type: string }).type === "sub-agent-usage") {
+            addUsage((event as { usage?: unknown }).usage);
+            return;
+          }
           // Enrich update_todo tool-call input with the resolved title BEFORE
           // publishing, so the client sees it live and the persisted payload
           // keeps it for later reloads.
@@ -419,13 +440,7 @@ export const agentController = (app: Elysia) =>
               break;
             case "finish":
               await flushAllBlocks();
-              if (event.usage && typeof event.usage === "object") {
-                const u = event.usage as Record<string, unknown>;
-                const inp = Number(u.inputTokens ?? u.promptTokens ?? 0);
-                const out = Number(u.outputTokens ?? u.completionTokens ?? 0);
-                if (Number.isFinite(inp)) totalInputTokens += inp;
-                if (Number.isFinite(out)) totalOutputTokens += out;
-              }
+              addUsage(event.usage);
               await recordAgentAction(sessionId, "finish", {
                 summary: event.finishReason,
                 payload: { finishReason: event.finishReason, usage: event.usage },
@@ -442,8 +457,6 @@ export const agentController = (app: Elysia) =>
 
         let terminalStatus: "done" | "failed" | "cancelled" = "done";
         let terminalError: string | null = null;
-        let totalInputTokens = 0;
-        let totalOutputTokens = 0;
 
         const toolContext = {
           sandboxProjectId: msg.projectId,

@@ -51,6 +51,9 @@ import {
   waitForDeploymentReady,
 } from "../services/vercelManagement";
 import { resolveVercelToken } from "../services/vercelToken";
+import { resolveKey } from "../services/providers";
+import { creditsFor, hasPricing } from "../services/pricing";
+import { debit } from "../services/credits";
 import { assembleVercelProject } from "../services/vercelAssembler";
 import {
   clearVercelIntegrationForOwner,
@@ -375,9 +378,45 @@ export const projectController = (app: Elysia) =>
         set.status = 400;
         return { error: `unknown model: ${model}` };
       }
-      const { title, description } = presetName
-        ? { title: presetName, description: presetDescription }
-        : await generateProjectTitle({ prompt, provider, model, userId: user.id });
+      let title: string;
+      let description: string;
+      let titleUsage: unknown = null;
+      if (presetName) {
+        title = presetName;
+        description = presetDescription;
+      } else {
+        const result = await generateProjectTitle({ prompt, provider, model, userId: user.id });
+        title = result.title;
+        description = result.description;
+        titleUsage = result.usage ?? null;
+      }
+
+      // Debit credits for the titler LLM call when it ran on the platform key.
+      if (titleUsage && hasPricing(model)) {
+        try {
+          const resolved = await resolveKey(provider, user.id);
+          if (resolved?.source === "env") {
+            const u = titleUsage as Record<string, unknown>;
+            const inputTokens = Number(u.inputTokens ?? u.promptTokens ?? 0);
+            const outputTokens = Number(u.outputTokens ?? u.completionTokens ?? 0);
+            if (Number.isFinite(inputTokens) && Number.isFinite(outputTokens)) {
+              const credits = creditsFor(model, { inputTokens, outputTokens });
+              if (credits > 0) {
+                await debit(user.id, credits, "agent_run", {
+                  provider,
+                  model,
+                  inputTokens,
+                  outputTokens,
+                  note: "titler",
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[credits] titler debit failed:", err);
+        }
+      }
+
       try {
         const project = await createProject(title, user.id, { description });
         return { data: { ...project, name: title, description, title } };
