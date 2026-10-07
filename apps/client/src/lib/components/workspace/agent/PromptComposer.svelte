@@ -3,7 +3,8 @@
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import ModelDropdown from "./ModelDropdown.svelte";
   import DesignTemplatePicker from "./DesignTemplatePicker.svelte";
-  import type { ProviderInfo } from "$lib/stores/agent";
+  import { creditsBalance, keyPreference, type ProviderInfo } from "$lib/stores/agent";
+  import { providerForModel } from "$lib/tierModels";
 
   export let isRunning = false;
   export let statusText = "idle";
@@ -18,6 +19,23 @@
     cancel: void;
     "model-change": string;
   }>();
+
+  // Credits chip is shown when the currently-selected model's resolved key
+  // source would be the platform env (debit happens). Hidden when it'd be
+  // the user's own key (free run).
+  $: currentProvider = providerForModel(selectedModel);
+  $: providerInfo = currentProvider
+    ? providers.find((p) => p.name === currentProvider) ?? null
+    : null;
+  $: resolvedSource = (() => {
+    if (!providerInfo?.configured) return null;
+    if ($keyPreference === "platform") return "env" as const;
+    if ($keyPreference === "user") return providerInfo.source === "user" ? ("user" as const) : null;
+    return providerInfo.source;
+  })();
+  $: showCreditsChip = resolvedSource === "env" && $creditsBalance !== null;
+  $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
+  $: creditsLabel = $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
 
   const submit = () => {
     const trimmed = prompt.trim();
@@ -48,6 +66,23 @@
       >
         {#if projectId}
           <DesignTemplatePicker {projectId} disabled={isRunning} />
+        {/if}
+        {#if showCreditsChip}
+          <a
+            href="/settings/credits"
+            class="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border no-underline credits-chip"
+            class:credits-chip--low={lowBalance}
+            title={lowBalance
+              ? `Low balance: ${creditsLabel} credits. Add your own API key in Settings → Providers to run for free.`
+              : `${creditsLabel} credits remaining. Add your own API key in Settings → Providers to run for free.`}
+          >
+            <span
+              class="w-1.5 h-1.5 rounded-full shrink-0"
+              style="background-color: {lowBalance ? '#eab308' : 'var(--accent)'};"
+              aria-hidden="true"
+            ></span>
+            <span class="tabular-nums">{creditsLabel}</span>
+          </a>
         {/if}
         <span class="truncate">{statusText}</span>
       </div>
@@ -111,5 +146,19 @@
   .stop-btn:hover {
     border-color: var(--border-strong);
     color: var(--text-primary);
+  }
+  .credits-chip {
+    border-color: var(--border);
+    color: var(--text-secondary);
+    background-color: var(--bg-panel);
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+  .credits-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .credits-chip--low {
+    color: #eab308;
+    border-color: color-mix(in srgb, #eab308 40%, transparent);
   }
 </style>

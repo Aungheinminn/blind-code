@@ -3,6 +3,7 @@ import { assembleReactProject } from "$lib/preview/reactAssembler";
 import { loadConnect, providersState } from "./connect";
 import { TIER_MODELS, providerForModel } from "$lib/tierModels";
 import { getWsTicket } from "$lib/api/auth";
+import { getCreditsBalance } from "$lib/api/credits";
 import {
   getProjectDesignTemplate,
   getProjectFiles,
@@ -77,6 +78,16 @@ export const messages = writable<AgentMessage[]>([
 
 export const isRunning = writable(false);
 export const providers = writable<ProviderInfo[]>([]);
+export const creditsBalance = writable<number | null>(null);
+
+export const refreshCreditsBalance = async (): Promise<void> => {
+  try {
+    const data = await getCreditsBalance();
+    creditsBalance.set(data?.balance ?? 0);
+  } catch {
+    // Non-fatal — balance stays at previous value (or null on first load).
+  }
+};
 
 export type KeyPreference = "auto" | "user" | "platform";
 
@@ -264,7 +275,7 @@ export const resetWorkspace = () => {
 };
 
 export const loadProviders = async () => {
-  await loadConnect();
+  await Promise.all([loadConnect(), refreshCreditsBalance()]);
   const list = get(providersState);
   providers.set(list);
 
@@ -649,6 +660,8 @@ const handleEvent = (raw: unknown) => {
       clearSavedTurn(activeProjectId);
       activeTurnId = null;
       lastOrdinal = -1;
+      // Debit may have happened server-side; pull the new balance so the chip updates.
+      refreshCreditsBalance();
       break;
   }
 };
