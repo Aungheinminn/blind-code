@@ -46,7 +46,12 @@ What does NOT count as an issue (do not report these):
 
 Be terse. Each issue should be one line, actionable, and reference a file path.`;
 
-export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResult> => {
+export type RunVerifierResult = {
+  result: VerifyResult;
+  usage?: unknown;
+};
+
+export const runVerifier = async (opts: RunVerifierOptions): Promise<RunVerifierResult> => {
   const model = await resolveModel(
     opts.provider,
     opts.model,
@@ -78,5 +83,5 @@ export const runVerifier = async (opts: RunVerifierOptions): Promise<VerifyResul
     abortSignal: opts.signal,
   });
 
-  return result.experimental_output;
+  return { result: result.experimental_output, usage: (result as any).usage };
 };

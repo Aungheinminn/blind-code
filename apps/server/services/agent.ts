@@ -31,6 +31,7 @@ type BareAgentEvent =
     }
   | { type: "verify-result"; result: VerifyResult }
   | { type: "verify-error"; error: string }
+  | { type: "sub-agent-usage"; usage: unknown }
   | CoderEvent;
 
 export type AgentEvent = BareAgentEvent & { subAgent: SubAgent };
@@ -44,6 +45,7 @@ const subAgentFor = (event: BareAgentEvent): SubAgent => {
     case "verify-result":
     case "verify-error":
       return "verifier";
+    case "sub-agent-usage":
     default:
       return "agent";
   }
@@ -216,7 +218,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
                   }),
                 }
               : null;
-          const plan = await runPlanner({
+          const { plan, usage } = await runPlanner({
             provider: opts.provider,
             model: opts.model,
             toolContext: opts.toolContext,
@@ -228,6 +230,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             signal: opts.signal,
             existingUnfinished,
           });
+          if (usage) emit(opts.onEvent, { type: "sub-agent-usage", usage });
           emit(opts.onEvent, { type: "plan", plan });
           return {
             summary: plan.summary,
@@ -301,7 +304,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
           note: what_was_built,
         });
         try {
-          const result = await runVerifier({
+          const { result, usage } = await runVerifier({
             provider: opts.provider,
             model: opts.model,
             toolContext: opts.toolContext,
@@ -309,6 +312,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             keyPreference: preference,
             signal: opts.signal,
           });
+          if (usage) emit(opts.onEvent, { type: "sub-agent-usage", usage });
           emit(opts.onEvent, { type: "verify-result", result });
           return { ok: result.ok, issues: result.issues, notes: result.notes ?? null };
         } catch (err) {

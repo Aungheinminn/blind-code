@@ -3,6 +3,7 @@
   import { signup } from "$lib/api/auth";
   import { setAuthedUser } from "$lib/stores/auth";
   import { HttpError } from "$lib/api/http";
+  import { openWelcomeModal } from "$lib/stores/welcomeModal";
 
   let email = "";
   let displayName = "";
@@ -21,6 +22,7 @@
     try {
       const { user } = await signup(email.trim(), password, displayName.trim());
       setAuthedUser(user);
+      openWelcomeModal();
       goto("/projects");
     } catch (e) {
       error =

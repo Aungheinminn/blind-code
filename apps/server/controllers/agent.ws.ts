@@ -7,12 +7,14 @@ import {
   type CoderEvent,
 } from "../services/coder";
 import { runAgent, type AgentEvent } from "../services/agent";
-import { listAvailableProviders } from "../services/providers";
+import { listAvailableProviders, resolveKey } from "../services/providers";
 import { providerForModel } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
 import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
 import { resolveSupabasePAT } from "../services/supabasePAT";
+import { creditsFor, hasPricing } from "../services/pricing";
+import { debit, getBalance } from "../services/credits";
 import {
   createAgentSession,
   endAgentSession,
@@ -193,6 +195,32 @@ export const agentController = (app: Elysia) =>
           ws.send({ type: "error", error: `unknown model: ${resolvedModelId}` });
           return;
         }
+
+        // Credits pre-flight. Only enforces when the resolved source would be
+        // the platform env — a user with their own key configured runs free.
+        if (hasPricing(resolvedModelId)) {
+          try {
+            const preflightKey = await resolveKey(
+              provider,
+              userId,
+              msg.keyPreference ?? "auto",
+            );
+            if (preflightKey?.source === "env") {
+              const balance = await getBalance(userId);
+              if (balance <= 0) {
+                ws.send({
+                  type: "error",
+                  error:
+                    "Out of credits. Add your own API key in Settings → Providers to run for free, or top up on Settings → Credits.",
+                });
+                return;
+              }
+            }
+          } catch (err) {
+            console.warn("[credits] pre-flight check failed, allowing run:", err);
+          }
+        }
+
         const sessionId = dbProjectId
           ? await createAgentSession(dbProjectId, `${provider}/${resolvedModelId}`)
           : null;
@@ -250,7 +278,28 @@ export const agentController = (app: Elysia) =>
 
         const runSignal: AbortSignal | undefined = (ws.data as any).abort?.signal;
 
+        // Accumulated across the whole turn: main stream `finish` events +
+        // every `sub-agent-usage` event (planner / verifier). Read at turn end
+        // for the credits debit.
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+
+        const addUsage = (usage: unknown) => {
+          if (!usage || typeof usage !== "object") return;
+          const u = usage as Record<string, unknown>;
+          const inp = Number(u.inputTokens ?? u.promptTokens ?? 0);
+          const out = Number(u.outputTokens ?? u.completionTokens ?? 0);
+          if (Number.isFinite(inp)) totalInputTokens += inp;
+          if (Number.isFinite(out)) totalOutputTokens += out;
+        };
+
         const handleEvent = async (event: CoderEvent | AgentEvent) => {
+          // sub-agent-usage is an internal metering signal — accumulate and
+          // skip publishing it to the client (it's not a user-facing event).
+          if ((event as { type: string }).type === "sub-agent-usage") {
+            addUsage((event as { usage?: unknown }).usage);
+            return;
+          }
           // Enrich update_todo tool-call input with the resolved title BEFORE
           // publishing, so the client sees it live and the persisted payload
           // keeps it for later reloads.
@@ -391,6 +440,7 @@ export const agentController = (app: Elysia) =>
               break;
             case "finish":
               await flushAllBlocks();
+              addUsage(event.usage);
               await recordAgentAction(sessionId, "finish", {
                 summary: event.finishReason,
                 payload: { finishReason: event.finishReason, usage: event.usage },
@@ -478,6 +528,38 @@ export const agentController = (app: Elysia) =>
 
         await eventChain;
         await flushAllBlocks();
+
+        // Debit credits for platform-key usage. User-key usage is free.
+        // Fail-safe: a debit failure never breaks the turn — we log and move on.
+        if (
+          (totalInputTokens > 0 || totalOutputTokens > 0) &&
+          hasPricing(resolvedModelId)
+        ) {
+          try {
+            const resolved = await resolveKey(
+              provider,
+              userId,
+              msg.keyPreference ?? "auto",
+            );
+            if (resolved?.source === "env") {
+              const credits = creditsFor(resolvedModelId, {
+                inputTokens: totalInputTokens,
+                outputTokens: totalOutputTokens,
+              });
+              if (credits > 0) {
+                await debit(userId, credits, "agent_run", {
+                  provider,
+                  model: resolvedModelId,
+                  inputTokens: totalInputTokens,
+                  outputTokens: totalOutputTokens,
+                });
+              }
+            }
+          } catch (err) {
+            console.warn("[credits] debit after agent run failed:", err);
+          }
+        }
+
         if (sessionId) await endAgentSession(sessionId);
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 

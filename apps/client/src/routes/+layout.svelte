@@ -6,6 +6,10 @@
   import { auth, clearAuth, loadCurrentUser } from "$lib/stores/auth";
   import { logout } from "$lib/api/auth";
   import Sidebar from "$lib/components/Sidebar.svelte";
+  import OutOfCreditsModal from "$lib/components/OutOfCreditsModal.svelte";
+  import WelcomeModal from "$lib/components/WelcomeModal.svelte";
+  import { creditsBalance, refreshCreditsBalance } from "$lib/stores/agent";
+  import { formatCompact } from "$lib/format";
   import "../app.css";
 
   const PUBLIC_ROUTES = ["/", "/login", "/signup"];
@@ -30,6 +34,15 @@
     initTheme();
     loadCurrentUser();
   });
+
+  // Pull the credits balance into the header whenever the session becomes authed.
+  $: if ($auth.status === "authed") refreshCreditsBalance();
+
+  $: creditsLabel =
+    $creditsBalance === null ? "—" : formatCompact($creditsBalance);
+  $: creditsFullLabel =
+    $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
+  $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
 
   $: {
     const state = $auth;
@@ -116,6 +129,23 @@
       </div>
 
       <div class="flex items-center gap-3 text-xs">
+        {#if $auth.status === "authed" && $creditsBalance !== null}
+          <a
+            href="/settings/credits"
+            class="credits-chip no-underline"
+            class:credits-chip--low={lowBalance}
+            title={lowBalance
+              ? `Low balance: ${creditsFullLabel} credits`
+              : `${creditsFullLabel} credits`}
+          >
+            <span
+              class="w-1.5 h-1.5 rounded-full shrink-0"
+              style="background-color: {lowBalance ? '#eab308' : 'var(--accent)'};"
+              aria-hidden="true"
+            ></span>
+            <span class="tabular-nums">{creditsLabel}</span>
+          </a>
+        {/if}
         <button
           type="button"
           class="header-icon-btn"
@@ -236,6 +266,9 @@
   </div>
 </div>
 
+<OutOfCreditsModal />
+<WelcomeModal />
+
 <style>
   .header-icon-btn {
     width: 32px;
@@ -270,5 +303,28 @@
   }
   .back-icon-btn:hover {
     color: var(--text-primary);
+  }
+  .credits-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  }
+  .credits-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+    background-color: var(--bg-panel);
+  }
+  .credits-chip--low {
+    color: #eab308;
+    border-color: color-mix(in srgb, #eab308 40%, transparent);
   }
 </style>

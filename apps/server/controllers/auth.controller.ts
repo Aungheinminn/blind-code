@@ -19,6 +19,7 @@ import {
 } from "../services/session";
 import { getUserFromRequest } from "../services/authGuard";
 import { mintTicket } from "../services/wsTicket";
+import { FREE_TIER_GRANT, grant } from "../services/credits";
 
 const signupSchema = z.object({
   email: z.string().email().max(255),
@@ -89,6 +90,11 @@ export const authController = (app: Elysia) =>
       if (!user) {
         set.status = 500;
         return { error: "failed to create user" };
+      }
+      try {
+        await grant(user.id, FREE_TIER_GRANT, "signup_grant");
+      } catch (err) {
+        console.warn(`[credits] signup grant failed for ${user.id}:`, err);
       }
       const session = await createSession(user.id, requestMeta(request));
       if (!session) {

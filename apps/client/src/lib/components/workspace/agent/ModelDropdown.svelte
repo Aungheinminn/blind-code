@@ -3,6 +3,7 @@
   import Dropdown from "$lib/components/ui/Dropdown.svelte";
   import { TIER_MODELS, TIER_ORDER, type TierModel } from "$lib/tierModels";
   import { keyPreference, type ProviderInfo, type KeyPreference } from "$lib/stores/agent";
+  import { sessionCreditsEstimate } from "$lib/pricing";
 
   export let value: string = "";
   export let providers: ProviderInfo[] = [];
@@ -70,6 +71,7 @@
       {#each g.models as m (m.id)}
         {@const isConfigured = configured.has(m.provider)}
         {@const isActive = m.id === value}
+        {@const estimate = sessionCreditsEstimate(m.id)}
         <button
           type="button"
           role="option"
@@ -79,11 +81,17 @@
           class:dropdown-row--disabled={!isConfigured}
           disabled={!isConfigured}
           on:click={() => pick(m, close)}
-          title={isConfigured ? "" : `Add a ${m.provider} key in Settings`}
+          title={isConfigured
+            ? estimate !== null
+              ? `~${estimate.toLocaleString()} credits per typical session (billed only on the platform key — free on your own key)`
+              : ""
+            : `Add a ${m.provider} key in Settings`}
         >
           <span class="dropdown-row-label">{m.label}</span>
           {#if !isConfigured}
             <span class="dropdown-row-hint">no key</span>
+          {:else if estimate !== null}
+            <span class="dropdown-row-hint tabular-nums">~{estimate.toLocaleString()} cr</span>
           {/if}
         </button>
       {/each}

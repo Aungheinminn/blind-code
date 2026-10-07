@@ -10,6 +10,7 @@ import { agentController } from "./controllers/agent.ws";
 import { authController } from "./controllers/auth.controller";
 import { connectController } from "./controllers/connect.controller";
 import { accountController } from "./controllers/account.controller";
+import { creditsController } from "./controllers/credits.controller";
 import { sampleBuildsController } from "./controllers/sampleBuilds.controller";
 import { designTemplatesController } from "./controllers/designTemplates.controller";
 import { designAgentController } from "./controllers/designAgent.ws";
@@ -54,6 +55,7 @@ agentController(app);
 designAgentController(app);
 connectController(app);
 accountController(app);
+creditsController(app);
 
 app.get("/health", () => ({ status: "ok" }));
 

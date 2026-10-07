@@ -12,7 +12,8 @@
     "db:seed:samples": "bun scripts/seed-sample-builds.ts",
     "db:seed:templates": "bun scripts/seed-design-templates.ts",
     "db:encrypt": "bun scripts/encrypt-existing-secrets.ts",
-    "migrate:keys": "bun scripts/migrate-auth-store.ts"
+    "migrate:keys": "bun scripts/migrate-auth-store.ts",
+    "credits:grant": "bun scripts/credits-grant.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
