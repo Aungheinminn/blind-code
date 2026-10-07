@@ -3,7 +3,8 @@ import { desc, eq } from "drizzle-orm";
 import { db, hasDb } from "../db/client";
 import { creditsTransactions } from "@vibe/shared";
 import { getUserFromRequest } from "../services/authGuard";
-import { getBalance } from "../services/credits";
+import { getBalance, grant } from "../services/credits";
+import { CREDIT_PACKS, getPackById } from "../services/creditPacks";
 
 const unauthorized = (set: { status?: number | string }) => {
   set.status = 401;
@@ -50,4 +51,26 @@ export const creditsController = (app: Elysia) =>
         .offset(offset);
 
       return { data: { items: rows, limit, offset } };
+    })
+    .get("/credits/packs", async () => ({ data: { packs: CREDIT_PACKS } }))
+    .post("/credits/topup", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+
+      const b = (body as Record<string, unknown>) ?? {};
+      const packId = typeof b.packId === "string" ? b.packId : "";
+      const pack = getPackById(packId);
+      if (!pack) {
+        set.status = 400;
+        return { error: "unknown pack" };
+      }
+
+      // Dev-mode checkout: grant immediately with no payment. Phase 4 will
+      // replace this body with a Stripe (or similar) checkout session; the
+      // webhook will call grant() on payment success instead.
+      const balanceAfter = await grant(user.id, pack.credits, "topup", {
+        note: `pack:${pack.id} ($${pack.priceUsd})`,
+      });
+      return { data: { balance: balanceAfter, packId: pack.id } };
     });

@@ -36,3 +36,9 @@ export const listCreditsTransactions = (opts: { limit?: number; offset?: number 
     `/credits/transactions${qs ? `?${qs}` : ""}`,
   );
 };
+
+export const purchaseCreditsPack = (packId: string) =>
+  fetchJson<{ balance: number; packId: string }>("/credits/topup", {
+    method: "POST",
+    body: JSON.stringify({ packId }),
+  });

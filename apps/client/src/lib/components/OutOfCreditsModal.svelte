@@ -65,8 +65,8 @@
         <li class="flex gap-2">
           <span style="color: var(--accent);">·</span>
           <span>
-            <strong style="color: var(--text-primary);">Top up credits</strong> once the
-            payment flow is live (coming soon).
+            <strong style="color: var(--text-primary);">Top up credits</strong> — pick a
+            pack on Settings → Credits.
           </span>
         </li>
       </ul>
@@ -78,7 +78,7 @@
           style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
           on:click={viewCredits}
         >
-          View credits
+          Top up
         </button>
         <button
           type="button"
