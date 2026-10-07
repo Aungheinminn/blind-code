@@ -14,7 +14,7 @@ import { consumeTicket } from "../services/wsTicket";
 import { turnBus } from "../services/turnBus";
 import { resolveSupabasePAT } from "../services/supabasePAT";
 import { creditsFor, hasPricing } from "../services/pricing";
-import { debit } from "../services/credits";
+import { debit, getBalance } from "../services/credits";
 import {
   createAgentSession,
   endAgentSession,
@@ -195,6 +195,32 @@ export const agentController = (app: Elysia) =>
           ws.send({ type: "error", error: `unknown model: ${resolvedModelId}` });
           return;
         }
+
+        // Credits pre-flight. Only enforces when the resolved source would be
+        // the platform env — a user with their own key configured runs free.
+        if (hasPricing(resolvedModelId)) {
+          try {
+            const preflightKey = await resolveKey(
+              provider,
+              userId,
+              msg.keyPreference ?? "auto",
+            );
+            if (preflightKey?.source === "env") {
+              const balance = await getBalance(userId);
+              if (balance <= 0) {
+                ws.send({
+                  type: "error",
+                  error:
+                    "Out of credits. Add your own API key in Settings → Providers to run for free, or top up on Settings → Credits.",
+                });
+                return;
+              }
+            }
+          } catch (err) {
+            console.warn("[credits] pre-flight check failed, allowing run:", err);
+          }
+        }
+
         const sessionId = dbProjectId
           ? await createAgentSession(dbProjectId, `${provider}/${resolvedModelId}`)
           : null;
