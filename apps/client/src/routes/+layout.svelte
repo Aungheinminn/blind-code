@@ -6,8 +6,8 @@
   import { auth, clearAuth, loadCurrentUser } from "$lib/stores/auth";
   import { logout } from "$lib/api/auth";
   import Sidebar from "$lib/components/Sidebar.svelte";
-  import Toast from "$lib/components/Toast.svelte";
   import OutOfCreditsModal from "$lib/components/OutOfCreditsModal.svelte";
+  import WelcomeModal from "$lib/components/WelcomeModal.svelte";
   import { creditsBalance, refreshCreditsBalance } from "$lib/stores/agent";
   import "../app.css";
 
@@ -263,8 +263,8 @@
   </div>
 </div>
 
-<Toast />
 <OutOfCreditsModal />
+<WelcomeModal />
 
 <style>
   .header-icon-btn {

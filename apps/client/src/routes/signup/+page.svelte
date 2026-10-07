@@ -3,7 +3,7 @@
   import { signup } from "$lib/api/auth";
   import { setAuthedUser } from "$lib/stores/auth";
   import { HttpError } from "$lib/api/http";
-  import { showToast } from "$lib/stores/toast";
+  import { openWelcomeModal } from "$lib/stores/welcomeModal";
 
   let email = "";
   let displayName = "";
@@ -22,10 +22,7 @@
     try {
       const { user } = await signup(email.trim(), password, displayName.trim());
       setAuthedUser(user);
-      showToast("Welcome — 2,000 free credits added to your account.", {
-        kind: "success",
-        durationMs: 8000,
-      });
+      openWelcomeModal();
       goto("/projects");
     } catch (e) {
       error =
