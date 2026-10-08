@@ -61,7 +61,7 @@
         statuses={todoStatuses}
         {isRunning}
         {planError}
-        compact={messageListAtTop}
+        compact={messageListAtTop && !isRunning}
       />
     {/if}
     <MessageList
