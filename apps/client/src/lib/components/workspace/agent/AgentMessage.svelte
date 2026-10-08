@@ -73,14 +73,6 @@
         p.kind === "chip",
     );
   $: meta = toolCount > 0 ? `ran ${toolCount} tool${toolCount === 1 ? "" : "s"}` : "";
-
-  const formatTokens = (n: number): string => {
-    if (n < 1000) return `${n}`;
-    if (n < 100_000) return `${(n / 1000).toFixed(1)}K`;
-    if (n < 1_000_000) return `${Math.round(n / 1000)}K`;
-    return `${(n / 1_000_000).toFixed(1)}M`;
-  };
-  $: usageTotal = message.usage?.totalTokens ?? 0;
 </script>
 
 <div class="flex flex-col gap-2.5 message-rise">
@@ -193,20 +185,6 @@
         </svg>
         Try again
       </button>
-    </div>
-  {/if}
-
-  {#if usageTotal > 0}
-    <div class="flex items-center gap-2 mt-1 text-[11px]" style="color: var(--text-tertiary);">
-      <span class="flex-1 h-px" style="background-color: var(--border);"></span>
-      <span
-        class="tabular-nums"
-        title={message.usage
-          ? `${message.usage.inputTokens.toLocaleString()} in · ${message.usage.outputTokens.toLocaleString()} out · ${message.usage.totalTokens.toLocaleString()} total`
-          : ""}
-      >
-        {formatTokens(usageTotal)} tokens
-      </span>
     </div>
   {/if}
 </div>
