@@ -356,6 +356,7 @@
         <div class="section-label">Colors</div>
         <div class="swatch-strip">
           {#each t.swatches as s}
+            <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
             <figure
               class="swatch"
               class:editable
@@ -379,6 +380,7 @@
 
       <section data-preview-section="typography" class="preview-section">
         <div class="section-label">Typography</div>
+        <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
         <div
           class="type-block"
           class:editable
@@ -517,6 +519,7 @@
       <section data-preview-section="components" class="preview-section">
         <div class="section-label">Components</div>
         <div class="component-grid">
+          <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
           <div
             class="mock-card"
             class:editable

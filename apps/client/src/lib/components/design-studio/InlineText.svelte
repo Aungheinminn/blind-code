@@ -119,7 +119,7 @@
       />
     {/if}
   {:else}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-tabindex -->
     <div
       class="inline-display {editable ? 'inline-display-editable' : ''} {displayClass}"
       on:click={startEditing}
