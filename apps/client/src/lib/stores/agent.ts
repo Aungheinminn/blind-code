@@ -159,6 +159,16 @@ export const activePlan = writable<Plan | null>(null);
 export const todoStatuses = writable<Record<string, TodoStatus>>({});
 export const planError = writable<string | null>(null);
 
+export type ClarifyingQuestion = {
+  question: string;
+  options?: string[];
+  allow_multiple?: boolean;
+  allow_custom?: boolean;
+};
+
+export const pendingQuestions = writable<ClarifyingQuestion[] | null>(null);
+export const clearPendingQuestions = () => pendingQuestions.set(null);
+
 const resetPlan = () => {
   activePlan.set(null);
   todoStatuses.set({});
@@ -481,6 +491,7 @@ const handleEvent = (raw: unknown) => {
         if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
       }
       planError.set(null);
+      pendingQuestions.set(null);
       startAgentMessage();
       break;
     case "plan":
@@ -493,6 +504,11 @@ const handleEvent = (raw: unknown) => {
       break;
     case "plan-error":
       planError.set(typeof event.error === "string" ? event.error : "planner failed");
+      break;
+    case "ask-questions":
+      if (Array.isArray(event.questions) && event.questions.length > 0) {
+        pendingQuestions.set(event.questions as ClarifyingQuestion[]);
+      }
       break;
     case "plan-todo-added":
       if (event.todo && typeof event.todo.id === "string") {

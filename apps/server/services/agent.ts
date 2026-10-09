@@ -21,6 +21,13 @@ import { addTodoToLatestPlan } from "../db/repo";
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
 
+export type ClarifyingQuestion = {
+  question: string;
+  options?: string[];
+  allow_multiple?: boolean;
+  allow_custom?: boolean;
+};
+
 type BareAgentEvent =
   | { type: "router-decision"; tool: AgentDecision; note?: string }
   | { type: "plan"; plan: Plan }
@@ -29,6 +36,7 @@ type BareAgentEvent =
       type: "plan-todo-added";
       todo: { id: string; title: string; rationale: string };
     }
+  | { type: "ask-questions"; questions: ClarifyingQuestion[] }
   | { type: "verify-result"; result: VerifyResult }
   | { type: "verify-error"; error: string }
   | { type: "sub-agent-usage"; usage: unknown }
@@ -115,6 +123,13 @@ Narration:
 - Only re-narrate when your intent changes (moving to a new step, or a tool result forces a re-plan).
 - Keep narration terse; never restate tool arguments or dump output back to the user.
 
+Clarify before building:
+- When a BUILD request is vague (a one-line idea without clear scope / style / feature choices) AND no plan exists yet, your ONLY action on this turn is to call ask_questions. Do NOT narrate assumptions, do NOT emit a text intro like "I need a few choices", do NOT list the questions as plain text — the user does not see text questions, they only see the popup rendered from the tool call. The "narrate before each step" rule does NOT apply to ask_questions; skip narration entirely on this turn.
+- See the ask_questions tool description for the exact 3-question structure (scope / theme / extras-multi-select) and option-formatting rules. Follow it unless the request type genuinely doesn't fit — then adapt the axes but keep the "every option has a parenthetical description" rule and keep extras multi-select.
+- End your turn immediately after calling ask_questions. The user's answers arrive as the next user message; THEN call plan_task with the fully-scoped brief.
+- If the request is already specific (names features, style, and scope), skip ask_questions and go straight to plan_task.
+- NEVER call ask_questions when a plan already exists or mid-plan. Clarifications happen pre-plan only; mid-plan deviations use add_todo or plan_task per the rules below.
+
 Deciding what to do:
 - BUILD or CHANGE request when NO plan exists yet: call plan_task first with a one-sentence description, then work through the returned todos.
 - SMALL EXTENSION while a plan is UNFINISHED (user asks for something that naturally fits current scope — "also add X to the list", "handle the empty state too", "put a reject button on each row"): call add_todo to append a single new todo, then do the work. Do NOT call plan_task — that would regenerate the whole plan unnecessarily.
@@ -141,6 +156,7 @@ Tools:
 - update_todo — mark plan todos active/done/skipped
 - plan_task — produce (or replace) the todo list. Never call twice per turn. Use for genuinely new/larger work.
 - add_todo — append ONE new todo to the current plan (cheaper than plan_task; use when the user asks for a small extension mid-work that fits current plan scope)
+- ask_questions — surface 1–3 clarifying questions in a popup when a BUILD request is vague and NO plan exists yet. Call once, then end your turn. Not valid once a plan exists.
 - verify_task — sanity-check the last change (call at most once per turn)
 Do not use run_command.`;
 
@@ -293,6 +309,74 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
         } catch (err) {
           return { error: extractErrorMessage(err) };
         }
+      },
+    }),
+
+    ask_questions: tool({
+      description: [
+        "Surface clarifying questions to the user via a popup. Call this when a BUILD request is vague and no plan exists yet.",
+        "",
+        "CRITICAL: this is the ONLY way questions become visible to the user — questions written as plain text in your response are invisible to them. Call ask_questions directly, with no text intro, no narration of assumptions. End your turn immediately after calling — do not call plan_task or any write tool in the same turn. The user's answers arrive as the next user message. Not valid once a plan exists.",
+        "",
+        "QUESTION QUALITY — follow this 3-question structure exactly unless the request type genuinely doesn't fit it:",
+        "",
+        "Q1 — Scope / feature depth (single-choice):",
+        '  "What style and feature depth do you envision for this <app type>?"',
+        "  3 options, each describing a different scope level with a parenthetical of what it includes.",
+        '  Example for a habit tracker: ["Full-featured SaaS Dashboard (Heatmap grid, Streaks, Categories, Timer, Gamification, Analytics)", "Minimalist & Calm Tracker (Daily checklist, Soft pastel aesthetic, Simple stats)", "Gamified RPG-style (XP points, Leveling up, Quest logs, Achievements)"]',
+        "  allow_multiple: false. allow_custom: true.",
+        "",
+        "Q2 — Visual theme / aesthetic (single-choice):",
+        '  "Which visual theme and aesthetic would you like?"',
+        "  3–4 options, each a design direction with a parenthetical of visual cues.",
+        '  Example: ["Modern Minimalist & Clean (Light/Dark mode, sleek cards, crisp progress rings)", "Gamified & Vibrant (XP points, badges, confetti celebrations)", "Calm & Organic Earthy (Soothing pastels, mindfulness vibe, soft animations)", "Neon Cyberpunk Dark (Glow accents, high-contrast, futuristic aesthetic)"]',
+        "  allow_multiple: false. allow_custom: true.",
+        "",
+        "Q3 — Extra features to include (MULTI-SELECT):",
+        '  "Which extra features would you like included?"',
+        "  4–5 options, each an optional add-on the user may toggle on, each with a short parenthetical.",
+        '  Example: ["Analytics & GitHub-style Heatmap (365-day heatmap, completion rates, charts)", "Pre-made Templates (Fitness, Productivity, Mindfulness bundles)", "Integrated Timer (Pomodoro & stopwatch for time-based habits)", "Custom Reminders & Sound Effects (Satisfying chime on check-off)", "Export/Import & Local Storage (Save/restore data offline)"]',
+        "  allow_multiple: true. allow_custom: true.",
+        "",
+        "Universal rules:",
+        "- Every option label MUST include a parenthetical description of what it means — bare labels like 'Minimalist' are not enough; 'Minimalist (Daily checklist, Simple stats, No gamification)' is right.",
+        "- Keep each option label under ~110 characters.",
+        "- allow_custom: true on all three questions.",
+        "- The scope and theme questions are single-choice (allow_multiple:false). The extras question is multi-select (allow_multiple:true). Never flip these.",
+        "- Tailor option content to the specific app type the user asked for — do not copy the habit-tracker examples verbatim.",
+      ].join("\n"),
+      inputSchema: z.object({
+        questions: z
+          .array(
+            z.object({
+              question: z.string().describe("The clarifying question to ask the user."),
+              options: z
+                .array(z.string())
+                .optional()
+                .describe("Predefined answer options the user can choose from."),
+              allow_multiple: z
+                .boolean()
+                .optional()
+                .describe("When true, the user may select more than one predefined option."),
+              allow_custom: z
+                .boolean()
+                .optional()
+                .describe("When true, the user may enter a free-text answer not in options."),
+            }),
+          )
+          .min(1)
+          .max(3)
+          .describe("1–3 clarifying questions to present to the user."),
+      }),
+      execute: async ({ questions }) => {
+        if (opts.existingPlan) {
+          return {
+            error:
+              "a plan already exists — ask_questions is only valid pre-plan. Use plan_task or add_todo instead.",
+          };
+        }
+        emit(opts.onEvent, { type: "ask-questions", questions });
+        return { ok: true };
       },
     }),
 
