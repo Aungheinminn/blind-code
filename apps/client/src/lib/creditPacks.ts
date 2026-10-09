@@ -13,14 +13,14 @@ export const CREDIT_PACKS: ReadonlyArray<CreditPack> = [
   {
     id: "starter",
     name: "Starter",
-    credits: 1_000,
+    credits: 100,
     priceUsd: 3,
     tagline: "A few sessions on Sonnet-class models.",
   },
   {
     id: "standard",
     name: "Standard",
-    credits: 5_000,
+    credits: 500,
     priceUsd: 12,
     highlight: true,
     tagline: "Most popular — saves 20% vs Starter.",
@@ -28,14 +28,14 @@ export const CREDIT_PACKS: ReadonlyArray<CreditPack> = [
   {
     id: "pro",
     name: "Pro",
-    credits: 20_000,
+    credits: 2_000,
     priceUsd: 40,
     tagline: "Dozens of Opus sessions. Saves 33%.",
   },
   {
     id: "max",
     name: "Max",
-    credits: 100_000,
+    credits: 10_000,
     priceUsd: 150,
     tagline: "Teams / power users. Saves 50%.",
   },

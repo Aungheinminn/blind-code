@@ -14,7 +14,7 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   "gemini-2.5-pro": { input: 1.25, output: 10.0 },
 };
 
-const USD_PER_CREDIT = 0.001;
+const USD_PER_CREDIT = 0.01;
 
 // Credits for a representative 50K-in / 50K-out session (~100K total tokens).
 // Rough tier indicator for the model picker, not an exact charge.

@@ -76,4 +76,4 @@ export const debit = async (
   return mutate({ userId, delta: -amount, reason, meta });
 };
 
-export const FREE_TIER_GRANT = 2000;
+export const FREE_TIER_GRANT = 200;

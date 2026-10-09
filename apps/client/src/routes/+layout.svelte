@@ -42,7 +42,7 @@
     $creditsBalance === null ? "—" : formatCompact($creditsBalance);
   $: creditsFullLabel =
     $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();
-  $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
+  $: lowBalance = $creditsBalance !== null && $creditsBalance < 50;
 
   $: {
     const state = $auth;

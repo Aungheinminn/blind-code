@@ -37,7 +37,7 @@
       </div>
 
       <p class="mt-3 text-sm leading-relaxed" style="color: var(--text-secondary);">
-        You've got <strong style="color: var(--text-primary);">2,000 free credits</strong>
+        You've got <strong style="color: var(--text-primary);">200 free credits</strong>
         to try the platform. Credits are only spent when you run on Blind Code's
         platform keys — adding your own API key in Settings → Providers lets you
         run for free.
