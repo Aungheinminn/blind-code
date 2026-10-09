@@ -35,9 +35,9 @@
     return providerInfo.source;
   })();
   $: showCreditsChip = resolvedSource === "env" && $creditsBalance !== null;
-  $: lowBalance = $creditsBalance !== null && $creditsBalance < 500;
+  $: lowBalance = $creditsBalance !== null && $creditsBalance < 50;
   $: criticallyLow =
-    showCreditsChip && $creditsBalance !== null && $creditsBalance < 200;
+    showCreditsChip && $creditsBalance !== null && $creditsBalance < 20;
   $: creditsLabel = $creditsBalance === null ? "—" : formatCompact($creditsBalance);
   $: creditsFullLabel =
     $creditsBalance === null ? "—" : $creditsBalance.toLocaleString();

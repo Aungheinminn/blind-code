@@ -22,9 +22,9 @@ export type UsageTokens = {
   outputTokens: number;
 };
 
-// 1 credit == $0.001 of raw API cost. Sale-price markup is a separate
+// 1 credit == $0.01 of raw API cost. Sale-price markup is a separate
 // business layer applied at Phase 4 (payment) — not here.
-const USD_PER_CREDIT = 0.001;
+const USD_PER_CREDIT = 0.01;
 
 export const creditsFor = (model: string, usage: UsageTokens): number => {
   const price = MODEL_PRICING[model];
