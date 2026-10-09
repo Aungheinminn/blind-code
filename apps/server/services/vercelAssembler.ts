@@ -1,8 +1,10 @@
 import {
   LIB_UTILS_TS,
   STYLES_CSS,
+  UI_ALERT_DIALOG_TSX,
   UI_BUTTON_TSX,
   UI_CARD_TSX,
+  UI_DIALOG_TSX,
   UI_INPUT_TSX,
   UI_LABEL_TSX,
 } from "@vibe/shared/preview/scaffold";
@@ -15,6 +17,9 @@ const BASE_DEPS: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
   "@radix-ui/react-slot": "^1.1.0",
   "@radix-ui/react-label": "^2.1.0",
+  "@radix-ui/react-dialog": "^1.1.0",
+  "@radix-ui/react-alert-dialog": "^1.1.0",
+  "lucide-react": "^0.454.0",
 };
 
 const BASE_DEV_DEPS: Record<string, string> = {
@@ -186,6 +191,18 @@ const TAILWIND_PRELUDE = `@import "tailwindcss";
   --radius: var(--radius);
 }
 
+/* Tailwind v4 preflight sets \`cursor: default\` on buttons. Restore the
+   v3 pointer-cursor behavior so deployed apps feel clickable without
+   relying on the user to add \`cursor-pointer\` everywhere. Kept in the
+   prelude so it applies regardless of any design-CSS override of
+   /src/styles.css. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 `;
 
 const TSCONFIG_JSON = JSON.stringify(
@@ -249,6 +266,12 @@ export const assembleVercelProject = (
   }
   if (!files["/src/components/ui/label.tsx"]) {
     files["/src/components/ui/label.tsx"] = UI_LABEL_TSX;
+  }
+  if (!files["/src/components/ui/dialog.tsx"]) {
+    files["/src/components/ui/dialog.tsx"] = UI_DIALOG_TSX;
+  }
+  if (!files["/src/components/ui/alert-dialog.tsx"]) {
+    files["/src/components/ui/alert-dialog.tsx"] = UI_ALERT_DIALOG_TSX;
   }
 
   if (opts.supabase) {
