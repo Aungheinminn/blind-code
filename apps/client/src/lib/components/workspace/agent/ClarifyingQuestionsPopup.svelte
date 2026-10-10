@@ -3,8 +3,11 @@
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import type { ClarifyingQuestion } from "$lib/stores/agent";
+  import type { DesignTemplateSummary } from "$lib/api/projects";
+  import DesignTemplateModal from "./DesignTemplateModal.svelte";
 
   export let questions: ClarifyingQuestion[] = [];
+  export let projectId = "";
 
   type Answer = { selected: string[]; custom: string };
 
@@ -15,14 +18,34 @@
 
   let answers: Answer[] = questions.map(() => ({ selected: [], custom: "" }));
   let current = 0;
+  let vaultOpen = false;
 
   $: total = questions.length;
   $: isLast = current === total - 1;
   $: currentQ = questions[current];
   $: currentA = answers[current];
+  // Heuristic: the model only produces 3 questions when no explicit template is
+  // picked (scope / theme / extras). The middle one is the theme question —
+  // that's where we offer the Design Vault escape hatch.
+  $: showVaultLink = total === 3 && current === 1 && projectId !== "";
   $: isAnswered =
     (currentA?.selected.length ?? 0) > 0 ||
     (currentA?.custom.trim() ?? "") !== "";
+
+  const onVaultPick = (e: CustomEvent<DesignTemplateSummary>) => {
+    const t = e.detail;
+    const a = answers[current];
+    if (!a) return;
+    // Persistence already happened inside the modal (setProjectDesignTemplate +
+    // loadDesignTemplate). We only mirror the choice into the popup state so
+    // the follow-up message mentions the template name.
+    a.selected = [`Design template: ${t.name}`];
+    a.custom = "";
+    answers = answers;
+    vaultOpen = false;
+    // Auto-advance to next question if there is one.
+    if (!isLast) current += 1;
+  };
 
   const toggleOption = (opt: string) => {
     const a = answers[current];
@@ -161,6 +184,15 @@
             style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-primary);"
           />
         {/if}
+        {#if showVaultLink}
+          <button
+            type="button"
+            class="vault-link"
+            on:click={() => (vaultOpen = true)}
+          >
+            → Choose from Design Vault
+          </button>
+        {/if}
       </div>
     {/key}
   {/if}
@@ -196,3 +228,27 @@
     </div>
   </div>
 </div>
+
+<DesignTemplateModal
+  bind:open={vaultOpen}
+  {projectId}
+  on:pick={onVaultPick}
+  on:close={() => (vaultOpen = false)}
+/>
+
+<style>
+  .vault-link {
+    align-self: flex-start;
+    margin-top: 2px;
+    padding: 4px 2px;
+    background: transparent;
+    border: 0;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: color 150ms ease;
+  }
+  .vault-link:hover {
+    color: var(--accent, #e85c2a);
+  }
+</style>

@@ -512,6 +512,7 @@ export const agentController = (app: Elysia) =>
             agentToolPermissions: resolvedPerms,
             designTemplateName: templateName,
             designTemplateBody: templateBody,
+            hasExplicitDesignTemplate: activeTemplate !== null,
             keyPreference: msg.keyPreference ?? "auto",
             signal: runSignal,
             existingPlan,

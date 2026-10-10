@@ -61,6 +61,8 @@
     minHeight={96}
     maxHeight={320}
     size="md"
+    submitOnEnter
+    on:submit={onCreate}
   >
     <svelte:fragment slot="left">
       {#if $auth.status === "authed"}

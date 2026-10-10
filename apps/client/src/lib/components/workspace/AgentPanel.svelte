@@ -20,7 +20,10 @@
   export let todoStatuses: Record<string, TodoStatus> = {};
   export let planError: string | null = null;
 
-  $: showTray = plan !== null || (isRunning && !planError) || planError !== null;
+  // Tray appears only once there's a plan (or a plan-error) and no clarifying
+  // popup is open. The old `isRunning` term made it flash in during the
+  // ask_questions turn before the popup took over.
+  $: showTray = (plan !== null || planError !== null) && !$pendingQuestions;
 
   let messageListAtTop = true;
 
@@ -121,6 +124,7 @@
     <div class="px-4 pt-2">
       <ClarifyingQuestionsPopup
         questions={$pendingQuestions}
+        {projectId}
         on:submit={onQuestionsSubmit}
         on:dismiss={onQuestionsDismiss}
       />
