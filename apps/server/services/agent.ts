@@ -80,6 +80,7 @@ export type RunAgentOptions = {
   agentToolPermissions?: AgentToolPermissions;
   designTemplateName?: string | null;
   designTemplateBody?: string | null;
+  hasExplicitDesignTemplate?: boolean;
   keyPreference?: KeyPreference;
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
@@ -152,6 +153,12 @@ Tools:
 - ask_questions — surface 1–3 clarifying questions in a popup when a BUILD request is vague and NO plan exists yet. Call once, then end your turn. Not valid once a plan exists.
 - verify_task — sanity-check the last change (call at most once per turn)
 Do not use run_command.`;
+
+const buildClarifyAppendix = (hasExplicitDesignTemplate: boolean): string => {
+  return hasExplicitDesignTemplate
+    ? `\n\nCLARIFY MODE OVERRIDE\n\nThe user has already picked a design template for this project. When you call ask_questions, SKIP the theme question (Q2 in the tool description). Ask only the scope question (Q1) and the extras-multi-select question (which becomes Q2 in your actual call). You will still have at most 2 questions, not 3. Do not ask about visual theme — it is already decided.`
+    : `\n\nCLARIFY MODE OVERRIDE\n\nThe user has NOT picked a design template for this project. When you call ask_questions, use the full 3-question structure from the tool description (scope / theme / extras-multi-select). The theme answer will shape the first generation's visual direction since there is no template to inherit from.`;
+};
 
 const buildDesignTemplateAppendix = (
   name: string | null,
@@ -416,9 +423,12 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     : opts.userSupabasePatConnected
       ? withPlan + buildAutoProvisionSupabaseCoderAppendix()
       : withPlan + buildLocalPersistenceCoderAppendix();
-  const system = opts.designTemplateBody
+  const withTemplate = opts.designTemplateBody
     ? withPersistence + buildDesignTemplateAppendix(opts.designTemplateName ?? null, opts.designTemplateBody)
     : withPersistence;
+  const system = opts.existingPlan
+    ? withTemplate
+    : withTemplate + buildClarifyAppendix(Boolean(opts.hasExplicitDesignTemplate));
 
   const messages: ModelMessage[] = [
     {

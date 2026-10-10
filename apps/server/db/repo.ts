@@ -1244,31 +1244,19 @@ export const getActiveDesignTemplateForProject = async (
   const project = await getProjectForOwner(projectId, ownerId);
   if (!project) return null;
 
-  if (project.designTemplateId) {
-    const rows = await db
-      .select()
-      .from(schema.designTemplates)
-      .where(
-        and(
-          eq(schema.designTemplates.id, project.designTemplateId),
-          isNull(schema.designTemplates.deletedAt),
-        ),
-      )
-      .limit(1);
-    if (rows[0]) return rows[0];
-  }
+  if (!project.designTemplateId) return null;
 
-  const fallback = await db
+  const rows = await db
     .select()
     .from(schema.designTemplates)
     .where(
       and(
-        eq(schema.designTemplates.origin, "builtin"),
-        eq(schema.designTemplates.slug, "paper"),
+        eq(schema.designTemplates.id, project.designTemplateId),
+        isNull(schema.designTemplates.deletedAt),
       ),
     )
     .limit(1);
-  return fallback[0] ?? null;
+  return rows[0] ?? null;
 };
 
 export const setDesignTemplateForProject = async (
