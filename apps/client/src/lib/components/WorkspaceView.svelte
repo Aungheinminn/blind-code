@@ -20,6 +20,7 @@
     todoStatuses,
     planError,
     assembledFiles,
+    projectFiles,
     projectIntegration,
     projectVercel,
   } from "$lib/stores/agent";
@@ -27,6 +28,7 @@
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
   import PreviewHeader from "$lib/components/workspace/PreviewHeader.svelte";
   import AgentLauncher from "$lib/components/workspace/AgentLauncher.svelte";
+  import PlanningPane from "$lib/components/workspace/PlanningPane.svelte";
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
   import DeployModal from "$lib/components/workspace/DeployModal.svelte";
   import { checkVercelDeploymentStatus, getProject } from "$lib/api/projects";
@@ -49,9 +51,14 @@
   let projectName = "";
   let supabaseModalOpen = false;
   let deployModalOpen = false;
+  // One-way latch per project: once we've committed to the preview layout
+  // we don't fall back to the planning pane on follow-up prompts.
+  let showPreview = false;
 
   $: statusText = $isRunning ? "working…" : "idle";
   $: previewLoading = $isRunning;
+  $: hasGeneratedApp = Object.keys($projectFiles).length > 0;
+  $: if (hasGeneratedApp && !$isRunning) showPreview = true;
 
   onMount(() => {
     loadProviders();
@@ -92,6 +99,7 @@
   $: if (projectId && projectId !== activeProjectId) {
     activeProjectId = projectId;
     projectName = "";
+    showPreview = false;
     resetWorkspace();
     const pending = readPendingPrompt(projectId);
     bootstrapProject(projectId, pending);
@@ -137,30 +145,47 @@
 >
   <div
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell flex flex-col"
-    style="left: {panelOpen ? 'min(444px, 100%)' : '0px'};"
+    style="left: {panelOpen
+      ? showPreview
+        ? 'min(444px, 100%)'
+        : '70%'
+      : '0px'};"
   >
-    <PreviewHeader
-      {panelOpen}
-      {launcherHidden}
-      supabaseConnected={$projectIntegration !== null}
-      vercelDeployed={!!$projectVercel?.productionUrl}
-      on:restart={() => sandpack?.refresh()}
-      on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
-      on:open-supabase={() => (supabaseModalOpen = true)}
-      on:open-deploy={() => (deployModalOpen = true)}
-    />
-    <div class="flex-1 min-h-0 relative">
-      <SandpackPreview
-        bind:this={sandpack}
-        files={$assembledFiles}
-        framed={panelOpen}
-        loading={previewLoading}
+    {#if showPreview}
+      <PreviewHeader
+        {panelOpen}
+        {launcherHidden}
+        supabaseConnected={$projectIntegration !== null}
+        vercelDeployed={!!$projectVercel?.productionUrl}
+        on:restart={() => sandpack?.refresh()}
+        on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
+        on:open-supabase={() => (supabaseModalOpen = true)}
+        on:open-deploy={() => (deployModalOpen = true)}
       />
-    </div>
+      <div class="flex-1 min-h-0 relative">
+        <SandpackPreview
+          bind:this={sandpack}
+          files={$assembledFiles}
+          framed={panelOpen}
+          loading={previewLoading}
+        />
+      </div>
+    {:else}
+      <div class="flex-1 min-h-0 p-3">
+        <PlanningPane
+          plan={$activePlan}
+          todoStatuses={$todoStatuses}
+          isRunning={$isRunning}
+          planError={$planError}
+          on:retry={() => retryLastPrompt(projectId)}
+        />
+      </div>
+    {/if}
   </div>
 
   <AgentPanel
     open={panelOpen}
+    wide={!showPreview}
     {projectId}
     {projectName}
     messages={$messages}
@@ -180,7 +205,7 @@
   />
 
   <AgentLauncher
-    hidden={panelOpen || launcherHidden}
+    hidden={panelOpen || launcherHidden || !showPreview}
     isRunning={$isRunning}
     plan={$activePlan}
     statuses={$todoStatuses}

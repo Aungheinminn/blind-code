@@ -19,11 +19,13 @@
   export let plan: Plan | null = null;
   export let todoStatuses: Record<string, TodoStatus> = {};
   export let planError: string | null = null;
+  export let wide = false;
 
   // Tray appears only once there's a plan (or a plan-error) and no clarifying
   // popup is open. The old `isRunning` term made it flash in during the
-  // ask_questions turn before the popup took over.
-  $: showTray = (plan !== null || planError !== null) && !$pendingQuestions;
+  // ask_questions turn before the popup took over. In wide mode the plan
+  // lives in the sibling PlanningPane, so skip the overlay.
+  $: showTray = !wide && (plan !== null || planError !== null) && !$pendingQuestions;
 
   let messageListAtTop = true;
 
@@ -85,12 +87,13 @@
 </script>
 
 <div
-  class="absolute top-3 bottom-3 left-3 w-[min(420px,calc(100%-24px))] rounded-[18px] border flex flex-col overflow-hidden"
+  class="absolute top-3 bottom-3 left-3 rounded-[18px] border flex flex-col overflow-hidden agent-panel-shell"
+  class:wide
   style="z-index: 25; border-color: var(--border); background-color: var(--bg-panel); box-shadow: var(--panel-shadow); transform: {open
     ? 'translateX(0)'
     : 'translateX(calc(-100% - 16px))'}; opacity: {open
     ? 1
-    : 0}; transition: transform 300ms cubic-bezier(.22,.8,.28,1), opacity 200ms ease; pointer-events: {open
+    : 0}; transition: transform 300ms cubic-bezier(.22,.8,.28,1), opacity 200ms ease, width 300ms cubic-bezier(.22,.8,.28,1); pointer-events: {open
     ? 'auto'
     : 'none'};"
   aria-hidden={!open}
@@ -142,3 +145,12 @@
     on:model-change={(e) => dispatch("model-change", e.detail)}
   />
 </div>
+
+<style>
+  .agent-panel-shell {
+    width: min(420px, calc(100% - 24px));
+  }
+  .agent-panel-shell.wide {
+    width: calc(70% - 18px);
+  }
+</style>
