@@ -62,7 +62,7 @@
 >
   {#if expanded && canExpand}
     <div
-      class="px-[14px] pt-[12px] pb-2 max-h-[240px] overflow-y-auto"
+      class="px-[14px] pt-[12px] pb-2"
       transition:slide={{ duration: 220, easing: cubicOut }}
     >
       {#if plan?.summary}
