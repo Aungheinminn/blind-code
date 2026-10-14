@@ -41,6 +41,7 @@ export const savedTemplate = writable<SavedTemplate | null>(null);
 export const isSaving = writable(false);
 export const errorMessage = writable<string | null>(null);
 export const editingTemplateId = writable<string | null>(null);
+export const editingTemplateName = writable<string | null>(null);
 
 let socket: WebSocket | null = null;
 let currentAgentMessageId: string | null = null;
@@ -228,6 +229,8 @@ export const sendDesignPrompt = async (prompt: string): Promise<void> => {
     .slice(0, -1)
     .map((m) => ({ role: m.role === "agent" ? "assistant" : "user", content: m.content }));
 
+  const editId = get(editingTemplateId);
+  const editName = get(editingTemplateName);
   ws.send(
     JSON.stringify({
       type: "run",
@@ -235,6 +238,8 @@ export const sendDesignPrompt = async (prompt: string): Promise<void> => {
       prompt: trimmed,
       history,
       initialDraft: get(draftMarkdown),
+      ...(editId ? { editingTemplateId: editId } : {}),
+      ...(editName ? { editingTemplateName: editName } : {}),
     }),
   );
 };
@@ -312,6 +317,7 @@ export const seedEditingTemplate = (input: {
 }) => {
   resetDesignStudio();
   editingTemplateId.set(input.id);
+  editingTemplateName.set(input.name);
   draftMarkdown.set(input.content);
   savedTemplate.set(null);
 };
@@ -337,6 +343,7 @@ export const resetDesignStudio = () => {
   isSaving.set(false);
   errorMessage.set(null);
   editingTemplateId.set(null);
+  editingTemplateName.set(null);
   currentAgentMessageId = null;
   abortRequested = false;
 };

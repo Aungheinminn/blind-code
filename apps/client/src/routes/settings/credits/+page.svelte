@@ -26,6 +26,14 @@
     adjustment: "Adjustment",
   };
 
+  const labelFor = (t: CreditsTransaction): string => {
+    if (t.reason === "agent_run") {
+      if (t.meta?.designTemplateName) return t.meta.designTemplateName;
+      if (t.meta?.projectName) return t.meta.projectName;
+    }
+    return REASON_LABELS[t.reason] ?? t.reason;
+  };
+
   const load = async () => {
     loading = true;
     error = "";
@@ -140,7 +148,7 @@
           >
             <div class="min-w-0 flex-1">
               <div class="font-medium" style="color: var(--text-primary);">
-                {REASON_LABELS[t.reason] ?? t.reason}
+                {labelFor(t)}
               </div>
               <div class="text-[11px] mt-0.5" style="color: var(--text-tertiary);">
                 {formatDate(t.createdAt)}

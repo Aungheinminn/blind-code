@@ -22,6 +22,10 @@ export type CreditsTransactionMeta = {
   inputTokens?: number;
   outputTokens?: number;
   note?: string;
+  projectId?: string;
+  projectName?: string;
+  designTemplateId?: string;
+  designTemplateName?: string;
 };
 
 export const creditsTransactions = pgTable("credits_transactions", {
