@@ -553,6 +553,10 @@ export const agentController = (app: Elysia) =>
                   model: resolvedModelId,
                   inputTokens: totalInputTokens,
                   outputTokens: totalOutputTokens,
+                  ...(dbProjectId ? { projectId: dbProjectId } : {}),
+                  ...(projectRecord?.name
+                    ? { projectName: projectRecord.name }
+                    : {}),
                 });
               }
             }

@@ -38,8 +38,15 @@ export type RunDesignAgentOptions = {
   prompt: string;
   history?: DesignAgentChatMessage[];
   initialDraft?: string | null;
+  editingTemplateName?: string | null;
   signal?: AbortSignal;
   onEvent: (event: DesignAgentEvent) => void;
+};
+
+export type RunDesignAgentResult = {
+  inputTokens: number;
+  outputTokens: number;
+  templateName: string | null;
 };
 
 const DESIGN_AGENT_SYSTEM_PROMPT = `You are a design-system template authoring agent. Your job is to produce a single, valid design template Markdown document that describes a cohesive visual voice — colors, typography, layout, elevation, shapes, components, and usage rules — and propose it to the user for saving. You never persist templates directly; the user decides whether to save via a UI popup.
@@ -182,13 +189,25 @@ const readBuiltinFromDb = async (
 
 export const runDesignAgent = async (
   opts: RunDesignAgentOptions,
-): Promise<void> => {
+): Promise<RunDesignAgentResult> => {
   const model = await resolveModel(opts.provider, opts.model, opts.ownerUserId);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
 
   const draftState: { markdown: string | null } = {
     markdown: opts.initialDraft?.trim() ? opts.initialDraft : null,
   };
+
+  const usage = { inputTokens: 0, outputTokens: 0 };
+  const addUsage = (raw: unknown) => {
+    if (!raw || typeof raw !== "object") return;
+    const u = raw as Record<string, unknown>;
+    const inp = Number(u.inputTokens ?? u.promptTokens ?? 0);
+    const out = Number(u.outputTokens ?? u.completionTokens ?? 0);
+    if (Number.isFinite(inp)) usage.inputTokens += inp;
+    if (Number.isFinite(out)) usage.outputTokens += out;
+  };
+
+  let proposedTemplateName: string | null = null;
 
   const emit = (event: DesignAgentEvent): void => {
     try {
@@ -285,6 +304,7 @@ export const runDesignAgent = async (
         }
         const finalDescription =
           description ?? parsed.tokens.description ?? "";
+        proposedTemplateName = name;
         emit({
           type: "save-proposed",
           proposal: {
@@ -372,6 +392,7 @@ export const runDesignAgent = async (
           });
           break;
         case "finish":
+          addUsage((chunk as any).usage);
           emit({
             type: "finish",
             finishReason: (chunk as any).finishReason ?? "unknown",
@@ -387,7 +408,18 @@ export const runDesignAgent = async (
       }
     }
   } catch (err) {
-    if (opts.signal?.aborted) return;
-    emit({ type: "error", error: extractErrorMessage(err) });
+    if (!opts.signal?.aborted) {
+      emit({ type: "error", error: extractErrorMessage(err) });
+    }
   }
+
+  const templateName =
+    proposedTemplateName ??
+    (opts.editingTemplateName?.trim() ? opts.editingTemplateName.trim() : null);
+
+  return {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    templateName,
+  };
 };

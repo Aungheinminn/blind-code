@@ -20,6 +20,10 @@ export type CreditsTransaction = {
     inputTokens?: number;
     outputTokens?: number;
     note?: string;
+    projectId?: string;
+    projectName?: string;
+    designTemplateId?: string;
+    designTemplateName?: string;
   } | null;
   createdAt: string;
 };

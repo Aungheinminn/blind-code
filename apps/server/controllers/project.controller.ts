@@ -408,6 +408,7 @@ export const projectController = (app: Elysia) =>
                   inputTokens,
                   outputTokens,
                   note: "titler",
+                  ...(title ? { projectName: title } : {}),
                 });
               }
             }
