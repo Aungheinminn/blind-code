@@ -34,6 +34,13 @@
     return REASON_LABELS[t.reason] ?? t.reason;
   };
 
+  const iconFor = (t: CreditsTransaction): "project" | "design" | null => {
+    if (t.reason !== "agent_run") return null;
+    if (t.meta?.designTemplateName) return "design";
+    if (t.meta?.projectName) return "project";
+    return null;
+  };
+
   const load = async () => {
     loading = true;
     error = "";
@@ -147,8 +154,45 @@
             style="border-color: var(--border); background-color: var(--bg-secondary);"
           >
             <div class="min-w-0 flex-1">
-              <div class="font-medium" style="color: var(--text-primary);">
-                {labelFor(t)}
+              <div class="font-medium flex items-center gap-1.5" style="color: var(--text-primary);">
+                {#if iconFor(t) === "project"}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="color: var(--text-tertiary); flex-shrink: 0;"
+                    aria-label="project"
+                  >
+                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  </svg>
+                {:else if iconFor(t) === "design"}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="color: var(--text-tertiary); flex-shrink: 0;"
+                    aria-label="design template"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="7.5" r="1.1" fill="currentColor" />
+                    <circle cx="7.5" cy="12" r="1.1" fill="currentColor" />
+                    <circle cx="16.5" cy="12" r="1.1" fill="currentColor" />
+                    <circle cx="12" cy="16.5" r="1.1" fill="currentColor" />
+                  </svg>
+                {/if}
+                <span class="truncate">{labelFor(t)}</span>
               </div>
               <div class="text-[11px] mt-0.5" style="color: var(--text-tertiary);">
                 {formatDate(t.createdAt)}
