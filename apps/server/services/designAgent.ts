@@ -198,6 +198,7 @@ export const runDesignAgent = async (
   };
 
   const usage = { inputTokens: 0, outputTokens: 0 };
+  let gotUsageFromFinish = false;
   const addUsage = (raw: unknown) => {
     if (!raw || typeof raw !== "object") return;
     const u = raw as Record<string, unknown>;
@@ -392,7 +393,10 @@ export const runDesignAgent = async (
           });
           break;
         case "finish":
-          addUsage((chunk as any).usage);
+          if ((chunk as any).usage) {
+            addUsage((chunk as any).usage);
+            gotUsageFromFinish = true;
+          }
           emit({
             type: "finish",
             finishReason: (chunk as any).finishReason ?? "unknown",
@@ -406,6 +410,16 @@ export const runDesignAgent = async (
           });
           break;
       }
+    }
+
+    // streamText doesn't always surface aggregate usage on the `finish` chunk
+    // for multi-step tool-calling runs. Fall back to the awaitable totalUsage
+    // so the credits debit still has token counts.
+    if (!gotUsageFromFinish) {
+      try {
+        const totalUsage = await (result as any).totalUsage;
+        if (totalUsage) addUsage(totalUsage);
+      } catch {}
     }
   } catch (err) {
     if (!opts.signal?.aborted) {
