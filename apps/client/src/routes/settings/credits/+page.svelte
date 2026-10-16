@@ -29,6 +29,9 @@
   const labelFor = (t: CreditsTransaction): string => {
     if (t.reason === "agent_run") {
       if (t.meta?.designTemplateName) return t.meta.designTemplateName;
+      if (t.meta?.note === "titler" && t.meta?.projectName) {
+        return `Title as ${t.meta.projectName}`;
+      }
       if (t.meta?.projectName) return t.meta.projectName;
     }
     return REASON_LABELS[t.reason] ?? t.reason;
