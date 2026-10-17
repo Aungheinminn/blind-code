@@ -157,9 +157,9 @@
           style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-secondary);"
         >
           When on, the agent reads your prompt and generates a short project
-          name — this uses a small amount of credits. When off, we use the
-          first few words of your prompt as the name (free). You can rename
-          the project anytime.
+          name — this uses a small amount of credits. When off, the project
+          is named "Untitled Project" (free). You can rename it anytime from
+          the workspace.
         </div>
       {/if}
     </div>

@@ -19,14 +19,6 @@
   let selectedTemplateId: string | null = null;
   let letAgentName = true;
 
-  const deriveNameFromPrompt = (text: string): string => {
-    const cleaned = text.trim().replace(/\s+/g, " ");
-    if (!cleaned) return "Untitled project";
-    const words = cleaned.split(" ").slice(0, 6).join(" ");
-    const capped = words.length > 48 ? words.slice(0, 48).trim() : words;
-    return capped.charAt(0).toUpperCase() + capped.slice(1);
-  };
-
   const createFromPrompt = async (
     text: string,
     preset?: { name: string; description?: string },
@@ -48,13 +40,13 @@
       return;
     }
 
-    if (!preset) busy = true;
     error = "";
     const effectivePreset =
       preset ??
-      (letAgentName
-        ? undefined
-        : { name: deriveNameFromPrompt(trimmed), description: "" });
+      (letAgentName ? undefined : { name: "Untitled Project", description: "" });
+    // Only show the "Naming your project…" loader when we're actually
+    // waiting on the titler LLM call.
+    if (!effectivePreset) busy = true;
     try {
       const project = await createProjectFromPrompt({
         prompt: trimmed,
@@ -75,7 +67,7 @@
       goto(`/projects/${project.id}/workspace`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
-      if (!preset) busy = false;
+      if (!effectivePreset) busy = false;
     }
   };
 
