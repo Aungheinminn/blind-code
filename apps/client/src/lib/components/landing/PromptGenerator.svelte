@@ -119,11 +119,12 @@
   <div class="flex items-center justify-start gap-2.5 text-[13px]" style="color: var(--text-secondary);">
     <Toggle
       checked={letAgentName}
+      size="sm"
       ariaLabel="Let the agent name the project"
       on:change={(e) => (letAgentName = e.detail)}
     />
-    <span>Let the agent name the project</span>
-    <div class="relative" use:closeInfoOnOutsideClick>
+    <span class="leading-none">Let the agent name the project</span>
+    <div class="relative inline-flex items-center" use:closeInfoOnOutsideClick>
       <button
         type="button"
         on:click|stopPropagation={() => (infoOpen = !infoOpen)}
@@ -204,12 +205,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 2px;
+    width: 16px;
+    height: 16px;
+    padding: 0;
     border: 0;
     background: transparent;
     cursor: pointer;
     border-radius: 9999px;
     transition: color 150ms ease;
+    line-height: 0;
   }
   .info-btn:hover {
     color: var(--text-primary);
