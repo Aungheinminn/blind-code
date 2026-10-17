@@ -3,14 +3,27 @@
   import ProviderChip from "./ProviderChip.svelte";
   import DesignTemplatePicker from "$lib/components/workspace/agent/DesignTemplatePicker.svelte";
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
   import { auth } from "$lib/stores/auth";
 
   export let prompt = "";
   export let busy = false;
   export let error = "";
   export let selectedTemplateId: string | null = null;
+  export let letAgentName = true;
 
   let box: PromptBox | undefined;
+  let infoOpen = false;
+
+  const closeInfoOnOutsideClick = (node: HTMLElement) => {
+    const handler = (e: MouseEvent) => {
+      if (!node.contains(e.target as Node)) infoOpen = false;
+    };
+    document.addEventListener("click", handler);
+    return {
+      destroy: () => document.removeEventListener("click", handler),
+    };
+  };
 
   const dispatch = createEventDispatcher<{
     create: string;
@@ -103,6 +116,54 @@
     </svelte:fragment>
   </PromptBox>
 
+  <div class="flex items-center justify-center gap-2.5 text-[13px]" style="color: var(--text-secondary);">
+    <Toggle
+      checked={letAgentName}
+      ariaLabel="Let the agent name the project"
+      on:change={(e) => (letAgentName = e.detail)}
+    />
+    <span>Let the agent name the project</span>
+    <div class="relative" use:closeInfoOnOutsideClick>
+      <button
+        type="button"
+        on:click|stopPropagation={() => (infoOpen = !infoOpen)}
+        aria-label="What does this do?"
+        aria-expanded={infoOpen}
+        class="info-btn"
+        style="color: var(--text-tertiary);"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      </button>
+      {#if infoOpen}
+        <div
+          class="info-badge"
+          role="tooltip"
+          style="background-color: var(--bg-panel); border-color: var(--border); color: var(--text-secondary);"
+        >
+          When on, the agent reads your prompt and generates a short project
+          name — this uses a small amount of credits. When off, we use the
+          first few words of your prompt as the name (free). You can rename
+          the project anytime.
+        </div>
+      {/if}
+    </div>
+  </div>
+
   <div class="flex gap-2 flex-wrap justify-center">
     {#each suggestions as s}
       <button
@@ -138,5 +199,34 @@
   .chip:hover {
     color: var(--text-primary);
     border-color: var(--border-strong);
+  }
+  .info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 9999px;
+    transition: color 150ms ease;
+  }
+  .info-btn:hover {
+    color: var(--text-primary);
+  }
+  .info-badge {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: left;
+    z-index: 20;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   }
 </style>
