@@ -17,6 +17,15 @@
   let busy = false;
   let error = "";
   let selectedTemplateId: string | null = null;
+  let letAgentName = true;
+
+  const deriveNameFromPrompt = (text: string): string => {
+    const cleaned = text.trim().replace(/\s+/g, " ");
+    if (!cleaned) return "Untitled project";
+    const words = cleaned.split(" ").slice(0, 6).join(" ");
+    const capped = words.length > 48 ? words.slice(0, 48).trim() : words;
+    return capped.charAt(0).toUpperCase() + capped.slice(1);
+  };
 
   const createFromPrompt = async (
     text: string,
@@ -41,11 +50,18 @@
 
     if (!preset) busy = true;
     error = "";
+    const effectivePreset =
+      preset ??
+      (letAgentName
+        ? undefined
+        : { name: deriveNameFromPrompt(trimmed), description: "" });
     try {
       const project = await createProjectFromPrompt({
         prompt: trimmed,
         model,
-        ...(preset ? { name: preset.name, description: preset.description ?? "" } : {}),
+        ...(effectivePreset
+          ? { name: effectivePreset.name, description: effectivePreset.description ?? "" }
+          : {}),
       });
       if (!project?.id) throw new Error("Failed to create project.");
       if (selectedTemplateId) {
@@ -87,6 +103,7 @@
 >
   <PromptGenerator
     bind:prompt
+    bind:letAgentName
     {busy}
     {error}
     {selectedTemplateId}
