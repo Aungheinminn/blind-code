@@ -4,6 +4,7 @@
   export let checked = false;
   export let disabled = false;
   export let ariaLabel: string | undefined = undefined;
+  export let size: "sm" | "md" = "md";
 
   const dispatch = createEventDispatcher<{ change: boolean }>();
 
@@ -22,6 +23,7 @@
   on:click={handleClick}
   class="toggle"
   class:on={checked}
+  class:sm={size === "sm"}
 >
   <span class="knob" />
 </button>
@@ -54,6 +56,9 @@
   .toggle.on {
     background-color: var(--track-on);
   }
+  :global(.dark) .toggle.on {
+    background-color: #2563eb;
+  }
   .knob {
     position: absolute;
     top: 3px;
@@ -67,5 +72,18 @@
   }
   .toggle.on .knob {
     transform: translateX(20px);
+  }
+  .toggle.sm {
+    width: 30px;
+    height: 17px;
+  }
+  .toggle.sm .knob {
+    top: 2px;
+    left: 2px;
+    width: 13px;
+    height: 13px;
+  }
+  .toggle.sm.on .knob {
+    transform: translateX(13px);
   }
 </style>
