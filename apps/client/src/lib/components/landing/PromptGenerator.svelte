@@ -116,7 +116,7 @@
     </svelte:fragment>
   </PromptBox>
 
-  <div class="flex items-center justify-center gap-2.5 text-[13px]" style="color: var(--text-secondary);">
+  <div class="flex items-center justify-start gap-2.5 text-[13px]" style="color: var(--text-secondary);">
     <Toggle
       checked={letAgentName}
       ariaLabel="Let the agent name the project"
