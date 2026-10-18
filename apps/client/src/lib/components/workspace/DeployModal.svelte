@@ -5,6 +5,8 @@
     startVercelDeploy,
     type PublicVercelIntegration,
   } from "$lib/api/projects";
+  import closeXIcon from "$lib/assets/icons/close-x.svg?raw";
+  import rocketStylizedIcon from "$lib/assets/icons/rocket-stylized.svg?raw";
 
   export let projectId: string;
   export let vercel: PublicVercelIntegration | null = null;
@@ -168,20 +170,7 @@
         on:click={() => dispatch("close")}
         disabled={busy}
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
+        <span class="icon-14" aria-hidden="true">{@html closeXIcon}</span>
       </button>
     </div>
 
@@ -197,18 +186,7 @@
         <div class="rocket-spinner" aria-hidden="true">
           <div class="spinner-ring"></div>
           <div class="rocket-stack">
-            <svg
-              class="rocket-icon"
-              width="20"
-              height="26"
-              viewBox="0 0 24 32"
-              fill="currentColor"
-            >
-              <path d="M12 1c-2.2 2-4.5 5.5-4.5 10.5V22h9V11.5C16.5 6.5 14.2 3 12 1z" />
-              <circle cx="12" cy="11" r="1.6" fill="#0b0b0b" />
-              <path d="M7.5 17L4 22l3.5-0.5z" />
-              <path d="M16.5 17L20 22l-3.5-0.5z" />
-            </svg>
+            <span class="rocket-icon" aria-hidden="true">{@html rocketStylizedIcon}</span>
             <div class="flame">
               <span class="flame-outer"></span>
               <span class="flame-inner"></span>
@@ -371,8 +349,16 @@
     animation: rocket-bob 1.4s ease-in-out infinite;
   }
   .rocket-icon {
+    display: inline-flex;
+    width: 20px;
+    height: 26px;
     color: #22c55e;
     filter: drop-shadow(0 1px 3px rgba(34, 197, 94, 0.4));
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
   .flame {
     position: relative;

@@ -1,6 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import type { Plan, TodoStatus } from "$lib/stores/agent";
+  import bulletListIcon from "$lib/assets/icons/bullet-list.svg?raw";
+  import checkSmallIcon from "$lib/assets/icons/check-small.svg?raw";
+  import alertCircleIcon from "$lib/assets/icons/alert-circle.svg?raw";
 
   export let plan: Plan | null = null;
   export let todoStatuses: Record<string, TodoStatus> = {};
@@ -81,12 +84,7 @@
             class="w-10 h-10 flex items-center justify-center"
             style="border-radius: 12px; border: 1px solid var(--border); background: var(--bg-tertiary);"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.6" stroke-linecap="round">
-              <circle cx="5" cy="6" r="1.6" />
-              <circle cx="5" cy="12" r="1.6" />
-              <circle cx="5" cy="18" r="1.6" />
-              <path d="M10 6h10M10 12h10M10 18h6" />
-            </svg>
+            <span class="icon-18" style="color: var(--text-secondary);" aria-hidden="true">{@html bulletListIcon}</span>
           </div>
           <div class="flex flex-col gap-1.5">
             <div
@@ -183,9 +181,7 @@
                   class="w-[18px] h-[18px] shrink-0 flex items-center justify-center"
                   style="border-radius: 50%; background: var(--success); margin-top: 1px;"
                 >
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2.5 6.2l2.3 2.3 4.7-5" />
-                  </svg>
+                  <span class="icon-10" style="color: #0a0a0a;" aria-hidden="true">{@html checkSmallIcon}</span>
                 </span>
                 <span
                   class="flex-1 min-w-0 text-[14px] leading-[1.45] break-words"
@@ -287,10 +283,7 @@
               class="w-7 h-7 shrink-0 flex items-center justify-center"
               style="border-radius: 8px; background: var(--warning-soft);"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round">
-                <path d="M12 8v5M12 16.5v.5" />
-                <circle cx="12" cy="12" r="9.5" />
-              </svg>
+              <span class="icon-14" style="color: var(--warning);" aria-hidden="true">{@html alertCircleIcon}</span>
             </span>
             <div class="flex flex-col gap-1.5">
               <div
@@ -449,5 +442,20 @@
     100% {
       box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
     }
+  }
+  .icon-10 {
+    display: inline-flex;
+    width: 10px;
+    height: 10px;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+  }
+  .icon-18 {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
   }
 </style>

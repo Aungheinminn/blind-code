@@ -3,6 +3,8 @@
   import { cubicOut } from "svelte/easing";
   import type { Plan, TodoStatus } from "$lib/stores/agent";
   import TodoList from "./TodoList.svelte";
+  import checkIcon from "$lib/assets/icons/check.svg?raw";
+  import chevronDownIcon from "$lib/assets/icons/chevron-down.svg?raw";
 
   export let plan: Plan | null = null;
   export let statuses: Record<string, TodoStatus> = {};
@@ -98,18 +100,7 @@
         class="w-[15px] h-[15px] shrink-0 rounded-full flex items-center justify-center"
         style="background-color: var(--success);"
       >
-        <svg
-          width="9"
-          height="9"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          stroke-width="3.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+        <span class="icon-9" style="color: white;" aria-hidden="true">{@html checkIcon}</span>
       </div>
     {:else}
       <div
@@ -135,20 +126,11 @@
       <div class="flex-1"></div>
 
       {#if canExpand}
-        <svg
-          class="shrink-0 transition-transform duration-200"
+        <span
+          class="icon-12 shrink-0 transition-transform duration-200"
           style="transform: rotate({expanded ? 180 : 0}deg); color: var(--text-tertiary);"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+          aria-hidden="true"
+        >{@html chevronDownIcon}</span>
       {/if}
     {/if}
   </button>
@@ -202,5 +184,15 @@
     to {
       transform: rotate(360deg);
     }
+  }
+  .icon-9 {
+    display: inline-flex;
+    width: 9px;
+    height: 9px;
+  }
+  .icon-12 {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
   }
 </style>

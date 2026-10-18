@@ -5,6 +5,8 @@
   import type { ClarifyingQuestion } from "$lib/stores/agent";
   import type { DesignTemplateSummary } from "$lib/api/projects";
   import DesignTemplateModal from "./DesignTemplateModal.svelte";
+  import helpCircleIcon from "$lib/assets/icons/help-circle.svg?raw";
+  import closeXIcon from "$lib/assets/icons/close-x.svg?raw";
 
   export let questions: ClarifyingQuestion[] = [];
   export let projectId = "";
@@ -96,12 +98,7 @@
       class="mt-0.5 flex items-center justify-center rounded-md"
       style="width: 24px; height: 24px; background-color: var(--accent-weak, rgba(255,255,255,0.06)); color: var(--text-primary);"
     >
-      <!-- help-circle -->
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
+      <span class="icon-14" aria-hidden="true">{@html helpCircleIcon}</span>
     </div>
     <div class="flex-1 min-w-0">
       <div class="text-sm font-medium" style="color: var(--text-primary);">
@@ -124,10 +121,7 @@
       aria-label="Skip all questions"
       on:click={() => dispatch("dismiss")}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
+      <span class="icon-14" aria-hidden="true">{@html closeXIcon}</span>
     </button>
   </div>
 
@@ -251,4 +245,5 @@
   .vault-link:hover {
     color: var(--accent, #e85c2a);
   }
+  .icon-14 { display: inline-flex; width: 14px; height: 14px; }
 </style>

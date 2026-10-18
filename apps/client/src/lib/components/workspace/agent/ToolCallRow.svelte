@@ -1,6 +1,19 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { activePlan } from "$lib/stores/agent";
+  import toolListIcon from "$lib/assets/icons/tool-list.svg?raw";
+  import bookOpenIcon from "$lib/assets/icons/book-open.svg?raw";
+  import pencilSimpleIcon from "$lib/assets/icons/pencil-simple.svg?raw";
+  import clipboardCheckIcon from "$lib/assets/icons/clipboard-check.svg?raw";
+  import playIcon from "$lib/assets/icons/play.svg?raw";
+  import trashSimpleIcon from "$lib/assets/icons/trash-simple.svg?raw";
+  import terminalIcon from "$lib/assets/icons/terminal.svg?raw";
+  import infoExclaimCircleIcon from "$lib/assets/icons/info-exclaim-circle.svg?raw";
+  import chevronDownIcon from "$lib/assets/icons/chevron-down.svg?raw";
+  import folderIcon from "$lib/assets/icons/folder.svg?raw";
+  import fileDocIcon from "$lib/assets/icons/file-doc.svg?raw";
+  import checkIcon from "$lib/assets/icons/check.svg?raw";
+  import externalLinkIcon from "$lib/assets/icons/external-link.svg?raw";
 
   export let call: { id: string; name: string; input: unknown; output?: unknown };
 
@@ -337,38 +350,19 @@
       aria-hidden="true"
     >
       {#if kind === "list"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
-          <path d="M3 7h18M3 12h18M3 17h12" />
-        </svg>
+        <span class="icon-14">{@html toolListIcon}</span>
       {:else if kind === "read"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg>
+        <span class="icon-14">{@html bookOpenIcon}</span>
       {:else if kind === "write"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-        </svg>
+        <span class="icon-14">{@html pencilSimpleIcon}</span>
       {:else if kind === "todo"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 11l3 3L22 4" />
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-        </svg>
+        <span class="icon-14">{@html clipboardCheckIcon}</span>
       {:else if kind === "run"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 17l6-5-6-5M12 19h8" />
-        </svg>
+        <span class="icon-14">{@html playIcon}</span>
       {:else if kind === "delete"}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
-          <path d="M10 11v5M14 11v5" />
-        </svg>
+        <span class="icon-14">{@html trashSimpleIcon}</span>
       {:else}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2.5" y="4" width="19" height="16" rx="2.5" />
-          <path d="M7 9.5l3 2.5-3 2.5M12.5 15h4.5" />
-        </svg>
+        <span class="icon-14">{@html terminalIcon}</span>
       {/if}
     </span>
     <span
@@ -408,22 +402,16 @@
           title="Tool returned an error"
           aria-label="Error"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4" />
-            <path d="M12 16h.01" />
-          </svg>
+          <span class="icon-12">{@html infoExclaimCircleIcon}</span>
         </span>
       {/if}
       {#if hasExpand}
         <span
-          class="grid place-items-center w-[14px] h-[14px] shrink-0"
+          class="chevron-wrap shrink-0"
           style="color: var(--text-tertiary); transform: rotate({open ? 180 : 0}deg); transition: transform 180ms ease;"
           aria-hidden="true"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          {@html chevronDownIcon}
         </span>
       {/if}
     {:else}
@@ -454,14 +442,9 @@
                 <li class="expand-list-item">
                   <span class="expand-list-icon" style="color: {item.type === 'dir' ? 'var(--accent)' : 'var(--text-tertiary)'};" aria-hidden="true">
                     {#if item.type === "dir"}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                      </svg>
+                      {@html folderIcon}
                     {:else}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                        <path d="M14 3v6h6" />
-                      </svg>
+                      {@html fileDocIcon}
                     {/if}
                   </span>
                   <span class="expand-list-path" style="color: var(--text-primary);">{item.path}</span>
@@ -493,7 +476,7 @@
         <div class="expand-box rounded-lg border" style="background-color: var(--bg-panel); border-color: var(--border);">
           {#if expanded.ok}
             <div class="expand-ok" style="color: #10b981;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+              <span class="icon-13" aria-hidden="true">{@html checkIcon}</span>
               <span>No issues found</span>
             </div>
           {:else}
@@ -520,7 +503,7 @@
                   {#if item.variant === "link"}
                     <a href={item.value} target="_blank" rel="noopener noreferrer" class="expand-field-link" style="color: var(--accent);">
                       <span class="expand-field-link-text">{item.value}</span>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                      <span class="icon-11" aria-hidden="true">{@html externalLinkIcon}</span>
                     </a>
                   {:else if item.variant === "code"}
                     <code class="expand-field-code" style="background-color: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--text-primary);">{item.value}</code>
@@ -637,8 +620,7 @@
     font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   .expand-list-icon {
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
     width: 12px;
     height: 12px;
     flex-shrink: 0;
@@ -773,5 +755,14 @@
     font-size: 10.5px;
     font-weight: 500;
     letter-spacing: 0.01em;
+  }
+  .icon-11 { display: inline-flex; width: 11px; height: 11px; }
+  .icon-12 { display: inline-flex; width: 12px; height: 12px; }
+  .icon-13 { display: inline-flex; width: 13px; height: 13px; }
+  .icon-14 { display: inline-flex; width: 14px; height: 14px; }
+  .chevron-wrap {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
 </style>

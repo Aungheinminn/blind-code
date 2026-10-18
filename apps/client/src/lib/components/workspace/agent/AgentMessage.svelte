@@ -7,6 +7,12 @@
   } from "$lib/stores/agent";
   import ToolCallList from "./ToolCallList.svelte";
   import ThinkingIndicator from "./ThinkingIndicator.svelte";
+  import sparkleIcon from "$lib/assets/icons/sparkle.svg?raw";
+  import checkIcon from "$lib/assets/icons/check.svg?raw";
+  import warningTriangleIcon from "$lib/assets/icons/warning-triangle.svg?raw";
+  import xCircleIcon from "$lib/assets/icons/x-circle.svg?raw";
+  import chevronRightIcon from "$lib/assets/icons/chevron-right.svg?raw";
+  import retryIcon from "$lib/assets/icons/retry.svg?raw";
 
   export let message: AgentMessageType;
 
@@ -85,9 +91,7 @@
       style="background-color: var(--accent-subtle); border-color: var(--accent); color: var(--accent);"
       aria-hidden="true"
     >
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2l2.2 6.1L20.5 10l-6.3 1.9L12 18l-2.2-6.1L3.5 10l6.3-1.9z" />
-      </svg>
+      <span class="icon-10">{@html sparkleIcon}</span>
     </span>
     <span>Agent</span>
     <span class="flex-1 h-px" style="background-color: var(--border);"></span>
@@ -130,25 +134,13 @@
                 style="border-color: color-mix(in srgb, {chipColor(group.tone)} 30%, transparent); border-top-color: {chipColor(group.tone)};"
               ></span>
             {:else if kind === "check"}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <span class="icon-13">{@html checkIcon}</span>
             {:else if kind === "warning"}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
+              <span class="icon-13">{@html warningTriangleIcon}</span>
             {:else if kind === "x"}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="15" y1="9" x2="9" y2="15" />
-                <line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
+              <span class="icon-13">{@html xCircleIcon}</span>
             {:else}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+              <span class="icon-13">{@html chevronRightIcon}</span>
             {/if}
           </span>
           <span>{group.label.replace(/:\s*/, " · ")}</span>
@@ -169,20 +161,7 @@
         style="border-color: var(--border); background-color: var(--bg-panel); color: var(--text-secondary);"
         on:click={() => dispatch("retry")}
       >
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <polyline points="1 4 1 10 7 10" />
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-        </svg>
+        <span class="icon-11" aria-hidden="true">{@html retryIcon}</span>
         Try again
       </button>
     </div>
@@ -225,4 +204,7 @@
   @keyframes phase-spin {
     to { transform: rotate(360deg); }
   }
+  .icon-10 { display: inline-flex; width: 10px; height: 10px; }
+  .icon-11 { display: inline-flex; width: 11px; height: 11px; }
+  .icon-13 { display: inline-flex; width: 13px; height: 13px; }
 </style>

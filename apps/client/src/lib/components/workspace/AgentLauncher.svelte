@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import type { Plan, TodoStatus } from "$lib/stores/agent";
   import TodoList from "./TodoList.svelte";
+  import checkIcon from "$lib/assets/icons/check.svg?raw";
 
   export let hidden = false;
   export let isRunning = false;
@@ -64,18 +65,7 @@
         class="w-[15px] h-[15px] shrink-0 rounded-full flex items-center justify-center"
         style="background-color: var(--success);"
       >
-        <svg
-          width="9"
-          height="9"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          stroke-width="3.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+        <span class="icon-9" style="color: white;" aria-hidden="true">{@html checkIcon}</span>
       </div>
     {:else}
       <div
@@ -116,5 +106,10 @@
     to {
       transform: rotate(360deg);
     }
+  }
+  .icon-9 {
+    display: inline-flex;
+    width: 9px;
+    height: 9px;
   }
 </style>
