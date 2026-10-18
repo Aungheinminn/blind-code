@@ -26,6 +26,13 @@
     seedEditingTemplate,
     applyDraftPatch,
   } from "$lib/stores/designAgent";
+  import eyeIcon from "$lib/assets/icons/eye.svg?raw";
+  import editPencilIcon from "$lib/assets/icons/edit-pencil.svg?raw";
+  import plusIcon from "$lib/assets/icons/plus.svg?raw";
+  import pageWireframeIcon from "$lib/assets/icons/page-wireframe.svg?raw";
+  import dashboardGridIcon from "$lib/assets/icons/dashboard-grid.svg?raw";
+  import designPaletteIcon from "$lib/assets/icons/design-palette.svg?raw";
+  import monitorIcon from "$lib/assets/icons/monitor.svg?raw";
 
   let draftName = "Untitled draft";
   let prompt = "";
@@ -148,20 +155,11 @@
         title={viewOnly ? "Preview (read-only)" : isEditing ? "Editing an existing template" : "New template"}
       >
         {#if viewOnly}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+          <span class="icon-16" aria-hidden="true">{@html eyeIcon}</span>
         {:else if isEditing}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-          </svg>
+          <span class="icon-16" aria-hidden="true">{@html editPencilIcon}</span>
         {:else}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <span class="icon-16" aria-hidden="true">{@html plusIcon}</span>
         {/if}
       </span>
       <input
@@ -191,19 +189,9 @@
                 aria-label={opt.label}
               >
                 {#if opt.id === "landing"}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <line x1="3" y1="9" x2="21" y2="9" />
-                    <rect x="6" y="12" width="12" height="3" rx="1" fill="currentColor" fill-opacity="0.35" stroke="none" />
-                    <rect x="6" y="17" width="7" height="2" rx="1" fill="currentColor" fill-opacity="0.35" stroke="none" />
-                  </svg>
+                  <span class="icon-16" aria-hidden="true">{@html pageWireframeIcon}</span>
                 {:else if opt.id === "dashboard"}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="9" rx="1" />
-                    <rect x="14" y="3" width="7" height="5" rx="1" />
-                    <rect x="14" y="12" width="7" height="9" rx="1" />
-                    <rect x="3" y="16" width="7" height="5" rx="1" />
-                  </svg>
+                  <span class="icon-16" aria-hidden="true">{@html dashboardGridIcon}</span>
                 {/if}
               </button>
             {/each}
@@ -221,13 +209,7 @@
           title="Tokens · swatches, samples, and prose"
           aria-label="Tokens view"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C22 6.056 17.5 2 12 2z" />
-          </svg>
+          <span class="icon-16" aria-hidden="true">{@html designPaletteIcon}</span>
         </button>
         <button
           type="button"
@@ -240,12 +222,7 @@
           title={mockupTokens ? "Mockup · full site with this theme" : "Generate a draft first"}
           aria-label="Mockup view"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="4" width="20" height="14" rx="2" ry="2" />
-            <line x1="2" y1="9" x2="22" y2="9" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="18" x2="12" y2="21" />
-          </svg>
+          <span class="icon-16" aria-hidden="true">{@html monitorIcon}</span>
         </button>
       </div>
       {#if $savedTemplate}
@@ -719,5 +696,10 @@
   }
   .send-btn:not(:disabled):hover {
     filter: brightness(1.05);
+  }
+  .icon-16 {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
   }
 </style>

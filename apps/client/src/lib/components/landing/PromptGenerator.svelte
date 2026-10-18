@@ -5,6 +5,7 @@
   import PromptBox from "$lib/components/ui/PromptBox.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
   import { auth } from "$lib/stores/auth";
+  import infoCircleIcon from "$lib/assets/icons/info-circle.svg?raw";
 
   export let prompt = "";
   export let busy = false;
@@ -133,22 +134,7 @@
         class="info-btn"
         style="color: var(--text-tertiary);"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
+        <span class="info-ic" aria-hidden="true">{@html infoCircleIcon}</span>
       </button>
       {#if infoOpen}
         <div
@@ -217,6 +203,11 @@
   }
   .info-btn:hover {
     color: var(--text-primary);
+  }
+  .info-ic {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
   .info-badge {
     position: absolute;

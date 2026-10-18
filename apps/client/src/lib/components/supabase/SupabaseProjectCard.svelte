@@ -2,6 +2,8 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import type { SupabaseAccountProject } from "$lib/api/account";
+  import dotsVerticalIcon from "$lib/assets/icons/dots-vertical.svg?raw";
+  import trashIcon from "$lib/assets/icons/trash.svg?raw";
 
   export let supabaseProject: SupabaseAccountProject;
   export let attachedBcProject: { id: string; name: string } | null = null;
@@ -106,11 +108,7 @@
       class="w-7 h-7 grid place-items-center rounded-md cursor-pointer kebab"
       style="color: var(--text-tertiary);"
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="5" r="1.6" />
-        <circle cx="12" cy="12" r="1.6" />
-        <circle cx="12" cy="19" r="1.6" />
-      </svg>
+      <span class="icon-14" aria-hidden="true">{@html dotsVerticalIcon}</span>
     </button>
 
     {#if menuOpen}
@@ -126,12 +124,7 @@
           class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
           style="color: #ef4444; background-color: transparent;"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            <path d="M10 11v6M14 11v6" />
-            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-          </svg>
+          <span class="icon-13" aria-hidden="true">{@html trashIcon}</span>
           <span>Delete</span>
         </button>
       </div>
@@ -207,5 +200,15 @@
   }
   .menu-item:hover {
     background-color: var(--bg-tertiary);
+  }
+  .icon-13 {
+    display: inline-flex;
+    width: 13px;
+    height: 13px;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
 </style>

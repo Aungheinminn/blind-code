@@ -3,6 +3,7 @@
   import Dropdown from "$lib/components/ui/Dropdown.svelte";
   import type { DesignTemplateSummary } from "$lib/api/projects";
   import DesignTemplateModal from "./DesignTemplateModal.svelte";
+  import plusIcon from "$lib/assets/icons/plus.svg?raw";
 
   export let projectId = "";
   export let disabled = false;
@@ -38,19 +39,7 @@
     aria-label="Choose design template"
     title="Choose design template"
   >
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
+    <span class="icon-14" aria-hidden="true">{@html plusIcon}</span>
   </button>
 
   <svelte:fragment let:close>
@@ -60,19 +49,7 @@
       on:click={() => openModal(close)}
     >
       <span class="dropdown-row-label plus-label">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
-        </svg>
+        <span class="icon-12" aria-hidden="true">{@html plusIcon}</span>
         Choose design template
       </span>
     </button>
@@ -123,4 +100,6 @@
     gap: 8px;
     color: inherit;
   }
+  .icon-12 { display: inline-flex; width: 12px; height: 12px; }
+  .icon-14 { display: inline-flex; width: 14px; height: 14px; }
 </style>

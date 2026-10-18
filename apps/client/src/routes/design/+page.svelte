@@ -10,6 +10,9 @@
   } from "$lib/api/projects";
   import { patchTopLevelString } from "$lib/components/design-studio/draftPatcher";
   import DesignTemplateCard from "$lib/components/design-studio/DesignTemplateCard.svelte";
+  import plusIcon from "$lib/assets/icons/plus.svg?raw";
+  import searchIcon from "$lib/assets/icons/search.svg?raw";
+  import closeXIcon from "$lib/assets/icons/close-x.svg?raw";
 
   let templates: DesignTemplateSummary[] = [];
   let loading = true;
@@ -179,10 +182,7 @@
     <div class="header-top">
       <h1>Design templates</h1>
       <a href="/design/new" class="new-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
+        <span class="icon-14" aria-hidden="true">{@html plusIcon}</span>
         <span>Create new</span>
       </a>
     </div>
@@ -231,10 +231,7 @@
         <span class="section-count">{userTemplates.length}</span>
       </div>
       <div class="search-wrap">
-        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        <span class="search-icon icon-14" aria-hidden="true">{@html searchIcon}</span>
         <input
           type="text"
           bind:value={searchInput}
@@ -249,10 +246,7 @@
             aria-label="Clear search"
             on:click={() => (searchInput = "")}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <span class="icon-12" aria-hidden="true">{@html closeXIcon}</span>
           </button>
         {/if}
       </div>
@@ -565,5 +559,15 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 16px;
+  }
+  .icon-12 {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
 </style>

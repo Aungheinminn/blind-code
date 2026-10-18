@@ -9,6 +9,12 @@
     type DeviceKey,
     type Orientation,
   } from "$lib/stores/preview";
+  import deviceMobileIcon from "$lib/assets/icons/device-mobile.svg?raw";
+  import deviceTabletIcon from "$lib/assets/icons/device-tablet.svg?raw";
+  import deviceLaptopIcon from "$lib/assets/icons/device-laptop.svg?raw";
+  import deviceMobileSmIcon from "$lib/assets/icons/device-mobile-sm.svg?raw";
+  import deviceTabletSmIcon from "$lib/assets/icons/device-tablet-sm.svg?raw";
+  import fluidExpandIcon from "$lib/assets/icons/fluid-expand.svg?raw";
 
   type Item = { key: DeviceKey; title: string };
 
@@ -60,20 +66,11 @@
       on:click={() => pick(item.key)}
     >
       {#if item.key === "mobile"}
-        <svg width="11" height="17" viewBox="0 0 11 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="1" y="1" width="9" height="15" rx="1.8" />
-          <line x1="4.5" y1="13.5" x2="6.5" y2="13.5" />
-        </svg>
+        <span class="icon-mobile" aria-hidden="true">{@html deviceMobileIcon}</span>
       {:else if item.key === "tablet"}
-        <svg width="17" height="19" viewBox="0 0 17 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="1" y="1.5" width="15" height="16" rx="1.8" />
-          <circle cx="8.5" cy="14.6" r="0.95" fill="currentColor" stroke="none" />
-        </svg>
+        <span class="icon-tablet" aria-hidden="true">{@html deviceTabletIcon}</span>
       {:else}
-        <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="2" y="1" width="16" height="10" rx="1.4" />
-          <line x1="0.5" y1="13" x2="19.5" y2="13" />
-        </svg>
+        <span class="icon-laptop" aria-hidden="true">{@html deviceLaptopIcon}</span>
       {/if}
     </button>
   {/each}
@@ -87,22 +84,7 @@
     aria-pressed={isFluid}
     on:click={toggleFluid}
   >
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="6 2 2 2 2 6" />
-      <polyline points="10 2 14 2 14 6" />
-      <polyline points="14 10 14 14 10 14" />
-      <polyline points="2 10 2 14 6 14" />
-    </svg>
+    <span class="icon-16" aria-hidden="true">{@html fluidExpandIcon}</span>
   </button>
 
   <span class="separator" aria-hidden="true"></span>
@@ -119,20 +101,11 @@
   >
     <span class="rot-icon" aria-hidden="true">
       {#if $selectedDevice === "mobile"}
-        <svg width="12" height="16" viewBox="0 0 12 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="1" y="1" width="10" height="14" rx="1.8" />
-          <line x1="5" y1="12.5" x2="7" y2="12.5" />
-        </svg>
+        <span class="icon-mobile-sm">{@html deviceMobileSmIcon}</span>
       {:else if $selectedDevice === "tablet"}
-        <svg width="15" height="17" viewBox="0 0 15 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="1" y="1" width="13" height="15" rx="1.8" />
-          <line x1="6.5" y1="13.5" x2="8.5" y2="13.5" />
-        </svg>
+        <span class="icon-tablet-sm">{@html deviceTabletSmIcon}</span>
       {:else}
-        <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="1" width="16" height="10" rx="1.4" />
-          <line x1="0.5" y1="13" x2="19.5" y2="13" />
-        </svg>
+        <span class="icon-laptop">{@html deviceLaptopIcon}</span>
       {/if}
     </span>
     <span class="dims">{label}</span>
@@ -245,5 +218,35 @@
     line-height: 1;
     display: inline-flex;
     align-items: center;
+  }
+  .icon-mobile {
+    display: inline-flex;
+    width: 11px;
+    height: 17px;
+  }
+  .icon-tablet {
+    display: inline-flex;
+    width: 17px;
+    height: 19px;
+  }
+  .icon-laptop {
+    display: inline-flex;
+    width: 20px;
+    height: 14px;
+  }
+  .icon-mobile-sm {
+    display: inline-flex;
+    width: 12px;
+    height: 16px;
+  }
+  .icon-tablet-sm {
+    display: inline-flex;
+    width: 15px;
+    height: 17px;
+  }
+  .icon-16 {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
   }
 </style>

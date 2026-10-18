@@ -2,6 +2,13 @@
   import { createEventDispatcher } from "svelte";
   import { theme, toggleTheme } from "$lib/stores/theme";
   import DeviceWidthToolbar from "./DeviceWidthToolbar.svelte";
+  import databaseIcon from "$lib/assets/icons/database.svg?raw";
+  import rocketIcon from "$lib/assets/icons/rocket.svg?raw";
+  import refreshCwIcon from "$lib/assets/icons/refresh-cw.svg?raw";
+  import sunIcon from "$lib/assets/icons/sun.svg?raw";
+  import moonIcon from "$lib/assets/icons/moon.svg?raw";
+  import eyeIcon from "$lib/assets/icons/eye.svg?raw";
+  import eyeOffIcon from "$lib/assets/icons/eye-off.svg?raw";
 
   export let panelOpen = false;
   export let launcherHidden = false;
@@ -34,20 +41,7 @@
       title={supabaseConnected ? "Supabase connected" : "Connect Supabase"}
       aria-label={supabaseConnected ? "Supabase connected" : "Connect Supabase"}
     >
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <ellipse cx="12" cy="5" rx="9" ry="3" />
-        <path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-        <path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6" />
-      </svg>
+      <span class="icon-15" aria-hidden="true">{@html databaseIcon}</span>
       {#if supabaseConnected}
         <span class="connected-dot" aria-hidden="true"></span>
       {/if}
@@ -60,22 +54,11 @@
       title={vercelDeployed ? "Manage deployment" : "Deploy to Vercel"}
       aria-label={vercelDeployed ? "Manage deployment" : "Deploy to Vercel"}
     >
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill={vercelDeployed ? "currentColor" : "none"}
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+      <span
+        class="icon-15"
+        class:deployed-fill={vercelDeployed}
         aria-hidden="true"
-      >
-        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-      </svg>
+      >{@html rocketIcon}</span>
     </button>
     <button
       type="button"
@@ -84,19 +67,7 @@
       title="Restart preview"
       aria-label="Restart preview"
     >
-      <svg
-        width="15"
-        height="15"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-        <polyline points="21 3 21 9 15 9" />
-      </svg>
+      <span class="icon-15" aria-hidden="true">{@html refreshCwIcon}</span>
     </button>
     <button
       type="button"
@@ -106,34 +77,9 @@
       aria-label="Toggle theme"
     >
       {#if $theme === "dark"}
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path
-            d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-          />
-        </svg>
+        <span class="icon-15" aria-hidden="true">{@html sunIcon}</span>
       {:else}
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-        </svg>
+        <span class="icon-15" aria-hidden="true">{@html moonIcon}</span>
       {/if}
     </button>
     {#if !panelOpen}
@@ -145,38 +91,10 @@
         aria-pressed={launcherHidden}
       >
         {#if launcherHidden}
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+          <span class="icon-14" aria-hidden="true">{@html eyeIcon}</span>
           <span>Show status</span>
         {:else}
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path
-              d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a19.79 19.79 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a19.9 19.9 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-            />
-            <line x1="2" y1="2" x2="22" y2="22" />
-          </svg>
+          <span class="icon-14" aria-hidden="true">{@html eyeOffIcon}</span>
           <span>Hide status</span>
         {/if}
       </button>
@@ -248,5 +166,18 @@
     border-radius: 50%;
     background: #22c55e;
     box-shadow: 0 0 0 2px var(--chrome);
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+  }
+  .icon-15 {
+    display: inline-flex;
+    width: 15px;
+    height: 15px;
+  }
+  .deployed-fill :global(svg) {
+    fill: currentColor;
   }
 </style>

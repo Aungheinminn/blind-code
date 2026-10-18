@@ -4,6 +4,7 @@
   import { TIER_MODELS, TIER_ORDER, type TierModel } from "$lib/tierModels";
   import { keyPreference, type ProviderInfo, type KeyPreference } from "$lib/stores/agent";
   import { sessionCreditsEstimate } from "$lib/pricing";
+  import chevronDownIcon from "$lib/assets/icons/chevron-down.svg?raw";
 
   export let value: string = "";
   export let providers: ProviderInfo[] = [];
@@ -49,20 +50,13 @@
     <span class="truncate">
       {selected ? selected.label : "Pick a model"}
     </span>
-    <svg
+    <span
       class="chev"
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.2"
-      stroke-linecap="round"
       aria-hidden="true"
       style="transform: rotate({open ? 180 : 0}deg);"
     >
-      <path d="M6 9l6 6 6-6" />
-    </svg>
+      {@html chevronDownIcon}
+    </span>
   </button>
 
   <svelte:fragment let:close>
@@ -151,6 +145,9 @@
     cursor: not-allowed;
   }
   .chev {
+    display: inline-flex;
+    width: 10px;
+    height: 10px;
     color: var(--text-tertiary);
     flex-shrink: 0;
     transition: transform 150ms ease;

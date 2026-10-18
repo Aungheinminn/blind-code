@@ -1,5 +1,13 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import homeIcon from "$lib/assets/icons/home.svg?raw";
+  import folderIcon from "$lib/assets/icons/folder.svg?raw";
+  import databaseIcon from "$lib/assets/icons/database.svg?raw";
+  import designPaletteIcon from "$lib/assets/icons/design-palette.svg?raw";
+  import settingsGearIcon from "$lib/assets/icons/settings-gear.svg?raw";
+  import listHorizontalIcon from "$lib/assets/icons/list-horizontal.svg?raw";
+  import archiveIcon from "$lib/assets/icons/archive.svg?raw";
+  import trashIcon from "$lib/assets/icons/trash.svg?raw";
 
   type IconName =
     | "home"
@@ -10,6 +18,17 @@
     | "all"
     | "archive"
     | "trash";
+
+  const ICON_MAP: Record<IconName, string> = {
+    home: homeIcon,
+    projects: folderIcon,
+    supabase: databaseIcon,
+    design: designPaletteIcon,
+    settings: settingsGearIcon,
+    all: listHorizontalIcon,
+    archive: archiveIcon,
+    trash: trashIcon,
+  };
 
   type NavItem = {
     label: string;
@@ -104,27 +123,6 @@
   const toggleExpand = (label: string) => {
     expanded[label] = !expanded[label];
   };
-
-  const iconSvg = (name: IconName): string => {
-    switch (name) {
-      case "home":
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12L12 3l9 9" /><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" /></svg>`;
-      case "projects":
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>`;
-      case "supabase":
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5" /><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6" /></svg>`;
-      case "design":
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.999 6.056 17.5 2 12 2z" /></svg>`;
-      case "settings":
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>`;
-      case "all":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></svg>`;
-      case "archive":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><line x1="10" y1="12" x2="14" y2="12" /></svg>`;
-      case "trash":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /></svg>`;
-    }
-  };
 </script>
 
 <aside class="sidebar" aria-label="Primary">
@@ -151,7 +149,7 @@
         on:click={() => toggleExpand(item.label)}
       >
         <span class="icon" aria-hidden="true">
-          {@html iconSvg(item.icon)}
+          {@html ICON_MAP[item.icon]}
         </span>
         <span class="label">{item.label}</span>
       </a>
@@ -167,7 +165,7 @@
               title={child.label}
             >
               <span class="icon" aria-hidden="true">
-                {@html iconSvg(child.icon)}
+                {@html ICON_MAP[child.icon]}
               </span>
               <span class="label">{child.label}</span>
             </a>
@@ -183,7 +181,7 @@
         title={item.label}
       >
         <span class="icon" aria-hidden="true">
-          {@html iconSvg(item.icon)}
+          {@html ICON_MAP[item.icon]}
         </span>
         <span class="label">{item.label}</span>
       </a>
@@ -260,7 +258,7 @@
     padding: 6px 2px;
     opacity: 0.9;
   }
-  .nav-sub .icon :global(svg) {
+  .nav-sub .icon {
     width: 14px;
     height: 14px;
   }
@@ -279,6 +277,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 18px;
+    height: 18px;
   }
   .label {
     font-size: 9.5px;

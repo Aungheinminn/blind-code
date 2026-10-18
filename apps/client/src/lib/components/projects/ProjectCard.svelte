@@ -1,6 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from "svelte";
   import type { Project } from "$lib/api/projects";
+  import dotsVerticalIcon from "$lib/assets/icons/dots-vertical.svg?raw";
+  import editPencilIcon from "$lib/assets/icons/edit-pencil.svg?raw";
+  import settingsGearIcon from "$lib/assets/icons/settings-gear.svg?raw";
+  import archiveIcon from "$lib/assets/icons/archive.svg?raw";
+  import unarchiveIcon from "$lib/assets/icons/unarchive.svg?raw";
+  import trashIcon from "$lib/assets/icons/trash.svg?raw";
+  import restoreIcon from "$lib/assets/icons/restore.svg?raw";
 
   export let project: Project;
   export let variant: "active" | "archived" | "deleted" = "active";
@@ -121,11 +128,7 @@
       class="w-7 h-7 grid place-items-center rounded-md cursor-pointer kebab"
       style="color: var(--text-tertiary);"
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="5" r="1.6" />
-        <circle cx="12" cy="12" r="1.6" />
-        <circle cx="12" cy="19" r="1.6" />
-      </svg>
+      <span class="icon-14" aria-hidden="true">{@html dotsVerticalIcon}</span>
     </button>
 
     {#if menuOpen}
@@ -142,10 +145,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: var(--text-primary); background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html editPencilIcon}</span>
             <span>Edit</span>
           </button>
           <a
@@ -155,10 +155,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item no-underline"
             style="color: var(--text-primary); background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html settingsGearIcon}</span>
             <span>Settings</span>
           </a>
           <button
@@ -168,11 +165,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: var(--text-primary); background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="4" rx="1" />
-              <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
-              <line x1="10" y1="12" x2="14" y2="12" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html archiveIcon}</span>
             <span>Archive</span>
           </button>
           <button
@@ -182,12 +175,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: #ef4444; background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html trashIcon}</span>
             <span>Delete</span>
           </button>
         {:else if variant === "archived"}
@@ -198,12 +186,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: var(--text-primary); background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="4" rx="1" />
-              <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
-              <path d="M9 15l3 -3l3 3" />
-              <line x1="12" y1="12" x2="12" y2="19" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html unarchiveIcon}</span>
             <span>Unarchive</span>
           </button>
           <button
@@ -213,12 +196,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: #ef4444; background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html trashIcon}</span>
             <span>Delete</span>
           </button>
         {:else}
@@ -229,10 +207,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: var(--text-primary); background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7" />
-              <polyline points="3 4 3 10 9 10" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html restoreIcon}</span>
             <span>Restore</span>
           </button>
           <button
@@ -242,12 +217,7 @@
             class="w-full text-left px-3 py-2 text-[12.5px] cursor-pointer flex items-center gap-2 menu-item"
             style="color: #ef4444; background-color: transparent;"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-            </svg>
+            <span class="icon-13" aria-hidden="true">{@html trashIcon}</span>
             <span>Delete forever</span>
           </button>
         {/if}
@@ -274,5 +244,15 @@
   }
   .menu-item:hover {
     background-color: var(--bg-tertiary);
+  }
+  .icon-13 {
+    display: inline-flex;
+    width: 13px;
+    height: 13px;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
 </style>

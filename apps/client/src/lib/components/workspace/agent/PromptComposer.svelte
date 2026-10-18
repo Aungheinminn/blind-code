@@ -6,6 +6,7 @@
   import { creditsBalance, keyPreference, type ProviderInfo } from "$lib/stores/agent";
   import { providerForModel } from "$lib/tierModels";
   import { formatCompact } from "$lib/format";
+  import arrowUpIcon from "$lib/assets/icons/arrow-up.svg?raw";
 
   export let isRunning = false;
   export let statusText = "idle";
@@ -149,10 +150,7 @@
           aria-label="Send message"
           title="Send"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 19V5" />
-            <path d="M5 12l7-7 7 7" />
-          </svg>
+          <span class="icon-15" aria-hidden="true">{@html arrowUpIcon}</span>
         </button>
       {/if}
     </svelte:fragment>
@@ -218,4 +216,5 @@
   .banner-close:hover {
     color: var(--text-primary);
   }
+  .icon-15 { display: inline-flex; width: 15px; height: 15px; }
 </style>
