@@ -11,6 +11,8 @@
   } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
   import ProjectCard from "$lib/components/projects/ProjectCard.svelte";
+  import searchIcon from "$lib/assets/icons/search.svg?raw";
+  import closeXIcon from "$lib/assets/icons/close-x.svg?raw";
 
   const PAGE_SIZE = 12;
 
@@ -288,21 +290,11 @@
     </div>
 
     <div class="mt-6 relative">
-      <svg
-        class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+      <span
+        class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none icon-14"
         style="color: var(--text-tertiary);"
-      >
-        <circle cx="11" cy="11" r="7" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
+        aria-hidden="true"
+      >{@html searchIcon}</span>
       <input
         type="text"
         value={searchInput}
@@ -319,10 +311,7 @@
           class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 grid place-items-center rounded cursor-pointer"
           style="color: var(--text-tertiary);"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <span class="icon-12" aria-hidden="true">{@html closeXIcon}</span>
         </button>
       {/if}
     </div>
@@ -626,3 +615,16 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .icon-12 {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+  }
+</style>
