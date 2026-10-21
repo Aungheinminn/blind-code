@@ -6,6 +6,8 @@
     listCreditsTransactions,
     type CreditsTransaction,
   } from "$lib/api/credits";
+  import folderIcon from "$lib/assets/icons/folder.svg?raw";
+  import designPaletteIcon from "$lib/assets/icons/design-palette.svg?raw";
 
   const PAGE_SIZE = 25;
 
@@ -159,41 +161,17 @@
             <div class="min-w-0 flex-1">
               <div class="font-medium flex items-center gap-1.5" style="color: var(--text-primary);">
                 {#if iconFor(t) === "project"}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="color: var(--text-tertiary); flex-shrink: 0;"
+                  <span
+                    class="icon-14 shrink-0"
+                    style="color: var(--text-tertiary);"
                     aria-label="project"
-                  >
-                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  </svg>
+                  >{@html folderIcon}</span>
                 {:else if iconFor(t) === "design"}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="color: var(--text-tertiary); flex-shrink: 0;"
+                  <span
+                    class="icon-14 shrink-0"
+                    style="color: var(--text-tertiary);"
                     aria-label="design template"
-                  >
-                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.999 6.056 17.5 2 12 2z" />
-                  </svg>
+                  >{@html designPaletteIcon}</span>
                 {/if}
                 <span class="truncate">{labelFor(t)}</span>
               </div>
@@ -262,5 +240,10 @@
   }
   .topup-btn:active {
     transform: none;
+  }
+  .icon-14 {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
   }
 </style>
