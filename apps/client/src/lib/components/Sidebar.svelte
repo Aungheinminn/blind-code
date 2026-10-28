@@ -97,12 +97,12 @@
         },
       ],
     },
-    {
-      label: "Bases",
-      href: "/supabase",
-      icon: "supabase",
-      isActive: (p) => p === "/supabase" || p.startsWith("/supabase/"),
-    },
+    // {
+    //   label: "Bases",
+    //   href: "/supabase",
+    //   icon: "supabase",
+    //   isActive: (p) => p === "/supabase" || p.startsWith("/supabase/"),
+    // },
     {
       label: "Settings",
       href: "/settings/providers",
