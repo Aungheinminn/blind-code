@@ -29,6 +29,7 @@ import {
 } from "../db/repo";
 import { sanitizeTemplateBody } from "../services/designTemplate";
 import matter from "gray-matter";
+import { resolveGitHubToken } from "../services/githubToken";
 import type { Plan } from "../services/planner";
 import { resolveAgentToolPermissions, type PlanTodoStatus } from "@vibe/shared";
 
@@ -409,6 +410,14 @@ export const agentController = (app: Elysia) =>
                   },
                 });
               }
+            } else if (
+              event.toolName === "github_push" ||
+              event.toolName === "github_create_repo"
+            ) {
+              const out = event.output as { ok?: boolean; integration?: unknown } | null;
+              if (out?.ok && out.integration) {
+                await publish({ type: "github-updated", integration: out.integration });
+              }
             }
           }
           if (!sessionId) return;
@@ -458,6 +467,7 @@ export const agentController = (app: Elysia) =>
         let terminalStatus: "done" | "failed" | "cancelled" = "done";
         let terminalError: string | null = null;
 
+        const githubLinked = projectRow?.integrations?.github ?? null;
         const toolContext = {
           sandboxProjectId: msg.projectId,
           dbProjectId,
@@ -466,6 +476,7 @@ export const agentController = (app: Elysia) =>
           databaseUrl: supabaseDatabaseUrl,
           supabasePat,
           supabaseProjectRef,
+          githubConnected: Boolean(await resolveGitHubToken(userId)),
         };
 
         let existingPlan: Plan | null = null;
@@ -510,6 +521,9 @@ export const agentController = (app: Elysia) =>
             supabaseCanRunSql,
             userSupabasePatConnected: canAutoProvisionSupabase,
             agentToolPermissions: resolvedPerms,
+            githubLinkedRepo: githubLinked
+              ? `${githubLinked.owner}/${githubLinked.repo} (branch ${githubLinked.branch})`
+              : null,
             designTemplateName: templateName,
             designTemplateBody: templateBody,
             hasExplicitDesignTemplate: activeTemplate !== null,

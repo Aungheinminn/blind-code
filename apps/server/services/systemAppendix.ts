@@ -80,3 +80,25 @@ Persistence context — this project has NO Supabase attached yet, but the user 
 - When ambiguous, default to localStorage / in-memory — a missing Supabase is easy to add later; an unwanted one is disruptive.
 - Do NOT plan multiple provisioning steps and do NOT plan "install @supabase/supabase-js" — the platform handles both.
 `;
+
+export const buildGitHubCoderAppendix = (opts: {
+  linkedRepo: string | null;
+  canPush: boolean;
+  canCreateRepo: boolean;
+}): string => {
+  if (!opts.canPush && !opts.canCreateRepo) return "";
+  const repoLine = opts.linkedRepo
+    ? `This project is linked to the GitHub repo ${opts.linkedRepo}.`
+    : opts.canCreateRepo
+      ? "No GitHub repo is linked yet. If the user asks to put the project on GitHub, call github_create_repo first (private unless they say otherwise)."
+      : "No GitHub repo is linked yet, and you cannot create one. If the user asks to push, tell them to link a repo from the GitHub button in the preview header.";
+  const pushLine = opts.canPush
+    ? "- Call github_push ONLY when the user explicitly asks to push, commit, or save to GitHub in this message. Never push on your own initiative. Push once, after every file change for the turn is written, with a short imperative commit message."
+    : "- You cannot push. If the user asks, tell them to use the GitHub button in the preview header.";
+  return `
+
+GitHub — ${repoLine}
+${pushLine}
+- If github_push reports the branch changed outside Blind Code, do not retry; tell the user to resolve it from the GitHub button.
+`;
+};

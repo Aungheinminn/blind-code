@@ -8,7 +8,10 @@ let project: {
 };
 let files: Array<{ path: string; content: string; isDirectory: boolean }>;
 
+// bun's module mocks are process-wide, so keep the real exports for other test files.
+const realRepo = await import("../db/repo");
 mock.module("../db/repo", () => ({
+  ...realRepo,
   getProjectForOwner: async () => project,
   listProjectFiles: async () => files,
   getActiveDesignTemplateForProject: async () => null,

@@ -69,16 +69,14 @@ import {
   setVercelIntegrationForOwner,
 } from "../db/repo";
 import {
+  DEFAULT_AGENT_TOOL_PERMISSIONS,
   toPublicIntegrations,
   type AgentToolPermissions,
   type ProjectIntegrations,
   type SupabaseIntegration,
 } from "@vibe/shared";
 
-const ALLOWED_AGENT_TOOLS = new Set([
-  "create_supabase_project",
-  "attach_supabase_project",
-]);
+const ALLOWED_AGENT_TOOLS = new Set(Object.keys(DEFAULT_AGENT_TOOL_PERMISSIONS));
 
 const parseAgentToolPermissions = (
   value: unknown,

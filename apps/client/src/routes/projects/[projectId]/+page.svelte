@@ -32,25 +32,43 @@
     key: AgentToolName;
     title: string;
     description: string;
+    defaultEnabled: boolean;
   }> = [
     {
       key: "create_supabase_project",
       title: "create_supabase_project",
       description:
         "Let the agent provision a brand-new Supabase project on your account when the app it's building needs a backend. Uses one of your Supabase project slots.",
+      defaultEnabled: true,
     },
     {
       key: "attach_supabase_project",
       title: "attach_supabase_project",
       description:
         "Let the agent link an existing Supabase project (by ref) to this workspace and fetch its API keys.",
+      defaultEnabled: true,
+    },
+    {
+      key: "github_create_repo",
+      title: "github_create_repo",
+      description:
+        "Let the agent create a new repository on your GitHub account and link it to this workspace when you ask it to put the project on GitHub.",
+      defaultEnabled: false,
+    },
+    {
+      key: "github_push",
+      title: "github_push",
+      description:
+        "Let the agent commit and push this project to its linked GitHub repo when you ask it to. It never pushes unprompted.",
+      defaultEnabled: false,
     },
   ];
 
   const resolvePerm = (
     perms: AgentToolPermissions | null | undefined,
     key: AgentToolName,
-  ): boolean => (perms?.[key] ?? true);
+  ): boolean =>
+    perms?.[key] ?? AGENT_TOOLS.find((t) => t.key === key)?.defaultEnabled ?? false;
 
   let permBusy: Record<string, boolean> = {};
 
@@ -58,16 +76,9 @@
     if (!project) return;
     permBusy = { ...permBusy, [key]: true };
     try {
-      const current: AgentToolPermissions = {
-        create_supabase_project: resolvePerm(
-          project.agentToolPermissions,
-          "create_supabase_project",
-        ),
-        attach_supabase_project: resolvePerm(
-          project.agentToolPermissions,
-          "attach_supabase_project",
-        ),
-      };
+      const current: AgentToolPermissions = Object.fromEntries(
+        AGENT_TOOLS.map((t) => [t.key, resolvePerm(project?.agentToolPermissions, t.key)]),
+      );
       current[key] = next;
       const updated = await updateProject(project.id, {
         agentToolPermissions: current,
@@ -239,9 +250,11 @@
           Agent tool permissions
         </h2>
         <p class="mt-1 text-xs" style="color: var(--text-tertiary);">
-          Control which Supabase-related tools the agent may call in this workspace.
-          Both are on by default when you've connected Supabase at
+          Control which integration tools the agent may call in this workspace.
+          Supabase tools are on by default once you've connected Supabase at
           <a href="/settings/supabase" class="underline">/settings/supabase</a>.
+          GitHub tools are off until you enable them here, and need an account connected at
+          <a href="/settings/github" class="underline">/settings/github</a>.
         </p>
 
         <ul class="mt-4 space-y-3">

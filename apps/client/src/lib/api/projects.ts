@@ -37,7 +37,11 @@ export type PublicProjectIntegrations = {
   github?: PublicGitHubIntegration;
 };
 
-export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
+export type AgentToolName =
+  | "create_supabase_project"
+  | "attach_supabase_project"
+  | "github_create_repo"
+  | "github_push";
 export type AgentToolPermissions = Partial<Record<AgentToolName, boolean>>;
 
 export type Project = {
