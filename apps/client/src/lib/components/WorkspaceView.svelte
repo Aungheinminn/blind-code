@@ -24,6 +24,7 @@
     projectIntegration,
     projectVercel,
     projectGitHub,
+    projectGitHubDirty,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
@@ -33,7 +34,11 @@
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
   import DeployModal from "$lib/components/workspace/DeployModal.svelte";
   import GitHubModal from "$lib/components/workspace/GitHubModal.svelte";
-  import { checkVercelDeploymentStatus, getProject } from "$lib/api/projects";
+  import {
+    checkVercelDeploymentStatus,
+    getGitHubStatus,
+    getProject,
+  } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
 
   const openAgentPanel = () => {
@@ -62,6 +67,25 @@
   $: previewLoading = $isRunning;
   $: hasGeneratedApp = Object.keys($projectFiles).length > 0;
   $: if (hasGeneratedApp && !$isRunning) showPreview = true;
+
+  const refreshGitHubStatus = (id: string) => {
+    getGitHubStatus(id)
+      .then((s) => {
+        if (activeProjectId !== id) return;
+        projectGitHub.set(s.integration);
+        projectGitHubDirty.set(Boolean(s.integration) && s.hasLocalChanges);
+      })
+      .catch(() => {});
+  };
+
+  // Re-check after each agent turn: that's when files (and so the export) change.
+  let wasRunning = false;
+  $: {
+    if (wasRunning && !$isRunning && $projectGitHub && activeProjectId) {
+      refreshGitHubStatus(activeProjectId);
+    }
+    wasRunning = $isRunning;
+  }
 
   onMount(() => {
     loadProviders();
@@ -117,6 +141,7 @@
         projectIntegration.set(p.integrations?.supabase ?? null);
         projectVercel.set(p.integrations?.vercel ?? null);
         projectGitHub.set(p.integrations?.github ?? null);
+        if (p.integrations?.github) refreshGitHubStatus(projectId);
         if (p.integrations?.vercel?.projectId) {
           checkVercelDeploymentStatus(projectId)
             .then((res) => {
@@ -162,6 +187,7 @@
         supabaseConnected={$projectIntegration !== null}
         vercelDeployed={!!$projectVercel?.productionUrl}
         githubLinked={$projectGitHub !== null}
+        githubDirty={$projectGitHubDirty}
         on:restart={() => sandpack?.refresh()}
         on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
         on:open-supabase={() => (supabaseModalOpen = true)}
@@ -242,7 +268,10 @@
       {projectId}
       {projectName}
       github={$projectGitHub}
-      on:close={() => (githubModalOpen = false)}
+      on:close={() => {
+        githubModalOpen = false;
+        if ($projectGitHub) refreshGitHubStatus(projectId);
+      }}
       on:changed={(e) => projectGitHub.set(e.detail)}
     />
   {/if}

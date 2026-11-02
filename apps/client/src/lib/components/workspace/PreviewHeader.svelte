@@ -16,6 +16,7 @@
   export let supabaseConnected = false;
   export let vercelDeployed = false;
   export let githubLinked = false;
+  export let githubDirty = false;
 
   const dispatch = createEventDispatcher<{
     restart: void;
@@ -67,12 +68,20 @@
       type="button"
       class="chrome-button relative"
       on:click={() => dispatch("open-github")}
-      title={githubLinked ? "Push to GitHub" : "Connect GitHub"}
-      aria-label={githubLinked ? "Push to GitHub" : "Connect GitHub"}
+      title={githubDirty
+        ? "Unpushed changes — push to GitHub"
+        : githubLinked
+          ? "Push to GitHub"
+          : "Connect GitHub"}
+      aria-label={githubDirty
+        ? "Unpushed changes — push to GitHub"
+        : githubLinked
+          ? "Push to GitHub"
+          : "Connect GitHub"}
     >
       <span class="icon-15" aria-hidden="true">{@html githubIcon}</span>
       {#if githubLinked}
-        <span class="connected-dot" aria-hidden="true"></span>
+        <span class="connected-dot" class:pending-dot={githubDirty} aria-hidden="true"></span>
       {/if}
     </button>
     <button
@@ -181,6 +190,9 @@
     border-radius: 50%;
     background: #22c55e;
     box-shadow: 0 0 0 2px var(--chrome);
+  }
+  .connected-dot.pending-dot {
+    background: #f59e0b;
   }
   .icon-14 {
     display: inline-flex;

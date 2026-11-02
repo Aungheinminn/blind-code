@@ -5,6 +5,7 @@
     getProject,
     updateProject,
     deleteProject,
+    unlinkGitHubRepo,
     type AgentToolName,
     type AgentToolPermissions,
     type Project,
@@ -71,6 +72,20 @@
     perms?.[key] ?? AGENT_TOOLS.find((t) => t.key === key)?.defaultEnabled ?? false;
 
   let permBusy: Record<string, boolean> = {};
+
+  let githubBusy = false;
+  const unlinkGitHub = async () => {
+    if (!project) return;
+    githubBusy = true;
+    try {
+      const updated = await unlinkGitHubRepo(project.id);
+      if (updated) project = updated;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      githubBusy = false;
+    }
+  };
 
   const togglePerm = async (key: AgentToolName, next: boolean) => {
     if (!project) return;
@@ -244,6 +259,54 @@
           {/if}
         </div>
       </form>
+
+      <section class="mt-12">
+        <h2 class="text-sm font-semibold" style="color: var(--text-primary);">
+          GitHub
+        </h2>
+        {#if project.integrations?.github}
+          {@const gh = project.integrations.github}
+          <div
+            class="mt-3 flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
+            style="border-color: var(--border); background-color: var(--bg-panel);"
+          >
+            <div class="min-w-0">
+              <a
+                href={gh.htmlUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm font-medium font-mono"
+                style="color: var(--accent);"
+              >{gh.owner}/{gh.repo}</a>
+              <div class="mt-1 text-xs" style="color: var(--text-secondary);">
+                Branch {gh.branch}{gh.private ? " · private" : ""}
+                {#if gh.lastPushedAt}
+                  · last pushed {new Date(gh.lastPushedAt).toLocaleString()}
+                {:else}
+                  · not pushed yet
+                {/if}
+              </div>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 px-3 py-1.5 rounded-md text-xs font-medium border cursor-pointer disabled:opacity-50"
+              style="border-color: var(--border); color: var(--text-secondary); background-color: var(--bg-tertiary);"
+              disabled={githubBusy}
+              on:click={unlinkGitHub}
+            >
+              {githubBusy ? "Unlinking…" : "Unlink"}
+            </button>
+          </div>
+          <p class="mt-2 text-xs" style="color: var(--text-tertiary);">
+            Unlinking only disconnects this workspace; the repository on GitHub is left untouched.
+          </p>
+        {:else}
+          <p class="mt-1 text-xs" style="color: var(--text-tertiary);">
+            No repository linked. Open the workspace and use the GitHub button in the preview
+            header to create or link one.
+          </p>
+        {/if}
+      </section>
 
       <section class="mt-12">
         <h2 class="text-sm font-semibold" style="color: var(--text-primary);">
