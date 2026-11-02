@@ -2,6 +2,7 @@ import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "
 import { db, hasDb, schema } from "./client";
 import type {
   AgentToolPermissions,
+  GitHubAccountIntegration,
   ProjectIntegrations,
   ProviderKey,
   SupabaseAccountIntegration,
@@ -58,6 +59,12 @@ const encryptUserIntegrations = (
       apiToken: encrypt(integrations.vercel.apiToken),
     };
   }
+  if (integrations.github) {
+    out.github = {
+      ...integrations.github,
+      accessToken: encrypt(integrations.github.accessToken),
+    };
+  }
   if (integrations.providers) {
     out.providers = encryptProviderKeys(integrations.providers);
   }
@@ -76,6 +83,10 @@ const decryptUserIntegrations = (
   if (integrations.vercel) {
     const tok = decryptMaybe(integrations.vercel.apiToken);
     out.vercel = { ...integrations.vercel, apiToken: tok ?? "" };
+  }
+  if (integrations.github) {
+    const tok = decryptMaybe(integrations.github.accessToken);
+    out.github = { ...integrations.github, accessToken: tok ?? "" };
   }
   if (integrations.providers) {
     out.providers = decryptProviderKeys(integrations.providers);
@@ -348,6 +359,47 @@ export const clearUserVercelIntegration = async (userId: string) => {
   if (!existing) return null;
   const current = existing.integrations ?? {};
   const { vercel: _drop, ...rest } = current;
+  const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.users)
+    .set({
+      integrations: nextIntegrations
+        ? encryptUserIntegrations(nextIntegrations)
+        : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
+export const setUserGitHubIntegration = async (
+  userId: string,
+  integration: GitHubAccountIntegration,
+) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const merged: UserIntegrations = {
+    ...(existing.integrations ?? {}),
+    github: integration,
+  };
+  const [updated] = await db
+    .update(schema.users)
+    .set({ integrations: encryptUserIntegrations(merged), updatedAt: new Date() })
+    .where(eq(schema.users.id, userId))
+    .returning();
+  return decryptUserRow(updated ?? null);
+};
+
+export const clearUserGitHubIntegration = async (userId: string) => {
+  if (!db) return null;
+  const existing = await getUserById(userId);
+  if (!existing) return null;
+  const current = existing.integrations ?? {};
+  const { github: _drop, ...rest } = current;
   const nextIntegrations: UserIntegrations | null = Object.keys(rest).length
     ? rest
     : null;

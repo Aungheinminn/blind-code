@@ -25,6 +25,11 @@
       match: (p) => p === "/settings/vercel" || p.startsWith("/settings/vercel/"),
     },
     {
+      href: "/settings/github",
+      label: "GitHub",
+      match: (p) => p === "/settings/github" || p.startsWith("/settings/github/"),
+    },
+    {
       href: "/settings/credits",
       label: "Credits",
       match: (p) => p === "/settings/credits" || p.startsWith("/settings/credits/"),
