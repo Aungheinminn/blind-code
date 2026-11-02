@@ -125,3 +125,15 @@ export const disconnectGitHubAccount = () =>
   fetchJson<PublicUserIntegrations | null>("/account/integrations/github", {
     method: "DELETE",
   });
+
+export type GitHubRepoSummary = {
+  id: number;
+  fullName: string;
+  private: boolean;
+  defaultBranch: string;
+  htmlUrl: string;
+  pushedAt: string | null;
+};
+
+export const listAccountGitHubRepos = () =>
+  fetchJson<GitHubRepoSummary[]>("/account/integrations/github/repos");

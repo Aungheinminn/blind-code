@@ -139,6 +139,9 @@ export const projectIntegration = writable<PublicSupabaseIntegration | null>(nul
 export const projectVercel = writable<
   import("$lib/api/projects").PublicVercelIntegration | null
 >(null);
+export const projectGitHub = writable<
+  import("$lib/api/projects").PublicGitHubIntegration | null
+>(null);
 export const activeDesignTemplateCss = writable<string | null>(null);
 export const activeDesignTemplateName = writable<string | null>(null);
 
@@ -277,6 +280,7 @@ export const resetWorkspace = () => {
   projectFiles.set({});
   projectIntegration.set(null);
   projectVercel.set(null);
+  projectGitHub.set(null);
   activeDesignTemplateCss.set(null);
   activeDesignTemplateName.set(null);
   currentAgentMessageId = null;

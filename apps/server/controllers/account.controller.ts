@@ -22,7 +22,11 @@ import {
 import { platformSupabasePatAvailable } from "../services/supabasePAT";
 import { platformVercelTokenAvailable } from "../services/vercelToken";
 import { validateToken as validateVercelToken } from "../services/vercelManagement";
-import { getViewer, GitHubManagementError } from "../services/githubManagement";
+import {
+  getViewer,
+  GitHubManagementError,
+  listRepos as listGitHubRepos,
+} from "../services/githubManagement";
 import { toPublicUserIntegrations } from "@vibe/shared";
 
 const unauthorized = (set: { status?: number | string }) => {
@@ -274,6 +278,36 @@ export const accountController = (app: Elysia) =>
         return { error: "user not found" };
       }
       return { data: toPublicUserIntegrations(updated.integrations) };
+    })
+    .get("/account/integrations/github/repos", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const row = await getUserById(user.id);
+      const token = row?.integrations?.github?.accessToken;
+      if (!token) {
+        set.status = 400;
+        return { error: "GitHub account not connected" };
+      }
+      try {
+        const repos = await listGitHubRepos(token);
+        return {
+          data: repos
+            .filter((r) => r.permissions?.push !== false)
+            .map((r) => ({
+              id: r.id,
+              fullName: r.full_name,
+              private: r.private,
+              defaultBranch: r.default_branch,
+              htmlUrl: r.html_url,
+              pushedAt: r.pushed_at ?? null,
+            })),
+        };
+      } catch (err) {
+        set.status =
+          err instanceof GitHubManagementError && err.status === 401 ? 401 : 502;
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
     })
     .get("/account/integrations/supabase/organizations", async ({ request, set }) => {
       if (!hasDb) return dbUnavailable(set);

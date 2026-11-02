@@ -637,6 +637,65 @@ export const setVercelIntegrationForOwner = async (
   return decryptProjectRow(updated ?? null);
 };
 
+export const setGitHubIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+  integration: NonNullable<ProjectIntegrations["github"]>,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const decryptedExisting = decryptProjectRow(existing[0])!;
+  const merged: ProjectIntegrations = {
+    ...(decryptedExisting.integrations ?? {}),
+    github: integration,
+  };
+  const [updated] = await db
+    .update(schema.projects)
+    .set({
+      integrations: encryptProjectIntegrations(merged),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return decryptProjectRow(updated ?? null);
+};
+
+export const clearGitHubIntegrationForOwner = async (
+  idOrName: string,
+  ownerId: string,
+) => {
+  if (!db) return null;
+  const id = projectIdFor(idOrName, ownerId);
+  const existing = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .limit(1);
+  if (!existing[0]) return null;
+  const current = existing[0].integrations ?? {};
+  const { github: _drop, ...rest } = current;
+  const nextIntegrations: ProjectIntegrations | null = Object.keys(rest).length
+    ? rest
+    : null;
+  const [updated] = await db
+    .update(schema.projects)
+    .set({
+      integrations: nextIntegrations
+        ? encryptProjectIntegrations(nextIntegrations)
+        : null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)))
+    .returning();
+  return decryptProjectRow(updated ?? null);
+};
+
 export const setSupabaseIntegrationForOwner = async (
   idOrName: string,
   ownerId: string,

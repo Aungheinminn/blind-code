@@ -56,6 +56,15 @@ import { creditsFor, hasPricing } from "../services/pricing";
 import { debit } from "../services/credits";
 import { assembleVercelProject } from "../services/vercelAssembler";
 import {
+  createRepoForProject,
+  getGitHubProjectStatus,
+  GitHubPushError,
+  githubPushErrorStatus,
+  linkRepoToProject,
+  pushProjectToGitHub,
+} from "../services/githubPush";
+import {
+  clearGitHubIntegrationForOwner,
   clearVercelIntegrationForOwner,
   setVercelIntegrationForOwner,
 } from "../db/repo";
@@ -121,6 +130,22 @@ type DeployProgress =
     };
 
 const activeDeploys = new Map<string, DeployProgress>();
+
+const githubError = (set: { status?: number | string }, err: unknown) => {
+  if (err instanceof GitHubPushError) {
+    set.status = githubPushErrorStatus(err.code);
+    return {
+      error: err.message,
+      code: err.code,
+      ...(err.remoteSha ? { remoteSha: err.remoteSha } : {}),
+    };
+  }
+  set.status = 500;
+  return { error: err instanceof Error ? err.message : String(err) };
+};
+
+const optString = (v: unknown): string | undefined =>
+  typeof v === "string" && v.trim() ? v.trim() : undefined;
 
 const slugifyProjectName = (s: string) =>
   s
@@ -573,6 +598,94 @@ export const projectController = (app: Elysia) =>
         return { error: "not found" };
       }
       return { data: toPublicProject(updated) };
+    })
+    .put("/projects/:id/integrations/github", async ({ params, body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      try {
+        if (b.mode === "create") {
+          const name = optString(b.name);
+          if (!name) {
+            set.status = 400;
+            return { error: "name required" };
+          }
+          await createRepoForProject({
+            ownerId: user.id,
+            projectId: params.id,
+            name,
+            private: b.private !== false,
+            description: optString(b.description),
+          });
+        } else if (b.mode === "link") {
+          const fullName = optString(b.fullName);
+          if (!fullName) {
+            set.status = 400;
+            return { error: "fullName required" };
+          }
+          await linkRepoToProject({
+            ownerId: user.id,
+            projectId: params.id,
+            fullName,
+            branch: optString(b.branch),
+          });
+        } else {
+          set.status = 400;
+          return { error: "mode must be 'create' or 'link'" };
+        }
+      } catch (err) {
+        return githubError(set, err);
+      }
+      const updated = await getProjectForOwner(params.id, user.id);
+      if (!updated) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: toPublicProject(updated) };
+    })
+    .delete("/projects/:id/integrations/github", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const updated = await clearGitHubIntegrationForOwner(params.id, user.id);
+      if (!updated) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: toPublicProject(updated) };
+    })
+    .get("/projects/:id/github/status", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      try {
+        const status = await getGitHubProjectStatus({
+          ownerId: user.id,
+          projectId: params.id,
+        });
+        return { data: status };
+      } catch (err) {
+        return githubError(set, err);
+      }
+    })
+    .post("/projects/:id/github/push", async ({ params, body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      try {
+        const result = await pushProjectToGitHub({
+          ownerId: user.id,
+          projectId: params.id,
+          message: optString(b.message),
+          force: b.force === true,
+          newBranch: optString(b.newBranch),
+        });
+        return { data: result };
+      } catch (err) {
+        return githubError(set, err);
+      }
     })
     .get("/projects/:id/history", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

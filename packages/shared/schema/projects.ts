@@ -18,9 +18,25 @@ export type VercelIntegration = {
   lastDeployedAt?: string;
 };
 
+export type GitHubIntegration = {
+  owner: string;
+  repo: string;
+  repoId: number;
+  branch: string;
+  htmlUrl: string;
+  private: boolean;
+  linkedAt: string;
+  lastPushedSha?: string;
+  lastPushedAt?: string;
+  // sha256 of the exported file set, so the UI can flag unpushed changes
+  // without a GitHub round-trip.
+  lastPushedContentHash?: string;
+};
+
 export type ProjectIntegrations = {
   supabase?: SupabaseIntegration;
   vercel?: VercelIntegration;
+  github?: GitHubIntegration;
 };
 
 export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
@@ -50,6 +66,7 @@ export type PublicSupabaseIntegration = Omit<
 export type PublicProjectIntegrations = {
   supabase?: PublicSupabaseIntegration;
   vercel?: VercelIntegration;
+  github?: GitHubIntegration;
 };
 
 export const toPublicIntegrations = (
@@ -67,6 +84,9 @@ export const toPublicIntegrations = (
   }
   if (integrations.vercel) {
     out.vercel = integrations.vercel;
+  }
+  if (integrations.github) {
+    out.github = integrations.github;
   }
   return out;
 };
