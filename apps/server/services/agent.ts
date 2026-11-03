@@ -18,6 +18,7 @@ import {
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
 import { addTodoToLatestPlan } from "../db/repo";
+import { fitHistory, historyBudgetFor } from "./context";
 
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
@@ -210,6 +211,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
   const preference = opts.keyPreference ?? "auto";
   const model = await resolveModel(opts.provider, opts.model, userId, preference);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
+  const { history } = fitHistory(opts.history ?? [], historyBudgetFor(opts.model));
 
   // Leaf tools from tools.ts — file/DB/HTTP operations that only need ToolContext.
   // They stand alone: no sub-agent LLM calls, no access to runAgent's closure
@@ -248,7 +250,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             model: opts.model,
             toolContext: opts.toolContext,
             prompt: task,
-            history: opts.history,
+            history,
             supabaseConnected: opts.supabaseConnected,
             userSupabasePatConnected: opts.userSupabasePatConnected,
             keyPreference: preference,
@@ -447,9 +449,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
         anthropic: { cacheControl: { type: "ephemeral" } },
       },
     } as ModelMessage,
-    ...(opts.history ?? []).map(
-      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-    ),
+    ...history.map((m) => ({ role: m.role, content: m.content }) as ModelMessage),
     { role: "user", content: opts.prompt },
   ];
 
