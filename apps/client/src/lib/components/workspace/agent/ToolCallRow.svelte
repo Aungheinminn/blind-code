@@ -31,6 +31,8 @@
     run_sql: "sql",
     create_supabase_project: "create supabase project",
     attach_supabase_project: "attach supabase project",
+    github_create_repo: "create github repo",
+    github_push: "push to github",
   };
   const displayName = (name: string): string => DISPLAY_NAME[name] ?? name;
 
@@ -97,6 +99,12 @@
       }
       case "attach_supabase_project": {
         return pickString(input, ["projectRef"]) ?? "";
+      }
+      case "github_create_repo": {
+        return pickString(input, ["name"]) ?? "";
+      }
+      case "github_push": {
+        return pickString(input, ["message"]) ?? "";
       }
       default:
         return formatArg(input);
@@ -261,6 +269,20 @@
         if (typeof outObj.name === "string") items.push({ label: "Name", value: outObj.name });
         if (typeof outObj.url === "string") items.push({ label: "URL", value: outObj.url, variant: "link" });
         if (typeof outObj.anonKey === "string" && outObj.anonKey.length > 0) items.push({ label: "Anon key", value: "configured", variant: "chip" });
+        if (items.length > 0) return { kind: "fields", items };
+        break;
+      }
+      case "github_create_repo": {
+        if (typeof outObj.url === "string") {
+          return { kind: "fields", items: [{ label: "Repo", value: outObj.url, variant: "link" }] };
+        }
+        break;
+      }
+      case "github_push": {
+        const items: FieldItem[] = [];
+        if (outObj.status === "noop") items.push({ label: "Status", value: "already up to date", variant: "chip" });
+        if (typeof outObj.branch === "string") items.push({ label: "Branch", value: outObj.branch, variant: "code" });
+        if (typeof outObj.commitUrl === "string") items.push({ label: "Commit", value: outObj.commitUrl, variant: "link" });
         if (items.length > 0) return { kind: "fields", items };
         break;
       }

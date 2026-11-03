@@ -9,9 +9,18 @@ export type PublicVercelAccountIntegration = {
   connectedAt: string;
 };
 
+export type PublicGitHubAccountIntegration = {
+  last4: string;
+  login: string;
+  githubUserId: number;
+  avatarUrl?: string;
+  connectedAt: string;
+};
+
 export type PublicUserIntegrations = {
   supabase?: PublicSupabaseAccountIntegration;
   vercel?: PublicVercelAccountIntegration;
+  github?: PublicGitHubAccountIntegration;
 };
 
 export type AccountIntegrationsResponse = PublicUserIntegrations & {
@@ -105,3 +114,26 @@ export const disconnectVercelAccount = () =>
   fetchJson<PublicUserIntegrations | null>("/account/integrations/vercel", {
     method: "DELETE",
   });
+
+export const connectGitHubAccount = (accessToken: string) =>
+  fetchJson<PublicUserIntegrations | null>("/account/integrations/github", {
+    method: "PUT",
+    body: JSON.stringify({ accessToken }),
+  });
+
+export const disconnectGitHubAccount = () =>
+  fetchJson<PublicUserIntegrations | null>("/account/integrations/github", {
+    method: "DELETE",
+  });
+
+export type GitHubRepoSummary = {
+  id: number;
+  fullName: string;
+  private: boolean;
+  defaultBranch: string;
+  htmlUrl: string;
+  pushedAt: string | null;
+};
+
+export const listAccountGitHubRepos = () =>
+  fetchJson<GitHubRepoSummary[]>("/account/integrations/github/repos");

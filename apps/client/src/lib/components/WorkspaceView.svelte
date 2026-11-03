@@ -23,6 +23,8 @@
     projectFiles,
     projectIntegration,
     projectVercel,
+    projectGitHub,
+    projectGitHubDirty,
   } from "$lib/stores/agent";
   import SandpackPreview from "$lib/components/SandpackPreview.svelte";
   import AgentPanel from "$lib/components/workspace/AgentPanel.svelte";
@@ -31,7 +33,12 @@
   import PlanningPane from "$lib/components/workspace/PlanningPane.svelte";
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
   import DeployModal from "$lib/components/workspace/DeployModal.svelte";
-  import { checkVercelDeploymentStatus, getProject } from "$lib/api/projects";
+  import GitHubModal from "$lib/components/workspace/GitHubModal.svelte";
+  import {
+    checkVercelDeploymentStatus,
+    getGitHubStatus,
+    getProject,
+  } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
 
   const openAgentPanel = () => {
@@ -51,6 +58,7 @@
   let projectName = "";
   let supabaseModalOpen = false;
   let deployModalOpen = false;
+  let githubModalOpen = false;
   // One-way latch per project: once we've committed to the preview layout
   // we don't fall back to the planning pane on follow-up prompts.
   let showPreview = false;
@@ -59,6 +67,25 @@
   $: previewLoading = $isRunning;
   $: hasGeneratedApp = Object.keys($projectFiles).length > 0;
   $: if (hasGeneratedApp && !$isRunning) showPreview = true;
+
+  const refreshGitHubStatus = (id: string) => {
+    getGitHubStatus(id)
+      .then((s) => {
+        if (activeProjectId !== id) return;
+        projectGitHub.set(s.integration);
+        projectGitHubDirty.set(Boolean(s.integration) && s.hasLocalChanges);
+      })
+      .catch(() => {});
+  };
+
+  // Re-check after each agent turn: that's when files (and so the export) change.
+  let wasRunning = false;
+  $: {
+    if (wasRunning && !$isRunning && $projectGitHub && activeProjectId) {
+      refreshGitHubStatus(activeProjectId);
+    }
+    wasRunning = $isRunning;
+  }
 
   onMount(() => {
     loadProviders();
@@ -113,6 +140,8 @@
         projectName = p.name;
         projectIntegration.set(p.integrations?.supabase ?? null);
         projectVercel.set(p.integrations?.vercel ?? null);
+        projectGitHub.set(p.integrations?.github ?? null);
+        if (p.integrations?.github) refreshGitHubStatus(projectId);
         if (p.integrations?.vercel?.projectId) {
           checkVercelDeploymentStatus(projectId)
             .then((res) => {
@@ -157,10 +186,13 @@
         {launcherHidden}
         supabaseConnected={$projectIntegration !== null}
         vercelDeployed={!!$projectVercel?.productionUrl}
+        githubLinked={$projectGitHub !== null}
+        githubDirty={$projectGitHubDirty}
         on:restart={() => sandpack?.refresh()}
         on:toggle-launcher={() => (launcherHidden = !launcherHidden)}
         on:open-supabase={() => (supabaseModalOpen = true)}
         on:open-deploy={() => (deployModalOpen = true)}
+        on:open-github={() => (githubModalOpen = true)}
       />
       <div class="flex-1 min-h-0 relative">
         <SandpackPreview
@@ -228,6 +260,19 @@
       vercel={$projectVercel}
       on:close={() => (deployModalOpen = false)}
       on:deployed={(e) => projectVercel.set(e.detail)}
+    />
+  {/if}
+
+  {#if githubModalOpen}
+    <GitHubModal
+      {projectId}
+      {projectName}
+      github={$projectGitHub}
+      on:close={() => {
+        githubModalOpen = false;
+        if ($projectGitHub) refreshGitHubStatus(projectId);
+      }}
+      on:changed={(e) => projectGitHub.set(e.detail)}
     />
   {/if}
 </div>

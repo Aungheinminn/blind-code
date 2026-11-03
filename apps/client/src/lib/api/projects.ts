@@ -18,12 +18,30 @@ export type PublicVercelIntegration = {
   lastDeployedAt?: string;
 };
 
+export type PublicGitHubIntegration = {
+  owner: string;
+  repo: string;
+  repoId: number;
+  branch: string;
+  htmlUrl: string;
+  private: boolean;
+  linkedAt: string;
+  lastPushedSha?: string;
+  lastPushedAt?: string;
+  lastPushedContentHash?: string;
+};
+
 export type PublicProjectIntegrations = {
   supabase?: PublicSupabaseIntegration;
   vercel?: PublicVercelIntegration;
+  github?: PublicGitHubIntegration;
 };
 
-export type AgentToolName = "create_supabase_project" | "attach_supabase_project";
+export type AgentToolName =
+  | "create_supabase_project"
+  | "attach_supabase_project"
+  | "github_create_repo"
+  | "github_push";
 export type AgentToolPermissions = Partial<Record<AgentToolName, boolean>>;
 
 export type Project = {
@@ -337,3 +355,44 @@ export const startVercelDeploy = (id: string) =>
 
 export const checkVercelDeploymentStatus = (id: string) =>
   fetchJson<VercelDeployStatus>(`/projects/${id}/deploy/vercel/status`);
+
+export type GitHubProjectStatus = {
+  accountConnected: boolean;
+  integration: PublicGitHubIntegration | null;
+  hasLocalChanges: boolean;
+  remote: { headSha: string | null; diverged: boolean } | null;
+  remoteError?: string;
+};
+
+export type GitHubPushResult = {
+  status: "pushed" | "noop";
+  branch: string;
+  commitSha: string;
+  commitUrl: string;
+  integration: PublicGitHubIntegration;
+};
+
+export type GitHubLinkInput =
+  | { mode: "create"; name: string; private?: boolean; description?: string }
+  | { mode: "link"; fullName: string; branch?: string };
+
+export const getGitHubStatus = (id: string) =>
+  fetchJson<GitHubProjectStatus>(`/projects/${id}/github/status`);
+
+export const linkGitHubRepo = (id: string, input: GitHubLinkInput) =>
+  fetchJson<Project>(`/projects/${id}/integrations/github`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+
+export const unlinkGitHubRepo = (id: string) =>
+  fetchJson<Project>(`/projects/${id}/integrations/github`, { method: "DELETE" });
+
+export const pushToGitHub = (
+  id: string,
+  input: { message?: string; force?: boolean; newBranch?: string } = {},
+) =>
+  fetchJson<GitHubPushResult>(`/projects/${id}/github/push`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });

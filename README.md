@@ -33,6 +33,14 @@ The composer has a `Key:` chip that cycles **Auto → Yours → Platform**:
 - **Supabase platform fallback** = `SUPABASE_ACCESS_TOKEN` is a PAT for Blind Code's Supabase org. The agent uses it to **auto-provision a per-user project** under that org. Browse endpoints (list orgs / projects) stay user-only — users without their own PAT don't see the platform org.
 - **Vercel platform fallback** = `VERCEL_API_TOKEN` is a token for Blind Code's Vercel account; deploys from users without their own token land there. User-token deploys hit the user's own scope.
 
+### GitHub
+
+GitHub is **user-only**: there's no platform token. Users connect a fine-grained PAT in Settings → GitHub (Contents: read/write, plus Administration: read/write to create repos), then create or link a repo from the GitHub button in the workspace header.
+
+- A push exports the same runnable Vite project as a Vercel deploy and commits it via the Git Data API, so no `git` binary is needed. The export reads Supabase config from `VITE_SUPABASE_*` env vars and never contains `.env` files or service keys.
+- If the branch has commits that didn't come from Blind Code, the push is refused until the user picks a new branch or chooses to replace the files. The new commit always sits on top of the remote head, so remote history is never discarded.
+- The `github_create_repo` / `github_push` agent tools are **off by default** and are enabled per project under Project settings → Agent tool permissions.
+
 ### Migrating from the local file store
 
 Older installs stored provider keys in `~/.config/blind-code/auth.json`. Import them into a user's DB record with:

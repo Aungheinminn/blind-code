@@ -9,6 +9,7 @@ import {
   getProjectDesignTemplate,
   getProjectFiles,
   getProjectHistory,
+  type PublicGitHubIntegration,
   type PublicSupabaseIntegration,
 } from "$lib/api/projects";
 
@@ -139,6 +140,8 @@ export const projectIntegration = writable<PublicSupabaseIntegration | null>(nul
 export const projectVercel = writable<
   import("$lib/api/projects").PublicVercelIntegration | null
 >(null);
+export const projectGitHub = writable<PublicGitHubIntegration | null>(null);
+export const projectGitHubDirty = writable(false);
 export const activeDesignTemplateCss = writable<string | null>(null);
 export const activeDesignTemplateName = writable<string | null>(null);
 
@@ -277,6 +280,8 @@ export const resetWorkspace = () => {
   projectFiles.set({});
   projectIntegration.set(null);
   projectVercel.set(null);
+  projectGitHub.set(null);
+  projectGitHubDirty.set(false);
   activeDesignTemplateCss.set(null);
   activeDesignTemplateName.set(null);
   currentAgentMessageId = null;
@@ -636,6 +641,11 @@ const handleEvent = (raw: unknown) => {
           delete next[event.path];
           return next;
         });
+      }
+      break;
+    case "github-updated":
+      if (event.integration && typeof event.integration === "object") {
+        projectGitHub.set(event.integration as PublicGitHubIntegration);
       }
       break;
     case "supabase-attached":

@@ -8,6 +8,8 @@ import {
   clearSupabaseIntegrationsByRefForOwner,
   setUserVercelIntegration,
   clearUserVercelIntegration,
+  setUserGitHubIntegration,
+  clearUserGitHubIntegration,
 } from "../db/repo";
 import {
   listSupabaseProjects,
@@ -20,6 +22,11 @@ import {
 import { platformSupabasePatAvailable } from "../services/supabasePAT";
 import { platformVercelTokenAvailable } from "../services/vercelToken";
 import { validateToken as validateVercelToken } from "../services/vercelManagement";
+import {
+  getViewer,
+  GitHubManagementError,
+  listRepos as listGitHubRepos,
+} from "../services/githubManagement";
 import { toPublicUserIntegrations } from "@vibe/shared";
 
 const unauthorized = (set: { status?: number | string }) => {
@@ -221,6 +228,86 @@ export const accountController = (app: Elysia) =>
         return { error: "user not found" };
       }
       return { data: toPublicUserIntegrations(updated.integrations) };
+    })
+    .put("/account/integrations/github", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      const accessToken =
+        typeof b.accessToken === "string" ? b.accessToken.trim() : "";
+      if (!accessToken) {
+        set.status = 400;
+        return { error: "accessToken required" };
+      }
+      let viewer;
+      try {
+        viewer = await getViewer(accessToken);
+      } catch (err) {
+        set.status = 400;
+        return {
+          error:
+            err instanceof GitHubManagementError && err.status === 401
+              ? "Personal access token was rejected by GitHub"
+              : err instanceof Error
+                ? err.message
+                : String(err),
+        };
+      }
+      const updated = await setUserGitHubIntegration(user.id, {
+        accessToken,
+        last4: accessToken.slice(-4),
+        login: viewer.login,
+        githubUserId: viewer.id,
+        ...(viewer.avatar_url ? { avatarUrl: viewer.avatar_url } : {}),
+        connectedAt: new Date().toISOString(),
+      });
+      if (!updated) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      return { data: toPublicUserIntegrations(updated.integrations) };
+    })
+    .delete("/account/integrations/github", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const updated = await clearUserGitHubIntegration(user.id);
+      if (!updated) {
+        set.status = 404;
+        return { error: "user not found" };
+      }
+      return { data: toPublicUserIntegrations(updated.integrations) };
+    })
+    .get("/account/integrations/github/repos", async ({ request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const row = await getUserById(user.id);
+      const token = row?.integrations?.github?.accessToken;
+      if (!token) {
+        set.status = 400;
+        return { error: "GitHub account not connected" };
+      }
+      try {
+        const repos = await listGitHubRepos(token);
+        return {
+          data: repos
+            .filter((r) => r.permissions?.push !== false)
+            .map((r) => ({
+              id: r.id,
+              fullName: r.full_name,
+              private: r.private,
+              defaultBranch: r.default_branch,
+              htmlUrl: r.html_url,
+              pushedAt: r.pushed_at ?? null,
+            })),
+        };
+      } catch (err) {
+        set.status =
+          err instanceof GitHubManagementError && err.status === 401 ? 401 : 502;
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
     })
     .get("/account/integrations/supabase/organizations", async ({ request, set }) => {
       if (!hasDb) return dbUnavailable(set);

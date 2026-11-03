@@ -4,6 +4,7 @@
   import DeviceWidthToolbar from "./DeviceWidthToolbar.svelte";
   import databaseIcon from "$lib/assets/icons/database.svg?raw";
   import rocketIcon from "$lib/assets/icons/rocket.svg?raw";
+  import githubIcon from "$lib/assets/icons/github.svg?raw";
   import refreshCwIcon from "$lib/assets/icons/refresh-cw.svg?raw";
   import sunIcon from "$lib/assets/icons/sun.svg?raw";
   import moonIcon from "$lib/assets/icons/moon.svg?raw";
@@ -14,12 +15,15 @@
   export let launcherHidden = false;
   export let supabaseConnected = false;
   export let vercelDeployed = false;
+  export let githubLinked = false;
+  export let githubDirty = false;
 
   const dispatch = createEventDispatcher<{
     restart: void;
     "toggle-launcher": void;
     "open-supabase": void;
     "open-deploy": void;
+    "open-github": void;
   }>();
 </script>
 
@@ -59,6 +63,26 @@
         class:deployed-fill={vercelDeployed}
         aria-hidden="true"
       >{@html rocketIcon}</span>
+    </button>
+    <button
+      type="button"
+      class="chrome-button relative"
+      on:click={() => dispatch("open-github")}
+      title={githubDirty
+        ? "Unpushed changes — push to GitHub"
+        : githubLinked
+          ? "Push to GitHub"
+          : "Connect GitHub"}
+      aria-label={githubDirty
+        ? "Unpushed changes — push to GitHub"
+        : githubLinked
+          ? "Push to GitHub"
+          : "Connect GitHub"}
+    >
+      <span class="icon-15" aria-hidden="true">{@html githubIcon}</span>
+      {#if githubLinked}
+        <span class="connected-dot" class:pending-dot={githubDirty} aria-hidden="true"></span>
+      {/if}
     </button>
     <button
       type="button"
@@ -166,6 +190,9 @@
     border-radius: 50%;
     background: #22c55e;
     box-shadow: 0 0 0 2px var(--chrome);
+  }
+  .connected-dot.pending-dot {
+    background: #f59e0b;
   }
   .icon-14 {
     display: inline-flex;

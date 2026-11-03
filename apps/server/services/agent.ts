@@ -13,6 +13,7 @@ import {
 } from "./coder";
 import {
   buildAutoProvisionSupabaseCoderAppendix,
+  buildGitHubCoderAppendix,
   buildLocalPersistenceCoderAppendix,
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
@@ -78,6 +79,7 @@ export type RunAgentOptions = {
   supabaseCanRunSql?: boolean;
   userSupabasePatConnected?: boolean;
   agentToolPermissions?: AgentToolPermissions;
+  githubLinkedRepo?: string | null;
   designTemplateName?: string | null;
   designTemplateBody?: string | null;
   hasExplicitDesignTemplate?: boolean;
@@ -423,9 +425,16 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
     : opts.userSupabasePatConnected
       ? withPlan + buildAutoProvisionSupabaseCoderAppendix()
       : withPlan + buildLocalPersistenceCoderAppendix();
+  const withGitHub =
+    withPersistence +
+    buildGitHubCoderAppendix({
+      linkedRepo: opts.githubLinkedRepo ?? null,
+      canPush: "github_push" in baseTools,
+      canCreateRepo: "github_create_repo" in baseTools,
+    });
   const withTemplate = opts.designTemplateBody
-    ? withPersistence + buildDesignTemplateAppendix(opts.designTemplateName ?? null, opts.designTemplateBody)
-    : withPersistence;
+    ? withGitHub + buildDesignTemplateAppendix(opts.designTemplateName ?? null, opts.designTemplateBody)
+    : withGitHub;
   const system = opts.existingPlan
     ? withTemplate
     : withTemplate + buildClarifyAppendix(Boolean(opts.hasExplicitDesignTemplate));

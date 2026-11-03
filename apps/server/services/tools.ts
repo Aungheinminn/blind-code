@@ -23,6 +23,11 @@ import {
   SupabaseManagementError,
   waitForSupabaseProjectReady,
 } from "./supabaseManagement";
+import {
+  createRepoForProject,
+  GitHubPushError,
+  pushProjectToGitHub,
+} from "./githubPush";
 
 const SANDBOX_ROOT = "/tmp/vibe-sandbox";
 
@@ -51,6 +56,7 @@ export type ToolContext = {
   databaseUrl?: string | null;
   supabasePat?: string | null;
   supabaseProjectRef?: string | null;
+  githubConnected?: boolean;
 };
 
 const hashInput = (toolName: string, input: unknown): string =>
@@ -474,6 +480,81 @@ export const buildWriteTools = (ctx: ToolContext) => {
       ),
     }),
 
+    github_create_repo: tool({
+      description:
+        "Create a new GitHub repository on the user's account and link it to this project. Only call when the user explicitly asks to put the project on GitHub and no repo is linked yet. Follow up with github_push to upload the code.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .min(1)
+          .max(100)
+          .regex(/^[A-Za-z0-9._-]+$/)
+          .describe("Repository name, e.g. 'todo-app'. Letters, numbers, '.', '-', '_' only."),
+        private: z
+          .boolean()
+          .optional()
+          .describe("Defaults to true. Only set false if the user asked for a public repo."),
+        description: z.string().max(200).optional(),
+      }),
+      execute: idem(
+        "github_create_repo",
+        async (input: { name: string; private?: boolean; description?: string }) => {
+          if (!ctx.ownerId || !dbProjectId) {
+            return { ok: false as const, error: "No workspace project in context." };
+          }
+          try {
+            const integration = await createRepoForProject({
+              ownerId: ctx.ownerId,
+              projectId: dbProjectId,
+              ...input,
+            });
+            return { ok: true as const, integration, url: integration.htmlUrl };
+          } catch (err) {
+            return {
+              ok: false as const,
+              error: err instanceof Error ? err.message : String(err),
+            };
+          }
+        },
+      ),
+    }),
+
+    github_push: tool({
+      description:
+        "Commit the current project files and push them to the GitHub repo linked to this project. Only call when the user explicitly asks to push / commit / save to GitHub, and only once, after all file changes for the turn are written.",
+      inputSchema: z.object({
+        message: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe("Concise commit message describing what changed, e.g. 'Add dark mode toggle'."),
+      }),
+      execute: idem("github_push", async ({ message }: { message: string }) => {
+        if (!ctx.ownerId || !dbProjectId) {
+          return { ok: false as const, error: "No workspace project in context." };
+        }
+        try {
+          const result = await pushProjectToGitHub({
+            ownerId: ctx.ownerId,
+            projectId: dbProjectId,
+            message,
+          });
+          return { ok: true as const, ...result };
+        } catch (err) {
+          if (err instanceof GitHubPushError && err.code === "diverged") {
+            return {
+              ok: false as const,
+              error: `${err.message} Do not retry. Tell the user to open the GitHub button in the preview header to choose.`,
+            };
+          }
+          return {
+            ok: false as const,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      }),
+    }),
+
     update_todo: tool({
       description:
         "Report progress on a todo from the plan. Call this immediately before starting a todo (status:'active'), after finishing it (status:'done'), or if it becomes unnecessary (status:'skipped'). The user's UI reflects this in real time. Only call this when a plan was provided.",
@@ -511,6 +592,13 @@ export const buildCoderTools = (
   }
   if (permissions.attach_supabase_project === false) {
     delete write.attach_supabase_project;
+  }
+  // Unlike the Supabase tools these are opt-in: missing key = denied.
+  if (permissions.github_create_repo !== true || !ctx.githubConnected) {
+    delete write.github_create_repo;
+  }
+  if (permissions.github_push !== true || !ctx.githubConnected) {
+    delete write.github_push;
   }
   return { ...buildReadOnlyTools(ctx), ...write };
 };

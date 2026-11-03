@@ -11,6 +11,15 @@ export type VercelAccountIntegration = {
   connectedAt: string;
 };
 
+export type GitHubAccountIntegration = {
+  accessToken: string;
+  last4: string;
+  login: string;
+  githubUserId: number;
+  avatarUrl?: string;
+  connectedAt: string;
+};
+
 export type ProviderKey = {
   apiKey: string;
   last4: string;
@@ -27,6 +36,7 @@ export type UserProviderKeys = {
 export type UserIntegrations = {
   supabase?: SupabaseAccountIntegration;
   vercel?: VercelAccountIntegration;
+  github?: GitHubAccountIntegration;
   providers?: UserProviderKeys;
 };
 
@@ -39,9 +49,12 @@ export type PublicVercelAccountIntegration = {
   connectedAt: string;
 };
 
+export type PublicGitHubAccountIntegration = Omit<GitHubAccountIntegration, "accessToken">;
+
 export type PublicUserIntegrations = {
   supabase?: PublicSupabaseAccountIntegration;
   vercel?: PublicVercelAccountIntegration;
+  github?: PublicGitHubAccountIntegration;
 };
 
 export const toPublicUserIntegrations = (
@@ -57,6 +70,10 @@ export const toPublicUserIntegrations = (
       last4: integrations.vercel.last4,
       connectedAt: integrations.vercel.connectedAt,
     };
+  }
+  if (integrations.github) {
+    const { accessToken: _drop, ...rest } = integrations.github;
+    out.github = rest;
   }
   return out;
 };

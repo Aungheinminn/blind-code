@@ -105,6 +105,9 @@ export type SupabaseInject = {
 export type VercelAssembleOptions = {
   supabase?: SupabaseInject | null;
   designCss?: string | null;
+  // Read the Supabase URL/key from Vite env vars instead of inlining them,
+  // for exports that end up in a git repository.
+  supabaseFromEnv?: boolean;
 };
 
 const escapeJsString = (v: string) =>
@@ -116,6 +119,14 @@ const generateSupabaseClient = (s: SupabaseInject): string =>
 export const supabase = createClient(
   "${escapeJsString(s.url)}",
   "${escapeJsString(s.anonKey)}",
+);
+`;
+
+const SUPABASE_ENV_CLIENT = `import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
 );
 `;
 
@@ -275,7 +286,9 @@ export const assembleVercelProject = (
   }
 
   if (opts.supabase) {
-    files["/src/lib/supabase.ts"] = generateSupabaseClient(opts.supabase);
+    files["/src/lib/supabase.ts"] = opts.supabaseFromEnv
+      ? SUPABASE_ENV_CLIENT
+      : generateSupabaseClient(opts.supabase);
   }
 
   files["/index.html"] = INDEX_HTML;
@@ -308,4 +321,72 @@ export const assembleVercelProject = (
   );
 
   return files;
+};
+
+const ENV_FILE_RE = /(^|\/)\.env(\.[^/]*)?$/;
+
+const GITIGNORE = `node_modules
+dist
+.env
+.env.*
+!.env.example
+.DS_Store
+`;
+
+const githubReadme = (name: string, hasSupabase: boolean): string => {
+  const envSection = hasSupabase
+    ? `
+## Environment
+
+Copy \`.env.example\` to \`.env\` and fill in the anon key from your Supabase
+project (Project Settings → API).
+`
+    : "";
+  return `# ${name}
+
+Built with Blind Code.
+
+## Run locally
+
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+${envSection}`;
+};
+
+export type GitHubAssembleOptions = {
+  projectName: string;
+  supabase?: SupabaseInject | null;
+  designCss?: string | null;
+};
+
+// Same runnable Vite project as the Vercel export, minus anything secret,
+// with repo-root paths (no leading slash) as the Git Data API expects.
+export const assembleGitHubProject = (
+  raw: Record<string, string>,
+  opts: GitHubAssembleOptions,
+): Record<string, string> => {
+  const safeRaw: Record<string, string> = {};
+  for (const [path, content] of Object.entries(raw)) {
+    if (ENV_FILE_RE.test(path)) continue;
+    safeRaw[path] = content;
+  }
+  const assembled = assembleVercelProject(safeRaw, {
+    supabase: opts.supabase,
+    designCss: opts.designCss,
+    supabaseFromEnv: true,
+  });
+  const out: Record<string, string> = {};
+  for (const [path, content] of Object.entries(assembled)) {
+    out[path.replace(/^\/+/, "")] = content;
+  }
+  out[".gitignore"] = GITIGNORE;
+  out["src/vite-env.d.ts"] ??= `/// <reference types="vite/client" />\n`;
+  out["README.md"] = githubReadme(opts.projectName, Boolean(opts.supabase));
+  if (opts.supabase) {
+    out[".env.example"] =
+      `VITE_SUPABASE_URL=${opts.supabase.url}\nVITE_SUPABASE_ANON_KEY=your-anon-key\n`;
+  }
+  return out;
 };
