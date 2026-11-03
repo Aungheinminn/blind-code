@@ -1668,3 +1668,15 @@ export const updateDesignTemplateForOwner = async (
 };
 
 export { hasDb };
+
+export const updateProjectContextSummary = async (
+  projectId: string,
+  summary: string,
+  covers: number,
+) => {
+  if (!db) return;
+  await db
+    .update(schema.projects)
+    .set({ contextSummary: summary, contextSummaryCovers: covers })
+    .where(eq(schema.projects.id, projectId));
+};

@@ -26,8 +26,10 @@ import {
   getProjectForOwner,
   getActiveDesignTemplateForProject,
   hasDb,
+  updateProjectContextSummary,
 } from "../db/repo";
 import { sanitizeTemplateBody } from "../services/designTemplate";
+import { summarizeConversation } from "../services/summarizer";
 import matter from "gray-matter";
 import { resolveGitHubToken } from "../services/githubToken";
 import type { Plan } from "../services/planner";
@@ -47,6 +49,50 @@ type AgentIncoming =
     }
   | { type: "cancel" }
   | { type: "attach"; turnId: string; lastOrdinal?: number };
+
+// Folds history that fell out of the window into the project's stored summary.
+// Runs after the turn is finished so the user never waits on it; the next turn
+// picks up the refreshed summary.
+const refreshContextSummary = async (args: {
+  projectId: string;
+  projectName: string | null;
+  previousSummary: string | null;
+  covers: number;
+  dropped: CoderChatMessage[];
+  provider: string;
+  model: string;
+  userId: string;
+  keyPreference: "auto" | "user" | "platform";
+}) => {
+  if (args.dropped.length <= args.covers) return;
+  const { summary, model, usage } = await summarizeConversation({
+    provider: args.provider,
+    model: args.model,
+    userId: args.userId,
+    keyPreference: args.keyPreference,
+    previousSummary: args.previousSummary,
+    turns: args.dropped.slice(args.covers),
+  });
+  if (!summary) return;
+  await updateProjectContextSummary(args.projectId, summary, args.dropped.length);
+
+  const u = (usage ?? {}) as { inputTokens?: number; outputTokens?: number };
+  const inputTokens = u.inputTokens ?? 0;
+  const outputTokens = u.outputTokens ?? 0;
+  if (!model || !hasPricing(model) || inputTokens + outputTokens <= 0) return;
+  const resolved = await resolveKey(args.provider, args.userId, args.keyPreference);
+  if (resolved?.source !== "env") return;
+  const credits = creditsFor(model, { inputTokens, outputTokens });
+  if (credits <= 0) return;
+  await debit(args.userId, credits, "agent_run", {
+    provider: args.provider,
+    model,
+    inputTokens,
+    outputTokens,
+    projectId: args.projectId,
+    ...(args.projectName ? { projectName: args.projectName } : {}),
+  });
+};
 
 const hydrateSandbox = async (sandboxProjectId: string, dbProjectId: string | null) => {
   const cwd = join(SANDBOX_ROOT, sandboxProjectId);
@@ -510,8 +556,9 @@ export const agentController = (app: Elysia) =>
           }
         };
 
+        let droppedHistory: CoderChatMessage[] = [];
         try {
-          await runAgent({
+          ({ droppedHistory } = await runAgent({
             provider,
             model: resolvedModelId,
             toolContext,
@@ -527,12 +574,13 @@ export const agentController = (app: Elysia) =>
             designTemplateName: templateName,
             designTemplateBody: templateBody,
             hasExplicitDesignTemplate: activeTemplate !== null,
+            projectMemory: projectRecord?.contextSummary ?? null,
             keyPreference: msg.keyPreference ?? "auto",
             signal: runSignal,
             existingPlan,
             existingPlanStatuses,
             onEvent: forwardEvent,
-          });
+          }));
           if (runSignal?.aborted) {
             terminalStatus = "cancelled";
           }
@@ -583,5 +631,19 @@ export const agentController = (app: Elysia) =>
         if (turnId) await turnBus.finishTurn(turnId, terminalStatus, terminalError);
 
         await publish({ type: "done" });
+
+        if (dbProjectId && projectRecord && terminalStatus === "done") {
+          refreshContextSummary({
+            projectId: dbProjectId,
+            projectName: projectRecord.name ?? null,
+            previousSummary: projectRecord.contextSummary ?? null,
+            covers: projectRecord.contextSummaryCovers ?? 0,
+            dropped: droppedHistory,
+            provider,
+            model: resolvedModelId,
+            userId,
+            keyPreference: msg.keyPreference ?? "auto",
+          }).catch((err) => console.warn("[context] summary refresh failed:", err));
+        }
       },
     });
