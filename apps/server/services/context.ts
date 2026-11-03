@@ -1,3 +1,4 @@
+import type { ModelMessage, ToolCallPart, ToolResultPart } from "ai";
 import type { CoderChatMessage } from "./coder";
 
 // ~4 chars/token is close enough for budgeting across providers without
@@ -80,4 +81,94 @@ export const fitHistory = (
   const keptCount = kept.length;
   const dropped = history.slice(0, history.length - keptCount);
   return { history: kept, dropped };
+};
+
+const RUN_COMPACT_SHARE = 0.5;
+const KEEP_RECENT_MESSAGES = 6;
+const MAX_STALE_RESULT_CHARS = 4_000;
+
+const estimateMessagesTokens = (messages: ModelMessage[]): number =>
+  estimateTokens(JSON.stringify(messages));
+
+const lineCount = (s: string): number => (s ? s.split("\n").length : 0);
+
+const compactToolCall = (part: ToolCallPart): ToolCallPart => {
+  if (part.toolName !== "write_file") return part;
+  const input = part.input as { path?: string; content?: unknown } | null;
+  if (!input || typeof input.content !== "string") return part;
+  return {
+    ...part,
+    input: { path: input.path, content: `[${lineCount(input.content)} lines written; read_file to see current contents]` },
+  };
+};
+
+const compactToolResult = (part: ToolResultPart): ToolResultPart => {
+  const { output } = part;
+  if (part.toolName === "read_file" && output.type === "json") {
+    const value = output.value as { path?: string } | null;
+    return {
+      ...part,
+      output: {
+        type: "json",
+        value: { path: value?.path ?? null, elided: true, note: "Stale read from an earlier step; read_file again if you need it." },
+      },
+    };
+  }
+  if (part.toolName === "list_files") {
+    return {
+      ...part,
+      output: { type: "text", value: "[stale listing elided; call list_files again if needed]" },
+    };
+  }
+  const serialized = JSON.stringify(output.value ?? null);
+  if (serialized.length <= MAX_STALE_RESULT_CHARS) return part;
+  return {
+    ...part,
+    output: {
+      type: "text",
+      value: `${serialized.slice(0, MAX_STALE_RESULT_CHARS)}\n[… truncated stale result …]`,
+    },
+  };
+};
+
+const compactMessage = (message: ModelMessage): ModelMessage => {
+  if (message.role === "assistant" && Array.isArray(message.content)) {
+    return {
+      ...message,
+      content: message.content.map((p) => (p.type === "tool-call" ? compactToolCall(p) : p)),
+    };
+  }
+  if (message.role === "tool") {
+    return {
+      ...message,
+      content: message.content.map((p) => (p.type === "tool-result" ? compactToolResult(p) : p)),
+    };
+  }
+  return message;
+};
+
+export const compactMessagesBefore = (
+  messages: ModelMessage[],
+  boundary: number,
+): ModelMessage[] => messages.map((m, i) => (i < boundary ? compactMessage(m) : m));
+
+// Builds a prepareStep handler that elides stale file contents from earlier
+// steps once the run approaches the window. The boundary only moves forward in
+// jumps, and compaction is deterministic, so the prompt prefix stays
+// byte-identical between jumps and provider prompt caching keeps hitting.
+export const createStepCompactor = (modelId?: string | null) => {
+  const threshold = Math.floor(contextWindowFor(modelId) * RUN_COMPACT_SHARE);
+  let boundary = 0;
+
+  return ({ messages }: { messages: ModelMessage[] }): { messages: ModelMessage[] } | undefined => {
+    let current = boundary > 0 ? compactMessagesBefore(messages, boundary) : messages;
+    if (estimateMessagesTokens(current) > threshold) {
+      const next = messages.length - KEEP_RECENT_MESSAGES;
+      if (next > boundary) {
+        boundary = next;
+        current = compactMessagesBefore(messages, boundary);
+      }
+    }
+    return current === messages ? undefined : { messages: current };
+  };
 };

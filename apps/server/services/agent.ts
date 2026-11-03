@@ -18,7 +18,7 @@ import {
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
 import { addTodoToLatestPlan } from "../db/repo";
-import { fitHistory, historyBudgetFor } from "./context";
+import { createStepCompactor, fitHistory, historyBudgetFor } from "./context";
 
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
@@ -462,6 +462,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
       messages,
       tools,
       stopWhen: stepCountIs(stepCap),
+      prepareStep: createStepCompactor(opts.model),
       abortSignal: opts.signal,
       ...(reasoning.providerOptions ? { providerOptions: reasoning.providerOptions } : {}),
       ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
