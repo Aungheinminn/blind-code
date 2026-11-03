@@ -462,7 +462,18 @@ export const runAgent = async (opts: RunAgentOptions): Promise<RunAgentResult> =
     ...(opts.projectMemory && dropped.length > 0
       ? [{ role: "system", content: buildProjectMemoryAppendix(opts.projectMemory) } as ModelMessage]
       : []),
-    ...history.map((m) => ({ role: m.role, content: m.content }) as ModelMessage),
+    // Second Anthropic cache breakpoint: prior turns are identical across
+    // consecutive runs, so caching through the last one saves re-billing them.
+    ...history.map(
+      (m, i) =>
+        (i === history.length - 1
+          ? {
+              role: m.role,
+              content: m.content,
+              providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+            }
+          : { role: m.role, content: m.content }) as ModelMessage,
+    ),
     { role: "user", content: opts.prompt },
   ];
 
