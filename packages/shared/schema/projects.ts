@@ -1,4 +1,4 @@
-import { boolean, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export type SupabaseIntegration = {
   url: string;
@@ -111,6 +111,10 @@ export const projects = pgTable("projects", {
   integrations: jsonb("integrations").$type<ProjectIntegrations>(),
   agentToolPermissions: jsonb("agent_tool_permissions").$type<AgentToolPermissions>(),
   designTemplateId: uuid("design_template_id"),
+  // Rolling summary of chat turns that no longer fit the model's window.
+  // contextSummaryCovers counts how many leading history messages it covers.
+  contextSummary: text("context_summary"),
+  contextSummaryCovers: integer("context_summary_covers").default(0).notNull(),
   isArchived: boolean("is_archived").default(false).notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

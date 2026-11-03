@@ -18,6 +18,8 @@ import {
   buildSupabaseCoderAppendix,
 } from "./systemAppendix";
 import { addTodoToLatestPlan } from "../db/repo";
+import { buildProjectMemoryAppendix } from "./summarizer";
+import { createStepCompactor, fitHistory, historyBudgetFor } from "./context";
 
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
@@ -83,6 +85,7 @@ export type RunAgentOptions = {
   designTemplateName?: string | null;
   designTemplateBody?: string | null;
   hasExplicitDesignTemplate?: boolean;
+  projectMemory?: string | null;
   keyPreference?: KeyPreference;
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
@@ -205,11 +208,18 @@ const buildPlanAppendix = (
   return `\n\nA plan is active for this project.${banner}\n\nSummary: ${plan.summary}\n\nTodos:\n${list}${carryForwardNote}\n\nProtocol (one todo at a time — the user watches these flip live):\n- Work one todo at a time, in order, unless there's a good reason not to.\n- Cycle per todo: update_todo({ id, status: "active" }) → do the work for THAT todo (reads/writes) → update_todo({ id, status: "done" }) → move to the next todo.\n- Never batch, on either side. Do NOT mark several todos "active" up front and then do their work; do NOT do all the work first and then fire every "done" at the end. Both patterns defeat the live plan tray. Exactly one todo is "active" at a time, and its "done" comes immediately after its writes — before the next todo flips to "active".\n- If a todo turns out to be unnecessary, call update_todo({ id, status: "skipped", note: "..." }) at the moment you decide, not later.\n- verify_task (if you call it) comes AFTER the last todo is already marked done — not as a wrapper around a batch of dones.\n- Do not fabricate ids — use the exact ids from the list above.`;
 };
 
-export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
+export type RunAgentResult = {
+  // Leading history messages that didn't fit the window this run, so the
+  // caller can fold them into the project's stored summary.
+  droppedHistory: CoderChatMessage[];
+};
+
+export const runAgent = async (opts: RunAgentOptions): Promise<RunAgentResult> => {
   const userId = opts.toolContext.ownerId ?? null;
   const preference = opts.keyPreference ?? "auto";
   const model = await resolveModel(opts.provider, opts.model, userId, preference);
   const reasoning = getReasoningProviderOptions(opts.provider, opts.model);
+  const { history, dropped } = fitHistory(opts.history ?? [], historyBudgetFor(opts.model));
 
   // Leaf tools from tools.ts — file/DB/HTTP operations that only need ToolContext.
   // They stand alone: no sub-agent LLM calls, no access to runAgent's closure
@@ -248,7 +258,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
             model: opts.model,
             toolContext: opts.toolContext,
             prompt: task,
-            history: opts.history,
+            history,
             supabaseConnected: opts.supabaseConnected,
             userSupabasePatConnected: opts.userSupabasePatConnected,
             keyPreference: preference,
@@ -447,8 +457,22 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
         anthropic: { cacheControl: { type: "ephemeral" } },
       },
     } as ModelMessage,
-    ...(opts.history ?? []).map(
-      (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+    // Kept apart from the main system message so a changing summary doesn't
+    // invalidate the cached system prompt.
+    ...(opts.projectMemory && dropped.length > 0
+      ? [{ role: "system", content: buildProjectMemoryAppendix(opts.projectMemory) } as ModelMessage]
+      : []),
+    // Second Anthropic cache breakpoint: prior turns are identical across
+    // consecutive runs, so caching through the last one saves re-billing them.
+    ...history.map(
+      (m, i) =>
+        (i === history.length - 1
+          ? {
+              role: m.role,
+              content: m.content,
+              providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+            }
+          : { role: m.role, content: m.content }) as ModelMessage,
     ),
     { role: "user", content: opts.prompt },
   ];
@@ -462,6 +486,7 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
       messages,
       tools,
       stopWhen: stepCountIs(stepCap),
+      prepareStep: createStepCompactor(opts.model),
       abortSignal: opts.signal,
       ...(reasoning.providerOptions ? { providerOptions: reasoning.providerOptions } : {}),
       ...(reasoning.maxOutputTokens ? { maxOutputTokens: reasoning.maxOutputTokens } : {}),
@@ -547,7 +572,8 @@ export const runAgent = async (opts: RunAgentOptions): Promise<void> => {
       } catch {}
     }
   } catch (err) {
-    if (opts.signal?.aborted) return;
+    if (opts.signal?.aborted) return { droppedHistory: dropped };
     emit(opts.onEvent, { type: "error", error: extractErrorMessage(err) });
   }
+  return { droppedHistory: dropped };
 };
