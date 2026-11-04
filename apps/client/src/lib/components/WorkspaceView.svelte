@@ -176,7 +176,7 @@
     class="absolute inset-y-0 right-0 overflow-hidden preview-shell flex flex-col"
     style="left: {panelOpen
       ? showPreview
-        ? 'min(444px, 100%)'
+        ? '45%'
         : '70%'
       : '0px'};"
   >

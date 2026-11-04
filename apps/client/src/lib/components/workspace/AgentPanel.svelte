@@ -148,7 +148,7 @@
 
 <style>
   .agent-panel-shell {
-    width: min(420px, calc(100% - 24px));
+    width: calc(45% - 18px);
   }
   .agent-panel-shell.wide {
     width: calc(70% - 18px);
