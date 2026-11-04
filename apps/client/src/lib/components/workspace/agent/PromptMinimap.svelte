@@ -10,9 +10,6 @@
 
   $: hovered = prompts.find((p) => p.id === hoveredId) ?? null;
   $: hoveredIndex = hovered ? prompts.indexOf(hovered) : -1;
-
-  // Longer prompts get longer dashes so the strip reads like a sketch of the thread.
-  const dashWidth = (content: string) => 6 + Math.min(content.trim().length, 120) / 12;
 </script>
 
 {#if prompts.length > 0}
@@ -31,7 +28,6 @@
           class="dash"
           class:active={activeIds.has(prompt.id)}
           class:hovered={hoveredId === prompt.id}
-          style="width: {dashWidth(prompt.content)}px;"
         ></span>
       </button>
     {/each}
@@ -65,15 +61,17 @@
   }
   .dash {
     display: block;
+    width: 8px;
     height: 2px;
     border-radius: 1px;
     background-color: var(--border-strong);
     transition: background-color 120ms ease, width 120ms ease;
   }
   .dash.active {
-    background-color: var(--text-tertiary);
+    background-color: var(--text-secondary);
   }
   .dash.hovered {
+    width: 16px;
     background-color: var(--text-primary);
   }
   .preview {
