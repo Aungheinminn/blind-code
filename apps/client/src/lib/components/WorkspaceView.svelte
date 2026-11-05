@@ -65,8 +65,12 @@
 
   $: statusText = $isRunning ? "working…" : "idle";
   $: previewLoading = $isRunning;
-  $: hasGeneratedApp = Object.keys($projectFiles).length > 0;
-  $: if (hasGeneratedApp && !$isRunning) showPreview = true;
+  // Read $projectFiles directly rather than via a derived boolean: the project
+  // switch below calls resetWorkspace() inside a reactive pass, and Svelte drops
+  // store invalidations made mid-pass. A cached boolean would stay `true` from
+  // the previous project's files, so the real load wouldn't flip it and the
+  // latch would never fire. A fresh object always re-triggers this statement.
+  $: if (Object.keys($projectFiles).length > 0 && !$isRunning) showPreview = true;
 
   const refreshGitHubStatus = (id: string) => {
     getGitHubStatus(id)
