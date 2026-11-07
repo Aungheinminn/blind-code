@@ -93,6 +93,18 @@ const estimateMessagesTokens = (messages: ModelMessage[]): number =>
 const lineCount = (s: string): number => (s ? s.split("\n").length : 0);
 
 const compactToolCall = (part: ToolCallPart): ToolCallPart => {
+  if (part.toolName === "edit_file") {
+    const input = part.input as { path?: string; old_string?: unknown; new_string?: unknown } | null;
+    if (!input || typeof input.new_string !== "string") return part;
+    return {
+      ...part,
+      input: {
+        path: input.path,
+        old_string: "[elided]",
+        new_string: `[${lineCount(input.new_string)} lines; read_file to see current contents]`,
+      },
+    };
+  }
   if (part.toolName !== "write_file") return part;
   const input = part.input as { path?: string; content?: unknown } | null;
   if (!input || typeof input.content !== "string") return part;

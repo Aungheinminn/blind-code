@@ -21,6 +21,7 @@
 
   const DISPLAY_NAME: Record<string, string> = {
     write_file: "write",
+    edit_file: "edit",
     read_file: "read",
     list_files: "list",
     delete_file: "delete",
@@ -63,6 +64,7 @@
     if (input == null) return "";
     switch (name) {
       case "write_file":
+      case "edit_file":
       case "read_file":
       case "delete_file": {
         const p = pickString(input, ["path"]);
@@ -216,6 +218,11 @@
       case "write_file": {
         const content = typeof inObj.content === "string" ? inObj.content : null;
         if (content != null) return { kind: "code", text: content };
+        break;
+      }
+      case "edit_file": {
+        const text = typeof inObj.new_string === "string" ? inObj.new_string : null;
+        if (text) return { kind: "code", text };
         break;
       }
       case "list_files": {

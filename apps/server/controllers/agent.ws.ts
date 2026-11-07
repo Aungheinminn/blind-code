@@ -32,6 +32,7 @@ import { sanitizeTemplateBody } from "../services/designTemplate";
 import { summarizeConversation } from "../services/summarizer";
 import matter from "gray-matter";
 import { resolveGitHubToken } from "../services/githubToken";
+import { readProjectFile } from "../services/tools";
 import type { Plan } from "../services/planner";
 import { resolveAgentToolPermissions, type PlanTodoStatus } from "@vibe/shared";
 
@@ -294,6 +295,7 @@ export const agentController = (app: Elysia) =>
         const textBlocks = new Map<string, string>();
         const pendingWrites = new Map<string, { path: string; content: string }>();
         const pendingDeletes = new Map<string, { path: string }>();
+        const pendingEdits = new Map<string, { path: string }>();
         // id → title so update_todo rows can show the real name even after a
         // later plan replaces this one or the project is reopened later.
         const todoTitleById = new Map<string, string>();
@@ -405,6 +407,11 @@ export const agentController = (app: Elysia) =>
               if (typeof input?.path === "string" && typeof input?.content === "string") {
                 pendingWrites.set(event.toolCallId, { path: input.path, content: input.content });
               }
+            } else if (event.toolName === "edit_file") {
+              const input = event.input as { path?: string } | undefined;
+              if (typeof input?.path === "string") {
+                pendingEdits.set(event.toolCallId, { path: input.path });
+              }
             } else if (event.toolName === "delete_file") {
               const input = event.input as { path?: string } | undefined;
               if (typeof input?.path === "string") {
@@ -432,6 +439,15 @@ export const agentController = (app: Elysia) =>
                   path: pending.path,
                   content: pending.content,
                 });
+              }
+            } else if (event.toolName === "edit_file") {
+              const pending = pendingEdits.get(event.toolCallId);
+              pendingEdits.delete(event.toolCallId);
+              if (pending && outputHasPath) {
+                const content = await readProjectFile(msg.projectId, pending.path).catch(() => null);
+                if (content !== null) {
+                  await publish({ type: "file-updated", path: pending.path, content });
+                }
               }
             } else if (event.toolName === "delete_file" && outputHasPath) {
               const pending = pendingDeletes.get(event.toolCallId);
