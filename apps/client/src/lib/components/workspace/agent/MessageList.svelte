@@ -9,7 +9,7 @@
   export let messages: AgentMessageType[] = [];
   export let isRunning = false;
 
-  const dispatch = createEventDispatcher<{ retry: void; atTopChange: boolean }>();
+  const dispatch = createEventDispatcher<{ retry: void; restore: string; atTopChange: boolean }>();
 
   $: last = messages[messages.length - 1];
   $: showTypingIndicator = isRunning && (!last || last.role !== "agent");
@@ -83,7 +83,12 @@
     {#each messages as message (message.id)}
       {#if message.role === "user"}
         <div data-prompt-id={message.id}>
-          <UserMessage content={message.content} />
+          <UserMessage
+            content={message.content}
+            checkpointId={message.checkpointId}
+            restoreDisabled={isRunning}
+            on:restore={(e) => dispatch("restore", e.detail)}
+          />
         </div>
       {:else}
         <AgentMessage {message} on:retry={() => dispatch("retry")} />

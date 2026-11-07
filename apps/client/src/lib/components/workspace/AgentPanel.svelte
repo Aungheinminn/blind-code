@@ -34,6 +34,7 @@
     submit: string;
     cancel: void;
     retry: void;
+    restore: string;
     back: void;
     "model-change": string;
   }>();
@@ -119,6 +120,7 @@
       {messages}
       {isRunning}
       on:retry={() => dispatch("retry")}
+      on:restore={(e) => dispatch("restore", e.detail)}
       on:atTopChange={(e) => (messageListAtTop = e.detail)}
     />
   </div>

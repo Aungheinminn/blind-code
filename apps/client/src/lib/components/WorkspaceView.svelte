@@ -11,6 +11,7 @@
     sendPrompt,
     cancelAgent,
     retryLastPrompt,
+    restoreCheckpoint,
     loadHistory,
     loadProjectFiles,
     loadDesignTemplate,
@@ -71,6 +72,11 @@
   // the previous project's files, so the real load wouldn't flip it and the
   // latch would never fire. A fresh object always re-triggers this statement.
   $: if (Object.keys($projectFiles).length > 0 && !$isRunning) showPreview = true;
+
+  const handleRestore = async (e: CustomEvent<string>) => {
+    await restoreCheckpoint(projectId, e.detail);
+    if ($projectGitHub) refreshGitHubStatus(projectId);
+  };
 
   const refreshGitHubStatus = (id: string) => {
     getGitHubStatus(id)
@@ -236,6 +242,7 @@
     on:submit={handleSubmit}
     on:cancel={cancelAgent}
     on:retry={() => retryLastPrompt(projectId)}
+    on:restore={handleRestore}
     on:back={goBack}
     on:model-change={(e) => selectedModel.set(e.detail)}
   />

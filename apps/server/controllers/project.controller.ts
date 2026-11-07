@@ -21,6 +21,8 @@ import {
   getUserById,
   getActiveDesignTemplateForProject,
   setDesignTemplateForProject,
+  hasRunningTurn,
+  restoreProjectCheckpoint,
   type ProjectListFilter,
 } from "../db/repo";
 import { templateToCss } from "../services/designTemplate";
@@ -699,6 +701,29 @@ export const projectController = (app: Elysia) =>
         getLatestPlanForProject(project.id),
       ]);
       return { data: { messages, latestPlan } };
+    })
+    .post("/projects/:id/checkpoints/:checkpointId/restore", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if (await hasRunningTurn(project.id)) {
+        set.status = 409;
+        return { error: "Wait for the agent to finish before restoring." };
+      }
+      const files = await restoreProjectCheckpoint(project.id, params.checkpointId);
+      if (!files) {
+        set.status = 404;
+        return { error: "checkpoint not found" };
+      }
+      // The sandbox is only ever added to on hydrate, so drop it to keep files
+      // that the restore removed from coming back on the next turn.
+      await rm(join("/tmp/vibe-sandbox", params.id), { recursive: true, force: true });
+      return { data: files };
     })
     .get("/projects/:id/files", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

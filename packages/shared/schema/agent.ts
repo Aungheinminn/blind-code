@@ -1,5 +1,6 @@
 import {
   bigserial,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -99,5 +100,22 @@ export const planTodos = pgTable(
   },
   (t) => ({
     planTodoUq: uniqueIndex("plan_todos_plan_key_uq").on(t.planId, t.todoKey),
+  }),
+);
+
+// Project files as they stood right before an agent session ran, so the user
+// can roll back to the state before any prompt.
+export const projectCheckpoints = pgTable(
+  "project_checkpoints",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    projectId: uuid("project_id").notNull(),
+    sessionId: uuid("session_id").notNull(),
+    files: jsonb("files").$type<Record<string, string>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    sessionUq: uniqueIndex("project_checkpoints_session_uq").on(t.sessionId),
+    projectIdx: index("project_checkpoints_project_idx").on(t.projectId, t.createdAt),
   }),
 );

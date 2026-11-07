@@ -27,6 +27,7 @@ import {
   getActiveDesignTemplateForProject,
   hasDb,
   updateProjectContextSummary,
+  createProjectCheckpoint,
 } from "../db/repo";
 import { sanitizeTemplateBody } from "../services/designTemplate";
 import { summarizeConversation } from "../services/summarizer";
@@ -276,6 +277,16 @@ export const agentController = (app: Elysia) =>
         const turnId =
           sessionId && dbProjectId ? await turnBus.createTurn(sessionId, dbProjectId) : null;
 
+        let checkpointId: string | null = null;
+        if (sessionId && dbProjectId) {
+          try {
+            await createProjectCheckpoint(dbProjectId, sessionId);
+            checkpointId = sessionId;
+          } catch (err) {
+            console.warn("[agent] checkpoint failed", err);
+          }
+        }
+
         ws.send({
           type: "started",
           provider,
@@ -283,6 +294,7 @@ export const agentController = (app: Elysia) =>
           sessionId,
           dbProjectId,
           turnId,
+          checkpointId,
         });
 
         if (sessionId && msg.persistPrompt !== false) {
