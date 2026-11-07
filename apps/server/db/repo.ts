@@ -283,6 +283,9 @@ export const deleteUser = async (userId: string) => {
           .where(inArray(schema.agentSessions.id, sessionIds));
       }
       await tx.delete(schema.files).where(inArray(schema.files.projectId, projectIds));
+      await tx
+        .delete(schema.projectCheckpoints)
+        .where(inArray(schema.projectCheckpoints.projectId, projectIds));
       await tx.delete(schema.projects).where(eq(schema.projects.ownerId, userId));
     }
     const deleted = await tx
@@ -901,6 +904,7 @@ export const hardDeleteProjectForOwner = async (idOrName: string, ownerId: strin
       await tx.delete(schema.agentSessions).where(inArray(schema.agentSessions.id, sessionIds));
     }
     await tx.delete(schema.files).where(eq(schema.files.projectId, id));
+    await tx.delete(schema.projectCheckpoints).where(eq(schema.projectCheckpoints.projectId, id));
     await tx
       .delete(schema.projects)
       .where(and(eq(schema.projects.id, id), eq(schema.projects.ownerId, ownerId)));
@@ -964,6 +968,7 @@ export type HistoryMessage = {
   timestamp: string;
   interrupted?: boolean;
   usage?: HistoryUsage;
+  checkpointId?: string;
 };
 
 export const getProjectHistory = async (projectId: string): Promise<HistoryMessage[]> => {
@@ -1011,6 +1016,12 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
     a.firstAt < b.firstAt ? -1 : a.firstAt > b.firstAt ? 1 : 0,
   );
 
+  const checkpointRows = await db
+    .select({ sessionId: schema.projectCheckpoints.sessionId })
+    .from(schema.projectCheckpoints)
+    .where(eq(schema.projectCheckpoints.projectId, projectId));
+  const checkpointSessions = new Set(checkpointRows.map((r) => r.sessionId));
+
   const messages: HistoryMessage[] = [];
 
   for (const session of sessions) {
@@ -1037,6 +1048,7 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
           role: "user",
           content: typeof payload.prompt === "string" ? payload.prompt : "",
           timestamp,
+          ...(checkpointSessions.has(session.sessionId) ? { checkpointId: session.sessionId } : {}),
         });
         continue;
       }
@@ -1158,6 +1170,77 @@ export const deleteProjectFile = async (projectId: string, path: string) => {
   await db
     .delete(schema.files)
     .where(and(eq(schema.files.projectId, projectId), eq(schema.files.path, path)));
+};
+
+export const hasRunningTurn = async (projectId: string): Promise<boolean> => {
+  if (!db) return false;
+  const rows = await db
+    .select({ id: schema.turns.id })
+    .from(schema.turns)
+    .where(and(eq(schema.turns.projectId, projectId), eq(schema.turns.status, "running")))
+    .limit(1);
+  return rows.length > 0;
+};
+
+const CHECKPOINTS_PER_PROJECT = 50;
+
+export const createProjectCheckpoint = async (projectId: string, sessionId: string) => {
+  if (!db) return;
+  const rows = await listProjectFiles(projectId);
+  const files: Record<string, string> = {};
+  for (const f of rows) if (!f.isDirectory) files[f.path] = f.content;
+  await db.insert(schema.projectCheckpoints).values({ projectId, sessionId, files });
+
+  const stale = await db
+    .select({ id: schema.projectCheckpoints.id })
+    .from(schema.projectCheckpoints)
+    .where(eq(schema.projectCheckpoints.projectId, projectId))
+    .orderBy(desc(schema.projectCheckpoints.createdAt))
+    .offset(CHECKPOINTS_PER_PROJECT);
+  if (stale.length > 0) {
+    await db.delete(schema.projectCheckpoints).where(
+      inArray(
+        schema.projectCheckpoints.id,
+        stale.map((r) => r.id),
+      ),
+    );
+  }
+};
+
+// Replaces every project file with the checkpoint's snapshot. Returns the
+// restored files, or null when the checkpoint doesn't belong to the project.
+export const restoreProjectCheckpoint = async (
+  projectId: string,
+  sessionId: string,
+): Promise<Record<string, string> | null> => {
+  if (!db) return null;
+  const [checkpoint] = await db
+    .select()
+    .from(schema.projectCheckpoints)
+    .where(
+      and(
+        eq(schema.projectCheckpoints.projectId, projectId),
+        eq(schema.projectCheckpoints.sessionId, sessionId),
+      ),
+    )
+    .limit(1);
+  if (!checkpoint) return null;
+
+  const entries = Object.entries(checkpoint.files);
+  await db.transaction(async (tx) => {
+    await tx.delete(schema.files).where(eq(schema.files.projectId, projectId));
+    if (entries.length > 0) {
+      await tx.insert(schema.files).values(
+        entries.map(([path, content]) => ({
+          projectId,
+          path,
+          content,
+          sizeBytes: Buffer.byteLength(content, "utf-8"),
+        })),
+      );
+    }
+  });
+  return checkpoint.files;
 };
 
 export const getCachedToolResult = async (

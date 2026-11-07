@@ -108,13 +108,13 @@ Narration:
 
 Workflow:
 1. Call list_files first to see what already exists.
-2. Read any file you're about to modify — do not guess at existing content.
+2. Read any file you're about to modify — do not guess at existing content. Change part of an existing file with edit_file; use write_file only for new files or full rewrites.
 3. Write files at the project root (/App.tsx, /components/*, /hooks/*, /lib/*). Prefer editing existing files over creating parallel new ones. When a shadcn primitive fits (Button, Card, Input, Label), use it instead of raw HTML elements.
 4. Do NOT call run_command. There is no build to run and no dev server to start — the preview compiles your source in the browser. If you think you need run_command, you don't.
 5. Keep components small and focused. Split a large component into src/components/*.
 6. When finished, respond with a one-sentence summary of what the user can now do.
 
-Tools available: list_files, read_file, write_file, delete_file, update_todo. Do not use run_command.`;
+Tools available: list_files, read_file, write_file, edit_file, delete_file, update_todo. Do not use run_command.`;
 
 export const runCoder = async (opts: RunCoderOptions): Promise<void> => {
   const model = await resolveModel(

@@ -48,6 +48,45 @@ const safeJoin = (projectId: string, rel: string): string => {
   return abs;
 };
 
+export const readProjectFile = (sandboxProjectId: string, path: string): Promise<string> =>
+  readFile(safeJoin(sandboxProjectId, path), "utf-8");
+
+export type EditResult =
+  | { ok: true; content: string; replacements: number }
+  | { ok: false; error: string };
+
+export const applyEdit = (
+  content: string,
+  oldString: string,
+  newString: string,
+  replaceAll = false,
+): EditResult => {
+  if (oldString === "") {
+    return { ok: false, error: "old_string is empty. Use write_file to create a file." };
+  }
+  if (oldString === newString) {
+    return { ok: false, error: "old_string and new_string are identical; nothing to change." };
+  }
+  const count = content.split(oldString).length - 1;
+  if (count === 0) {
+    return {
+      ok: false,
+      error: "old_string was not found. read_file again and copy the text exactly, including whitespace.",
+    };
+  }
+  if (count > 1 && !replaceAll) {
+    return {
+      ok: false,
+      error: `old_string matches ${count} places. Include more surrounding lines to make it unique, or set replace_all.`,
+    };
+  }
+  // split/join rather than String.replace so "$&"-style patterns in new_string stay literal.
+  const next = replaceAll
+    ? content.split(oldString).join(newString)
+    : content.replace(oldString, () => newString);
+  return { ok: true, content: next, replacements: replaceAll ? count : 1 };
+};
+
 export type ToolContext = {
   sandboxProjectId: string;
   dbProjectId: string | null;
@@ -167,6 +206,45 @@ export const buildWriteTools = (ctx: ToolContext) => {
           await writeFile(abs, content, "utf-8");
           if (dbProjectId) await upsertProjectFile(dbProjectId, stored, content);
           return { path: stored, bytes: Buffer.byteLength(content, "utf-8") };
+        },
+      ),
+    }),
+
+    edit_file: tool({
+      description:
+        "Replace an exact snippet of text in an existing file. Prefer this over write_file for changes to part of a file. old_string must match the file exactly (including indentation) and must be unique unless replace_all is set. read_file first so you copy the current text.",
+      inputSchema: z.object({
+        path: z.string().describe("Path from the project root, e.g. '/App.tsx'."),
+        old_string: z.string().describe("Exact text to find. Include enough surrounding lines to be unique."),
+        new_string: z.string().describe("Text to put in its place."),
+        replace_all: z.boolean().optional().describe("Replace every occurrence instead of requiring a unique match."),
+      }),
+      execute: idem(
+        "edit_file",
+        async ({
+          path,
+          old_string,
+          new_string,
+          replace_all,
+        }: {
+          path: string;
+          old_string: string;
+          new_string: string;
+          replace_all?: boolean;
+        }) => {
+          const abs = safeJoin(sandboxProjectId, path);
+          const stored = normalizeProjectPath(path);
+          let current: string;
+          try {
+            current = await readFile(abs, "utf-8");
+          } catch {
+            return { ok: false as const, error: `File not found: ${stored}. Use write_file to create it.` };
+          }
+          const edit = applyEdit(current, old_string, new_string, replace_all);
+          if (!edit.ok) return edit;
+          await writeFile(abs, edit.content, "utf-8");
+          if (dbProjectId) await upsertProjectFile(dbProjectId, stored, edit.content);
+          return { ok: true as const, path: stored, replacements: edit.replacements };
         },
       ),
     }),

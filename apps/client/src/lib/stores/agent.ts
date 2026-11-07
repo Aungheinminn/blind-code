@@ -8,6 +8,7 @@ import { openOutOfCreditsModal } from "./outOfCreditsModal";
 import {
   getProjectDesignTemplate,
   getProjectFiles,
+  restoreProjectCheckpoint,
   getProjectHistory,
   type PublicGitHubIntegration,
   type PublicSupabaseIntegration,
@@ -42,6 +43,7 @@ export type AgentMessage = {
   timestamp: Date;
   interrupted?: boolean;
   usage?: AgentUsage;
+  checkpointId?: string;
 };
 
 export type ProviderInfo = {
@@ -245,6 +247,7 @@ export const loadHistory = async (projectId: string): Promise<void> => {
             timestamp: new Date(m.timestamp),
             ...(m.interrupted ? { interrupted: true } : {}),
             ...(m.usage ? { usage: m.usage } : {}),
+            ...(m.checkpointId ? { checkpointId: m.checkpointId } : {}),
           };
         }),
       );
@@ -494,6 +497,16 @@ const handleEvent = (raw: unknown) => {
         activeTurnId = event.turnId;
         lastOrdinal = -1;
         if (activeProjectId) saveTurn(activeProjectId, event.turnId, -1);
+      }
+      if (typeof event.checkpointId === "string") {
+        const checkpointId = event.checkpointId;
+        messages.update((list) => {
+          const idx = list.findLastIndex((m) => m.role === "user");
+          if (idx < 0 || list[idx].checkpointId) return list;
+          const next = [...list];
+          next[idx] = { ...next[idx], checkpointId };
+          return next;
+        });
       }
       planError.set(null);
       pendingQuestions.set(null);
@@ -752,6 +765,25 @@ export const sendPrompt = async (
   } catch (e) {
     isRunning.set(false);
     appendText(undefined, `\n\n_Failed to reach agent server: ${String(e)}_`);
+  }
+};
+
+export const restoreCheckpoint = async (
+  projectId: string,
+  checkpointId: string,
+): Promise<void> => {
+  if (get(isRunning)) return;
+  const note = (content: string) =>
+    messages.update((list) => [
+      ...list,
+      { id: crypto.randomUUID(), role: "agent", content, parts: [{ kind: "text", text: content }], timestamp: new Date() },
+    ]);
+  try {
+    const files = await restoreProjectCheckpoint(projectId, checkpointId);
+    projectFiles.set(files ?? {});
+    note("_Restored files to how they were before that prompt._");
+  } catch (e) {
+    note(`_Couldn't restore files: ${e instanceof Error ? e.message : String(e)}_`);
   }
 };
 

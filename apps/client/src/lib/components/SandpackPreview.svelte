@@ -19,7 +19,10 @@
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
 
   export let files: Record<string, string> = {};
-  export let template: SandpackTemplate = "react-ts";
+  // The runtime client accepts any template string, but SandboxSetup's type only
+  // lists the bundler's legacy names, which don't include "react-ts".
+  export let template: string = "react-ts";
+  $: setupTemplate = template as SandpackTemplate;
   export let framed: boolean = true;
   export let loading: boolean = false;
 
@@ -64,7 +67,7 @@
   onMount(async () => {
     client = await loadSandpackClient(
       iframe,
-      { files: toBundlerFiles(activeFiles), template },
+      { files: toBundlerFiles(activeFiles), template: setupTemplate },
       { showOpenInCodeSandbox: false },
     );
     ready = true;
@@ -77,7 +80,7 @@
   });
 
   $: if (ready && client) {
-    client.updateSandbox({ files: toBundlerFiles(activeFiles), template });
+    client.updateSandbox({ files: toBundlerFiles(activeFiles), template: setupTemplate });
   }
 </script>
 

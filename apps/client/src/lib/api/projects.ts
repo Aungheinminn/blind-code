@@ -158,6 +158,7 @@ export type HistoryMessage = {
   timestamp: string;
   interrupted?: boolean;
   usage?: HistoryUsage;
+  checkpointId?: string;
 };
 
 export type HistoryPlanTodoStatus = "pending" | "active" | "done" | "skipped";
@@ -184,6 +185,11 @@ export const getProjectHistory = (id: string) =>
 
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);
+
+export const restoreProjectCheckpoint = (id: string, checkpointId: string) =>
+  fetchJson<Record<string, string>>(`/projects/${id}/checkpoints/${checkpointId}/restore`, {
+    method: "POST",
+  });
 
 export type ProjectDesignTemplate = {
   id: string;
