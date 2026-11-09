@@ -24,6 +24,7 @@
     edit_file: "edit",
     read_file: "read",
     list_files: "list",
+    search_files: "search",
     delete_file: "delete",
     plan_task: "plan",
     verify_task: "verify",
@@ -73,6 +74,9 @@
       case "list_files": {
         const p = pickString(input, ["path"]);
         return p ? basename(p) : "/";
+      }
+      case "search_files": {
+        return pickString(input, ["query"]) ?? "";
       }
       case "plan_task": {
         return pickString(input, ["task"]) ?? "";
@@ -143,7 +147,7 @@
     if (n.includes("delete") || n.includes("remove") || n === "rm") return "delete";
     if (n.includes("todo")) return "todo";
     if (n.includes("write") || n.includes("edit") || n.includes("create")) return "write";
-    if (n.includes("read") || n.includes("cat")) return "read";
+    if (n.includes("read") || n.includes("cat") || n.includes("search") || n.includes("grep")) return "read";
     if (n.includes("list") || n.includes("ls") || n.includes("glob") || n.includes("dir")) return "list";
     if (n.includes("bash") || n.includes("shell") || n.includes("exec") || n.includes("command")) return "command";
     if (n.includes("run") || n.includes("start")) return "run";
@@ -223,6 +227,17 @@
       case "edit_file": {
         const text = typeof inObj.new_string === "string" ? inObj.new_string : null;
         if (text) return { kind: "code", text };
+        break;
+      }
+      case "search_files": {
+        const matches = Array.isArray(outObj.matches) ? (outObj.matches as any[]) : null;
+        if (matches) {
+          const text = matches
+            .filter((m) => m && typeof m.path === "string")
+            .map((m) => `${m.path}:${m.line}  ${m.text}`)
+            .join("\n");
+          return { kind: "code", text: text || "No matches." };
+        }
         break;
       }
       case "list_files": {

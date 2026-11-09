@@ -41,6 +41,17 @@ GitHub is **user-only**: there's no platform token. Users connect a fine-grained
 - If the branch has commits that didn't come from Blind Code, the push is refused until the user picks a new branch or chooses to replace the files. The new commit always sits on top of the remote head, so remote history is never discarded.
 - The `github_create_repo` / `github_push` agent tools are **off by default** and are enabled per project under Project settings → Agent tool permissions.
 
+### Database migrations
+
+Schema lives in `packages/shared/schema`; migrations are checked in under `apps/server/drizzle`. After changing the schema:
+
+```bash
+bun run --filter ./apps/server db:generate   # writes a new SQL migration — review and commit it
+bun run --filter ./apps/server db:migrate    # applies pending migrations
+```
+
+CI fails if the schema and migrations disagree. Databases created with `db:push` before migrations existed need a one-time `db:baseline` (marks the baseline migration as applied) before their first `db:migrate`.
+
 ### Migrating from the local file store
 
 Older installs stored provider keys in `~/.config/blind-code/auth.json`. Import them into a user's DB record with:

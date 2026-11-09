@@ -48,6 +48,73 @@ const safeJoin = (projectId: string, rel: string): string => {
   return abs;
 };
 
+type WalkEntry = { abs: string; path: string; type: "file" | "dir"; size?: number };
+
+const walkProject = async (rootAbs: string, startAbs: string): Promise<WalkEntry[]> => {
+  const entries: WalkEntry[] = [];
+  const walk = async (dir: string) => {
+    let items: string[];
+    try {
+      items = await readdir(dir);
+    } catch {
+      return;
+    }
+    for (const name of items) {
+      if (name === "node_modules" || name === ".git") continue;
+      const abs = join(dir, name);
+      const s = await stat(abs);
+      const path = relative(rootAbs, abs);
+      if (s.isDirectory()) {
+        entries.push({ abs, path, type: "dir" });
+        await walk(abs);
+      } else {
+        entries.push({ abs, path, type: "file", size: s.size });
+      }
+    }
+  };
+  await walk(startAbs);
+  return entries;
+};
+
+export type SearchMatch = { path: string; line: number; text: string };
+
+const MAX_SEARCH_MATCHES = 100;
+const MAX_SEARCH_FILE_BYTES = 512 * 1024;
+const MAX_MATCH_LINE_CHARS = 200;
+
+export const searchLines = (
+  path: string,
+  content: string,
+  pattern: RegExp,
+  limit: number,
+): SearchMatch[] => {
+  const matches: SearchMatch[] = [];
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length && matches.length < limit; i++) {
+    pattern.lastIndex = 0;
+    if (!pattern.test(lines[i])) continue;
+    const text = lines[i].trim();
+    matches.push({
+      path,
+      line: i + 1,
+      text: text.length > MAX_MATCH_LINE_CHARS ? `${text.slice(0, MAX_MATCH_LINE_CHARS)}…` : text,
+    });
+  }
+  return matches;
+};
+
+export const buildSearchPattern = (
+  query: string,
+  opts: { regex?: boolean; caseSensitive?: boolean },
+): RegExp | { error: string } => {
+  const source = opts.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try {
+    return new RegExp(source, opts.caseSensitive ? "" : "i");
+  } catch (e) {
+    return { error: `Invalid regex: ${e instanceof Error ? e.message : String(e)}` };
+  }
+};
+
 export const readProjectFile = (sandboxProjectId: string, path: string): Promise<string> =>
   readFile(safeJoin(sandboxProjectId, path), "utf-8");
 
@@ -154,32 +221,52 @@ export const buildReadOnlyTools = (ctx: ToolContext) => {
         const rootAbs = sandboxDir(sandboxProjectId);
         await mkdir(rootAbs, { recursive: true });
         const startAbs = safeJoin(sandboxProjectId, path ?? ".");
-        const entries: Array<{ path: string; type: "file" | "dir"; size?: number }> = [];
-
-        const walk = async (dir: string) => {
-          let items: string[];
-          try {
-            items = await readdir(dir);
-          } catch {
-            return;
-          }
-          for (const name of items) {
-            if (name === "node_modules" || name === ".git") continue;
-            const abs = join(dir, name);
-            const s = await stat(abs);
-            const rel = relative(rootAbs, abs);
-            if (s.isDirectory()) {
-              entries.push({ path: rel, type: "dir" });
-              await walk(abs);
-            } else {
-              entries.push({ path: rel, type: "file", size: s.size });
-            }
-          }
-        };
-
-        await walk(startAbs);
+        const entries = (await walkProject(rootAbs, startAbs)).map(({ path, type, size }) =>
+          type === "dir" ? { path, type } : { path, type, size },
+        );
         return { entries };
       }),
+    }),
+
+    search_files: tool({
+      description:
+        "Search file contents across the project, like grep. Returns matching lines as { path, line, text }, capped at 100 matches. Use it to find where something is defined or used instead of reading files one by one.",
+      inputSchema: z.object({
+        query: z.string().min(1).describe("Text to search for. Treated literally unless regex is true."),
+        regex: z.boolean().optional().describe("Interpret query as a JavaScript regular expression."),
+        case_sensitive: z.boolean().optional().describe("Match case exactly. Defaults to false."),
+        path: z.string().optional().describe("Directory to search under, relative to the project root. Defaults to the root."),
+      }),
+      execute: idem(
+        "search_files",
+        async ({
+          query,
+          regex,
+          case_sensitive,
+          path,
+        }: {
+          query: string;
+          regex?: boolean;
+          case_sensitive?: boolean;
+          path?: string;
+        }) => {
+          const pattern = buildSearchPattern(query, { regex, caseSensitive: case_sensitive });
+          if (!(pattern instanceof RegExp)) return { ok: false as const, error: pattern.error };
+          const rootAbs = sandboxDir(sandboxProjectId);
+          await mkdir(rootAbs, { recursive: true });
+          const files = (await walkProject(rootAbs, safeJoin(sandboxProjectId, path ?? "."))).filter(
+            (e) => e.type === "file" && (e.size ?? 0) <= MAX_SEARCH_FILE_BYTES,
+          );
+          const matches: SearchMatch[] = [];
+          for (const f of files) {
+            if (matches.length >= MAX_SEARCH_MATCHES) break;
+            const content = await readFile(f.abs, "utf-8").catch(() => null);
+            if (content === null) continue;
+            matches.push(...searchLines(f.path, content, pattern, MAX_SEARCH_MATCHES - matches.length));
+          }
+          return { ok: true as const, matches, truncated: matches.length >= MAX_SEARCH_MATCHES };
+        },
+      ),
     }),
   };
 };
