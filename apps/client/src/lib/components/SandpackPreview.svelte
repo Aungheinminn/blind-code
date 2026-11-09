@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import {
     loadSandpackClient,
     type SandpackClient,
@@ -17,6 +17,7 @@
   import { assembleReactProject } from "$lib/preview/reactAssembler";
   import { activeDesignTemplateCss } from "$lib/stores/agent";
   import FullPageLoader from "$lib/components/FullPageLoader.svelte";
+  import warningTriangleIcon from "$lib/assets/icons/warning-triangle.svg?raw";
 
   export let files: Record<string, string> = {};
   // The runtime client accepts any template string, but SandboxSetup's type only
@@ -25,6 +26,25 @@
   $: setupTemplate = template as SandpackTemplate;
   export let framed: boolean = true;
   export let loading: boolean = false;
+  export let canFix: boolean = true;
+
+  const dispatch = createEventDispatcher<{ fix: string }>();
+
+  type PreviewError = { title: string; message: string; path?: string; line?: number; column?: number };
+  let previewError: PreviewError | null = null;
+  let unlisten: (() => void) | null = null;
+
+  const describeError = (e: PreviewError): string => {
+    const where = e.path ? `\nat ${e.path}${e.line ? `:${e.line}${e.column ? `:${e.column}` : ""}` : ""}` : "";
+    const body = `${e.title}: ${e.message}${where}`;
+    return body.length > 2000 ? `${body.slice(0, 2000)}…` : body;
+  };
+
+  const fixError = () => {
+    if (!previewError) return;
+    dispatch("fix", `The preview is showing this error. Find the cause and fix it.\n\n\`\`\`\n${describeError(previewError)}\n\`\`\``);
+    previewError = null;
+  };
 
   let iframe: HTMLIFrameElement;
   let client: SandpackClient | null = null;
@@ -70,16 +90,29 @@
       { files: toBundlerFiles(activeFiles), template: setupTemplate },
       { showOpenInCodeSandbox: false },
     );
+    unlisten = client.listen((msg) => {
+      if (msg.type === "action" && msg.action === "show-error") {
+        previewError = {
+          title: msg.title || "Error",
+          message: msg.message,
+          path: msg.path || undefined,
+          line: msg.line || undefined,
+          column: msg.column || undefined,
+        };
+      }
+    });
     ready = true;
   });
 
   onDestroy(() => {
+    unlisten?.();
     client?.destroy();
     client = null;
     previewScale.set(1);
   });
 
   $: if (ready && client) {
+    previewError = null;
     client.updateSandbox({ files: toBundlerFiles(activeFiles), template: setupTemplate });
   }
 </script>
@@ -117,6 +150,37 @@
       </div>
     </div>
   </div>
+  {#if previewError && !loading}
+    <div
+      class="absolute left-3 right-3 bottom-3 flex items-center gap-3 px-3 py-2 border rounded-lg text-[12.5px]"
+      style="background-color: var(--bg-panel); border-color: var(--border-strong); color: var(--text-primary); box-shadow: var(--panel-shadow);"
+      role="alert"
+    >
+      <span class="w-4 h-4 shrink-0 inline-flex" style="color: var(--danger);">{@html warningTriangleIcon}</span>
+      <span class="flex-1 min-w-0 truncate" title={describeError(previewError)}>
+        <span class="font-medium">{previewError.title}</span>
+        <span style="color: var(--text-secondary);">{previewError.message}</span>
+      </span>
+      {#if canFix}
+        <button
+          type="button"
+          class="shrink-0 px-2.5 py-1 rounded-md text-[12px] font-medium"
+          style="background-color: var(--accent); color: #ffffff;"
+          on:click={fixError}
+        >
+          Fix with agent
+        </button>
+      {/if}
+      <button
+        type="button"
+        class="shrink-0 text-[12px]"
+        style="color: var(--text-secondary);"
+        on:click={() => (previewError = null)}
+      >
+        Dismiss
+      </button>
+    </div>
+  {/if}
   {#if loading}
     <FullPageLoader
       scoped

@@ -210,6 +210,8 @@
           files={$assembledFiles}
           framed={panelOpen}
           loading={previewLoading}
+          canFix={!$isRunning}
+          on:fix={(e) => sendPrompt(projectId, e.detail)}
         />
       </div>
     {:else}
