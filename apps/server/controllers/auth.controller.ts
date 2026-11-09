@@ -18,6 +18,7 @@ import {
   readSessionCookie,
 } from "../services/session";
 import { getUserFromRequest } from "../services/authGuard";
+import { authLimits, type RateLimiter } from "../services/rateLimit";
 import { mintTicket } from "../services/wsTicket";
 import { FREE_TIER_GRANT, grant } from "../services/credits";
 
@@ -67,13 +68,34 @@ const requestMeta = (request: Request) => ({
     null,
 });
 
+type RequestIpServer = { requestIP: (req: Request) => { address: string } | null } | null;
+
+const clientIp = (request: Request, server: RequestIpServer): string =>
+  requestMeta(request).ip ?? server?.requestIP(request)?.address ?? "unknown";
+
+// Sets a 429 response when any limiter is over, returning its body; else null.
+const limited = (
+  set: { status?: number | string; headers: Record<string, string | number> },
+  checks: Array<[RateLimiter, string]>,
+) => {
+  const wait = Math.max(0, ...checks.map(([limiter, key]) => limiter.retryAfter(key)));
+  if (wait === 0) return null;
+  set.status = 429;
+  set.headers["retry-after"] = String(wait);
+  return { error: "Too many attempts. Try again later." };
+};
+
 export const authController = (app: Elysia) =>
   app
-    .post("/auth/signup", async ({ body, request, set }) => {
+    .post("/auth/signup", async ({ body, request, set, server }) => {
       if (!hasDb) {
         set.status = 503;
         return { error: "database not configured" };
       }
+      const ip = clientIp(request, server);
+      const blocked = limited(set, [[authLimits.signupByIp, ip]]);
+      if (blocked) return blocked;
+      authLimits.signupByIp.hit(ip);
       const parsed = signupSchema.safeParse(body);
       if (!parsed.success) {
         set.status = 400;
@@ -104,7 +126,7 @@ export const authController = (app: Elysia) =>
       set.headers["set-cookie"] = buildSessionCookie(session.id, session.expiresAt);
       return { data: { user: publicUser(user) } };
     })
-    .post("/auth/login", async ({ body, request, set }) => {
+    .post("/auth/login", async ({ body, request, set, server }) => {
       if (!hasDb) {
         set.status = 503;
         return { error: "database not configured" };
@@ -115,12 +137,22 @@ export const authController = (app: Elysia) =>
         return { error: "invalid input" };
       }
       const { email, password } = parsed.data;
+      const ip = clientIp(request, server);
+      const emailKey = email.trim().toLowerCase();
+      const blocked = limited(set, [
+        [authLimits.loginByIp, ip],
+        [authLimits.loginFailuresByEmail, emailKey],
+      ]);
+      if (blocked) return blocked;
+      authLimits.loginByIp.hit(ip);
       const user = await findUserByEmail(email);
       const ok = user ? await verifyPassword(password, user.passwordHash) : false;
       if (!user || !ok) {
+        authLimits.loginFailuresByEmail.hit(emailKey);
         set.status = 401;
         return { error: "invalid email or password" };
       }
+      authLimits.loginFailuresByEmail.reset(emailKey);
       const session = await createSession(user.id, requestMeta(request));
       if (!session) {
         set.status = 500;
@@ -212,6 +244,8 @@ export const authController = (app: Elysia) =>
         return { error: parsed.error.issues[0]?.message ?? "invalid input" };
       }
       const { currentPassword, newPassword } = parsed.data;
+      const blocked = limited(set, [[authLimits.passwordFailuresByUser, authed.id]]);
+      if (blocked) return blocked;
       const full = await getUserById(authed.id);
       if (!full) {
         set.status = 404;
@@ -219,6 +253,7 @@ export const authController = (app: Elysia) =>
       }
       const ok = await verifyPassword(currentPassword, full.passwordHash);
       if (!ok) {
+        authLimits.passwordFailuresByUser.hit(authed.id);
         set.status = 401;
         return { error: "current password is incorrect" };
       }
@@ -245,6 +280,8 @@ export const authController = (app: Elysia) =>
         set.status = 400;
         return { error: parsed.error.issues[0]?.message ?? "invalid input" };
       }
+      const blocked = limited(set, [[authLimits.passwordFailuresByUser, authed.id]]);
+      if (blocked) return blocked;
       const full = await getUserById(authed.id);
       if (!full) {
         set.status = 404;
@@ -252,6 +289,7 @@ export const authController = (app: Elysia) =>
       }
       const ok = await verifyPassword(parsed.data.currentPassword, full.passwordHash);
       if (!ok) {
+        authLimits.passwordFailuresByUser.hit(authed.id);
         set.status = 401;
         return { error: "current password is incorrect" };
       }
