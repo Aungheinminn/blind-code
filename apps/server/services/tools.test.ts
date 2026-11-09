@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolveAgentToolPermissions } from "@vibe/shared";
-import { applyEdit, buildCoderTools } from "./tools";
+import { applyEdit, buildCoderTools, buildSearchPattern, searchLines } from "./tools";
 
 const ctx = { sandboxProjectId: "p", dbProjectId: "p", ownerId: "u" };
 
@@ -66,5 +66,31 @@ describe("applyEdit", () => {
 
   test("is offered to the coder", () => {
     expect("edit_file" in buildCoderTools(ctx, {})).toBe(true);
+  });
+});
+
+describe("search helpers", () => {
+  test("literal queries escape regex characters", () => {
+    const p = buildSearchPattern("a.b(", {});
+    expect(p instanceof RegExp && p.test("xa.b(y")).toBe(true);
+    expect(p instanceof RegExp && p.test("axb(")).toBe(false);
+  });
+
+  test("case-insensitive by default", () => {
+    const p = buildSearchPattern("Header", {}) as RegExp;
+    expect(p.test("<header>")).toBe(true);
+    const strict = buildSearchPattern("Header", { caseSensitive: true }) as RegExp;
+    expect(strict.test("<header>")).toBe(false);
+  });
+
+  test("invalid regex returns an error", () => {
+    expect(buildSearchPattern("(", { regex: true })).toHaveProperty("error");
+  });
+
+  test("searchLines reports 1-based lines and respects the limit", () => {
+    const content = "foo\nbar foo\nbaz\nfoo";
+    const p = buildSearchPattern("foo", {}) as RegExp;
+    expect(searchLines("a.ts", content, p, 10).map((m) => m.line)).toEqual([1, 2, 4]);
+    expect(searchLines("a.ts", content, p, 2)).toHaveLength(2);
   });
 });

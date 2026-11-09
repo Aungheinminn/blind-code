@@ -142,7 +142,7 @@ Deciding what to do:
 - If verify_task reports blocking issues, fix them, then stop.
 
 Workflow:
-1. Call list_files first to see what already exists.
+1. Call list_files first to see what already exists. Use search_files to find where something is defined or used.
 2. Read any file you're about to modify — do not guess at existing content. Change part of an existing file with edit_file; use write_file only for new files or full rewrites.
 3. Write files at the project root (/App.tsx, /components/*, /hooks/*, /lib/*). Prefer editing existing files over creating parallel new ones. When a shadcn primitive fits (Button, Card, Input, Label), use it instead of raw HTML elements.
 4. Do NOT call run_command. There is no build to run and no dev server to start — the preview compiles your source in the browser. If you think you need run_command, you don't.
@@ -151,7 +151,7 @@ Workflow:
 7. When finished, respond with a one-sentence summary of what the user can now do.
 
 Tools:
-- list_files, read_file, write_file, edit_file, delete_file — file operations
+- list_files, read_file, search_files, write_file, edit_file, delete_file — file operations
 - update_todo — mark plan todos active/done/skipped
 - plan_task — produce (or replace) the todo list. Never call twice per turn. Use for genuinely new/larger work.
 - add_todo — append ONE new todo to the current plan (cheaper than plan_task; use when the user asks for a small extension mid-work that fits current plan scope)
