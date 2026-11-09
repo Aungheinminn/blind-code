@@ -19,6 +19,15 @@ jobs:
       - name: Server tests
         working-directory: apps/server
         run: ENCRYPTION_KEY=$(openssl rand -base64 32) bun test
+      - name: Migrations match schema
+        working-directory: apps/server
+        run: |
+          bunx drizzle-kit generate
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "Schema changed without a migration. Run 'bun run db:generate' in apps/server and commit the result."
+            git status --porcelain drizzle
+            exit 1
+          fi
       - name: Client svelte-check
         working-directory: apps/client
         run: bunx svelte-check --tsconfig ./tsconfig.json --threshold error
