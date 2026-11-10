@@ -32,6 +32,7 @@ import {
 import { sanitizeTemplateBody } from "../services/designTemplate";
 import { summarizeConversation } from "../services/summarizer";
 import matter from "gray-matter";
+import { parsePromptImages } from "../services/promptImages";
 import { resolveGitHubToken } from "../services/githubToken";
 import { readProjectFile } from "../services/tools";
 import type { Plan } from "../services/planner";
@@ -45,6 +46,7 @@ type AgentIncoming =
       model: string;
       projectId: string;
       prompt: string;
+      images?: unknown;
       history?: CoderChatMessage[];
       persistPrompt?: boolean;
       keyPreference?: "auto" | "user" | "platform";
@@ -197,6 +199,13 @@ export const agentController = (app: Elysia) =>
 
         if (msg.type !== "run") return;
 
+        const parsedImages = parsePromptImages(msg.images);
+        if (!parsedImages.ok) {
+          ws.send({ type: "error", error: parsedImages.error });
+          return;
+        }
+        const images = parsedImages.images;
+
         const projectRecord = hasDb
           ? await getProjectForOwner(msg.projectId, userId)
           : null;
@@ -300,7 +309,7 @@ export const agentController = (app: Elysia) =>
         if (sessionId && msg.persistPrompt !== false) {
           await recordAgentAction(sessionId, "user_prompt", {
             summary: msg.prompt.slice(0, 200),
-            payload: { prompt: msg.prompt },
+            payload: images.length > 0 ? { prompt: msg.prompt, images } : { prompt: msg.prompt },
           });
         }
 
@@ -591,6 +600,7 @@ export const agentController = (app: Elysia) =>
             model: resolvedModelId,
             toolContext,
             prompt: msg.prompt,
+            images,
             history: msg.history,
             supabaseConnected,
             supabaseCanRunSql,

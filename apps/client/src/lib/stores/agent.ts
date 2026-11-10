@@ -5,6 +5,7 @@ import { TIER_MODELS, providerForModel } from "$lib/tierModels";
 import { getWsTicket } from "$lib/api/auth";
 import { getCreditsBalance } from "$lib/api/credits";
 import { openOutOfCreditsModal } from "./outOfCreditsModal";
+import type { PromptImage } from "$lib/images";
 import {
   getProjectDesignTemplate,
   getProjectFiles,
@@ -44,6 +45,7 @@ export type AgentMessage = {
   interrupted?: boolean;
   usage?: AgentUsage;
   checkpointId?: string;
+  images?: PromptImage[];
 };
 
 export type ProviderInfo = {
@@ -248,6 +250,7 @@ export const loadHistory = async (projectId: string): Promise<void> => {
             ...(m.interrupted ? { interrupted: true } : {}),
             ...(m.usage ? { usage: m.usage } : {}),
             ...(m.checkpointId ? { checkpointId: m.checkpointId } : {}),
+            ...(m.images?.length ? { images: m.images } : {}),
           };
         }),
       );
@@ -720,9 +723,10 @@ const handleEvent = (raw: unknown) => {
 export const sendPrompt = async (
   projectId: string,
   prompt: string,
-  opts: { skipUserAppend?: boolean } = {},
+  opts: { skipUserAppend?: boolean; images?: PromptImage[] } = {},
 ): Promise<void> => {
-  if (!prompt.trim() || get(isRunning)) return;
+  const images = opts.images ?? [];
+  if ((!prompt.trim() && images.length === 0) || get(isRunning)) return;
 
   activeProjectId = projectId;
 
@@ -734,6 +738,7 @@ export const sendPrompt = async (
         role: "user",
         content: prompt.trim(),
         timestamp: new Date(),
+        ...(images.length > 0 ? { images } : {}),
       },
     ]);
   }
@@ -756,6 +761,7 @@ export const sendPrompt = async (
         model: get(selectedModel),
         projectId,
         prompt: prompt.trim(),
+        ...(images.length > 0 ? { images } : {}),
         history,
         mode: "router",
         persistPrompt: !opts.skipUserAppend,
@@ -817,9 +823,9 @@ export const retryLastPrompt = async (projectId: string): Promise<void> => {
     }
   }
   if (userIdx < 0) return;
-  const prompt = list[userIdx].content;
+  const { content, images } = list[userIdx];
   messages.set(list.slice(0, userIdx + 1));
-  await sendPrompt(projectId, prompt, { skipUserAppend: true });
+  await sendPrompt(projectId, content, { skipUserAppend: true, images });
 };
 
 export const resumeTurn = async (projectId: string): Promise<void> => {

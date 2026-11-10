@@ -65,6 +65,7 @@ import {
   linkRepoToProject,
   pushProjectToGitHub,
 } from "../services/githubPush";
+import { importGitHubRepo } from "../services/githubImport";
 import {
   clearGitHubIntegrationForOwner,
   clearVercelIntegrationForOwner,
@@ -378,6 +379,27 @@ export const projectController = (app: Elysia) =>
       } catch (err) {
         set.status = 500;
         return { error: friendlyError(err, { entity: "project", field: "name" }) };
+      }
+    })
+    .post("/projects/import/github", async ({ body, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const b = (body as Record<string, unknown>) ?? {};
+      const fullName = optString(b.fullName);
+      if (!fullName) {
+        set.status = 400;
+        return { error: "fullName required" };
+      }
+      try {
+        const result = await importGitHubRepo({
+          ownerId: user.id,
+          fullName,
+          branch: optString(b.branch),
+        });
+        return { data: result };
+      } catch (err) {
+        return githubError(set, err);
       }
     })
     .post("/projects/from-prompt", async ({ body, request, set }) => {

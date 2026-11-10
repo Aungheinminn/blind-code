@@ -209,3 +209,29 @@ export const seedEmptyRepo = async (
   );
   return res.commit.sha;
 };
+
+export type GitTreeItem = {
+  path: string;
+  type: "blob" | "tree" | "commit";
+  sha: string;
+  size?: number;
+};
+
+export const getTreeRecursive = (token: string, owner: string, repo: string, sha: string) =>
+  githubFetch<{ tree: GitTreeItem[]; truncated: boolean }>(
+    token,
+    `${repoPath(owner, repo)}/git/trees/${sha}?recursive=1`,
+  );
+
+export const getBlobBase64 = async (
+  token: string,
+  owner: string,
+  repo: string,
+  sha: string,
+): Promise<string> => {
+  const blob = await githubFetch<{ content: string; encoding: string }>(
+    token,
+    `${repoPath(owner, repo)}/git/blobs/${sha}`,
+  );
+  return blob.content.replace(/\n/g, "");
+};

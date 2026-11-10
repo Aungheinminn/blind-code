@@ -85,6 +85,7 @@
         <div data-prompt-id={message.id}>
           <UserMessage
             content={message.content}
+            images={message.images ?? []}
             checkpointId={message.checkpointId}
             restoreDisabled={isRunning}
             on:restore={(e) => dispatch("restore", e.detail)}

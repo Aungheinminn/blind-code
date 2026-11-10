@@ -108,6 +108,19 @@ export type CreatedProjectFromPrompt = {
   title: string;
 };
 
+export type GitHubImportResult = {
+  projectId: string;
+  imported: number;
+  skipped: number;
+  linked: boolean;
+};
+
+export const importProjectFromGitHub = (input: { fullName: string; branch?: string }) =>
+  fetchJson<GitHubImportResult>("/projects/import/github", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+
 export const createProjectFromPrompt = (input: {
   prompt: string;
   model: string;
@@ -159,6 +172,7 @@ export type HistoryMessage = {
   interrupted?: boolean;
   usage?: HistoryUsage;
   checkpointId?: string;
+  images?: { mediaType: string; data: string }[];
 };
 
 export type HistoryPlanTodoStatus = "pending" | "active" | "done" | "skipped";

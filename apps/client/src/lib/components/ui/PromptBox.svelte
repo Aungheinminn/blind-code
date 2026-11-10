@@ -49,10 +49,12 @@
   class="rounded-2xl border flex flex-col {cardPadding} {cardGap}"
   style="border-color: {focused ? 'var(--accent)' : 'var(--border)'}; background-color: {bgVar}; box-shadow: {shadow};"
 >
+  <slot name="top" />
   <textarea
     bind:this={textareaEl}
     bind:value
     on:input={autoGrow}
+    on:paste
     on:keydown={handleKeydown}
     on:focus={() => (focused = true)}
     on:blur={() => (focused = false)}

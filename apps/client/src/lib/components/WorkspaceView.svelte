@@ -41,6 +41,7 @@
     getProject,
   } from "$lib/api/projects";
   import { orientation, viewMode } from "$lib/stores/preview";
+  import type { PromptImage } from "$lib/images";
 
   const openAgentPanel = () => {
     panelOpen = true;
@@ -168,9 +169,9 @@
       });
   }
 
-  const handleSubmit = (event: CustomEvent<string>) => {
+  const handleSubmit = (event: CustomEvent<{ text: string; images: PromptImage[] }>) => {
     if ($isRunning) return;
-    sendPrompt(projectId, event.detail);
+    sendPrompt(projectId, event.detail.text, { images: event.detail.images });
   };
 
   const goBack = () => {
