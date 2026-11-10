@@ -58,6 +58,7 @@ export type HistoryMessage = {
   interrupted?: boolean;
   usage?: HistoryUsage;
   checkpointId?: string;
+  images?: { mediaType: string; data: string }[];
 };
 
 export const getProjectHistory = async (projectId: string): Promise<HistoryMessage[]> => {
@@ -137,6 +138,9 @@ export const getProjectHistory = async (projectId: string): Promise<HistoryMessa
           role: "user",
           content: typeof payload.prompt === "string" ? payload.prompt : "",
           timestamp,
+          ...(Array.isArray(payload.images) && payload.images.length > 0
+            ? { images: payload.images as HistoryMessage["images"] }
+            : {}),
           ...(checkpointSessions.has(session.sessionId) ? { checkpointId: session.sessionId } : {}),
         });
         continue;

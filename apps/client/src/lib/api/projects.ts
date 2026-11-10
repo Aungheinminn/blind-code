@@ -159,6 +159,7 @@ export type HistoryMessage = {
   interrupted?: boolean;
   usage?: HistoryUsage;
   checkpointId?: string;
+  images?: { mediaType: string; data: string }[];
 };
 
 export type HistoryPlanTodoStatus = "pending" | "active" | "done" | "skipped";

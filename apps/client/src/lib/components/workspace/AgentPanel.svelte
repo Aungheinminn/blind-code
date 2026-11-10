@@ -7,6 +7,7 @@
   import MessageList from "./agent/MessageList.svelte";
   import PromptComposer from "./agent/PromptComposer.svelte";
   import TodoTray from "./TodoTray.svelte";
+  import type { PromptImage } from "$lib/images";
 
   export let open = false;
   export let projectId = "";
@@ -31,7 +32,7 @@
 
   const dispatch = createEventDispatcher<{
     close: void;
-    submit: string;
+    submit: { text: string; images: PromptImage[] };
     cancel: void;
     retry: void;
     restore: string;
@@ -39,7 +40,7 @@
     "model-change": string;
   }>();
 
-  const onSubmit = (event: CustomEvent<string>) => {
+  const onSubmit = (event: CustomEvent<{ text: string; images: PromptImage[] }>) => {
     dispatch("submit", event.detail);
   };
 
@@ -75,15 +76,15 @@
   ) => {
     const text = formatAnswers(event.detail.questions, event.detail.answers);
     clearPendingQuestions();
-    dispatch("submit", text);
+    dispatch("submit", { text, images: [] });
   };
 
   const onQuestionsDismiss = () => {
     clearPendingQuestions();
-    dispatch(
-      "submit",
-      "Skip the clarifying questions and proceed with your default assumptions — call plan_task now.",
-    );
+    dispatch("submit", {
+      text: "Skip the clarifying questions and proceed with your default assumptions — call plan_task now.",
+      images: [],
+    });
   };
 </script>
 

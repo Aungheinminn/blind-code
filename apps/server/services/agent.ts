@@ -20,6 +20,7 @@ import {
 import { addTodoToLatestPlan } from "../db/repo";
 import { buildProjectMemoryAppendix } from "./summarizer";
 import { createStepCompactor, fitHistory, historyBudgetFor } from "./context";
+import type { PromptImage } from "./promptImages";
 
 export type AgentDecision = "plan_task" | "verify_task";
 export type SubAgent = "agent" | "planner" | "verifier";
@@ -74,6 +75,7 @@ export type RunAgentOptions = {
   model?: string;
   toolContext: ToolContext;
   prompt: string;
+  images?: PromptImage[];
   history?: CoderChatMessage[];
   existingPlan?: Plan | null;
   existingPlanStatuses?: Record<string, PlanTodoStatus>;
@@ -474,7 +476,20 @@ export const runAgent = async (opts: RunAgentOptions): Promise<RunAgentResult> =
             }
           : { role: m.role, content: m.content }) as ModelMessage,
     ),
-    { role: "user", content: opts.prompt },
+    opts.images?.length
+      ? {
+          role: "user",
+          content: [
+            // Providers reject empty text blocks, and an image-only prompt is valid.
+            ...(opts.prompt.trim() ? [{ type: "text" as const, text: opts.prompt }] : []),
+            ...opts.images.map((img) => ({
+              type: "image" as const,
+              image: img.data,
+              mediaType: img.mediaType,
+            })),
+          ],
+        }
+      : { role: "user", content: opts.prompt },
   ];
 
   const todoCount = opts.existingPlan?.todos.length ?? 0;
