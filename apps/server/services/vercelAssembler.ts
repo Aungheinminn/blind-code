@@ -177,7 +177,7 @@ export default defineConfig({
 });
 `;
 
-const TAILWIND_PRELUDE = `@import "tailwindcss";
+export const TAILWIND_PRELUDE = `@import "tailwindcss";
 
 @theme inline {
   --color-background: var(--background);

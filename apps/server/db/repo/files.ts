@@ -105,3 +105,17 @@ export const restoreProjectCheckpoint = async (
   });
   return checkpoint.files;
 };
+
+export const insertProjectFiles = async (projectId: string, files: Record<string, string>) => {
+  if (!db) return;
+  const entries = Object.entries(files);
+  if (entries.length === 0) return;
+  await db.insert(schema.files).values(
+    entries.map(([path, content]) => ({
+      projectId,
+      path,
+      content,
+      sizeBytes: Buffer.byteLength(content, "utf-8"),
+    })),
+  );
+};

@@ -11,10 +11,14 @@
   } from "$lib/api/projects";
   import { auth } from "$lib/stores/auth";
   import ProjectCard from "$lib/components/projects/ProjectCard.svelte";
+  import ImportGitHubModal from "$lib/components/projects/ImportGitHubModal.svelte";
   import searchIcon from "$lib/assets/icons/search.svg?raw";
   import closeXIcon from "$lib/assets/icons/close-x.svg?raw";
 
   const PAGE_SIZE = 12;
+
+  let showImport = false;
+  let importModal: ImportGitHubModal | undefined;
 
   let items: Project[] = [];
   let total = 0;
@@ -257,6 +261,7 @@
 
   const onKeydown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
+      importModal?.close();
       closeCreate();
       closeEdit();
       closeDelete();
@@ -280,13 +285,22 @@
           Manage your workspaces and recent builds.
         </p>
       </div>
-      <button
-        class="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors cursor-pointer"
-        style="background-color: var(--accent);"
-        on:click={openCreate}
-      >
-        New project
-      </button>
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          class="px-4 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer"
+          style="border-color: var(--border); color: var(--text-primary); background-color: var(--bg-panel);"
+          on:click={() => (showImport = true)}
+        >
+          Import from GitHub
+        </button>
+        <button
+          class="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors cursor-pointer"
+          style="background-color: var(--accent);"
+          on:click={openCreate}
+        >
+          New project
+        </button>
+      </div>
     </div>
 
     <div class="mt-6 relative">
@@ -393,6 +407,14 @@
     {/if}
   </div>
 </div>
+
+{#if showImport}
+  <ImportGitHubModal
+    bind:this={importModal}
+    on:close={() => (showImport = false)}
+    on:imported={(e) => goto(`/projects/${e.detail.projectId}/workspace`)}
+  />
+{/if}
 
 {#if showCreate}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
