@@ -451,13 +451,16 @@ export const agentController = (app: Elysia) =>
               event.output != null &&
               typeof event.output === "object" &&
               typeof (event.output as { path?: unknown }).path === "string";
+            // Tools echo the path as stored ("App.tsx"), while the input may
+            // say "/App.tsx"; clients key files by the stored form.
+            const storedPath = outputHasPath ? (event.output as { path: string }).path : "";
             if (event.toolName === "write_file" && outputHasPath) {
               const pending = pendingWrites.get(event.toolCallId);
               if (pending) {
                 pendingWrites.delete(event.toolCallId);
                 await publish({
                   type: "file-updated",
-                  path: pending.path,
+                  path: storedPath,
                   content: pending.content,
                 });
               }
@@ -467,14 +470,14 @@ export const agentController = (app: Elysia) =>
               if (pending && outputHasPath) {
                 const content = await readProjectFile(msg.projectId, pending.path).catch(() => null);
                 if (content !== null) {
-                  await publish({ type: "file-updated", path: pending.path, content });
+                  await publish({ type: "file-updated", path: storedPath, content });
                 }
               }
             } else if (event.toolName === "delete_file" && outputHasPath) {
               const pending = pendingDeletes.get(event.toolCallId);
               if (pending) {
                 pendingDeletes.delete(event.toolCallId);
-                await publish({ type: "file-deleted", path: pending.path });
+                await publish({ type: "file-deleted", path: storedPath });
               }
             } else if (event.toolName === "attach_supabase_project") {
               const out = event.output as
