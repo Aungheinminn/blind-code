@@ -14,6 +14,7 @@ import { creditsController } from "./controllers/credits.controller";
 import { sampleBuildsController } from "./controllers/sampleBuilds.controller";
 import { designTemplatesController } from "./controllers/designTemplates.controller";
 import { designAgentController } from "./controllers/designAgent.ws";
+import { shareController } from "./controllers/share.controller";
 import { hasDb } from "./db/client";
 import { turnBus } from "./services/turnBus";
 import { withCors } from "./services/cors";
@@ -56,6 +57,7 @@ designAgentController(app);
 connectController(app);
 accountController(app);
 creditsController(app);
+shareController(app);
 
 app.get("/health", () => ({ status: "ok" }));
 

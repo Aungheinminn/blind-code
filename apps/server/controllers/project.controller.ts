@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import type { Elysia } from "elysia";
 import { rm } from "fs/promises";
 import { join } from "path";
@@ -24,6 +25,7 @@ import {
   hasRunningTurn,
   restoreProjectCheckpoint,
   listProjectCheckpoints,
+  setProjectShareToken,
   getProjectCheckpointFiles,
   type ProjectListFilter,
 } from "../db/repo";
@@ -725,6 +727,31 @@ export const projectController = (app: Elysia) =>
         getLatestPlanForProject(project.id),
       ]);
       return { data: { messages, latestPlan } };
+    })
+    .post("/projects/:id/share", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      if (project.shareToken) return { data: { shareToken: project.shareToken } };
+      const updated = await setProjectShareToken(project.id, user.id, randomBytes(18).toString("base64url"));
+      return { data: { shareToken: updated?.shareToken ?? null } };
+    })
+    .delete("/projects/:id/share", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      await setProjectShareToken(project.id, user.id, null);
+      return { data: { shareToken: null } };
     })
     .get("/projects/:id/checkpoints", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

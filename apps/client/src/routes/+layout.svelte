@@ -24,10 +24,12 @@
     typeof window !== "undefined" &&
     Boolean((window as unknown as { desktop?: { isDesktop?: boolean } }).desktop?.isDesktop);
 
+  const isSharePage = (path: string) => path.startsWith("/share/");
   const isPublic = (path: string) =>
-    isDesktopApp() ? AUTH_ROUTES.includes(path) : PUBLIC_ROUTES.includes(path);
+    isSharePage(path) ||
+    (isDesktopApp() ? AUTH_ROUTES.includes(path) : PUBLIC_ROUTES.includes(path));
   const isAuthPage = (path: string) => AUTH_ROUTES.includes(path);
-  const isFullscreen = (path: string) => path.includes("/workspace");
+  const isFullscreen = (path: string) => path.includes("/workspace") || isSharePage(path);
   const projectDetailIdRe = /^\/projects\/([^/]+)$/;
   const projectDetailId = (path: string) => path.match(projectDetailIdRe)?.[1] ?? null;
   const supabaseDetailRe = /^\/supabase\/[^/]+$/;
