@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../client";
 
 export const listProjectFiles = async (projectId: string) => {
@@ -118,4 +118,55 @@ export const insertProjectFiles = async (projectId: string, files: Record<string
       sizeBytes: Buffer.byteLength(content, "utf-8"),
     })),
   );
+};
+
+export type CheckpointSummary = {
+  id: string;
+  createdAt: string;
+  prompt: string | null;
+  fileCount: number;
+};
+
+export const listProjectCheckpoints = async (projectId: string): Promise<CheckpointSummary[]> => {
+  if (!db) return [];
+  const cp = schema.projectCheckpoints;
+  const actions = schema.agentActions;
+  const rows = await db
+    .select({
+      id: cp.sessionId,
+      createdAt: cp.createdAt,
+      prompt: actions.summary,
+      fileCount: sql<number>`(select count(*) from jsonb_object_keys(${cp.files}))::int`,
+    })
+    .from(cp)
+    .leftJoin(
+      actions,
+      and(eq(actions.sessionId, cp.sessionId), eq(actions.actionType, "user_prompt")),
+    )
+    .where(eq(cp.projectId, projectId))
+    .orderBy(desc(cp.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    prompt: r.prompt,
+    fileCount: Number(r.fileCount),
+  }));
+};
+
+export const getProjectCheckpointFiles = async (
+  projectId: string,
+  sessionId: string,
+): Promise<Record<string, string> | null> => {
+  if (!db) return null;
+  const [row] = await db
+    .select({ files: schema.projectCheckpoints.files })
+    .from(schema.projectCheckpoints)
+    .where(
+      and(
+        eq(schema.projectCheckpoints.projectId, projectId),
+        eq(schema.projectCheckpoints.sessionId, sessionId),
+      ),
+    )
+    .limit(1);
+  return row?.files ?? null;
 };

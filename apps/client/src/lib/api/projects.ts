@@ -200,6 +200,19 @@ export const getProjectHistory = (id: string) =>
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);
 
+export type CheckpointSummary = {
+  id: string;
+  createdAt: string;
+  prompt: string | null;
+  fileCount: number;
+};
+
+export const listProjectCheckpoints = (id: string) =>
+  fetchJson<CheckpointSummary[]>(`/projects/${id}/checkpoints`);
+
+export const getProjectCheckpointFiles = (id: string, checkpointId: string) =>
+  fetchJson<Record<string, string>>(`/projects/${id}/checkpoints/${checkpointId}`);
+
 export const restoreProjectCheckpoint = (id: string, checkpointId: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/checkpoints/${checkpointId}/restore`, {
     method: "POST",

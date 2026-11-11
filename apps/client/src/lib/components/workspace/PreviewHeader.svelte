@@ -6,6 +6,7 @@
   import rocketIcon from "$lib/assets/icons/rocket.svg?raw";
   import githubIcon from "$lib/assets/icons/github.svg?raw";
   import refreshCwIcon from "$lib/assets/icons/refresh-cw.svg?raw";
+  import restoreIcon from "$lib/assets/icons/restore.svg?raw";
   import sunIcon from "$lib/assets/icons/sun.svg?raw";
   import moonIcon from "$lib/assets/icons/moon.svg?raw";
   import eyeIcon from "$lib/assets/icons/eye.svg?raw";
@@ -24,6 +25,7 @@
     "open-supabase": void;
     "open-deploy": void;
     "open-github": void;
+    "open-history": void;
   }>();
 </script>
 
@@ -83,6 +85,15 @@
       {#if githubLinked}
         <span class="connected-dot" class:pending-dot={githubDirty} aria-hidden="true"></span>
       {/if}
+    </button>
+    <button
+      type="button"
+      class="chrome-button"
+      on:click={() => dispatch("open-history")}
+      title="Version history"
+      aria-label="Version history"
+    >
+      <span class="icon-15" aria-hidden="true">{@html restoreIcon}</span>
     </button>
     <button
       type="button"

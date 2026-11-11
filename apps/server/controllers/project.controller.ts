@@ -23,6 +23,8 @@ import {
   setDesignTemplateForProject,
   hasRunningTurn,
   restoreProjectCheckpoint,
+  listProjectCheckpoints,
+  getProjectCheckpointFiles,
   type ProjectListFilter,
 } from "../db/repo";
 import { templateToCss } from "../services/designTemplate";
@@ -723,6 +725,33 @@ export const projectController = (app: Elysia) =>
         getLatestPlanForProject(project.id),
       ]);
       return { data: { messages, latestPlan } };
+    })
+    .get("/projects/:id/checkpoints", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      return { data: await listProjectCheckpoints(project.id) };
+    })
+    .get("/projects/:id/checkpoints/:checkpointId", async ({ params, request, set }) => {
+      if (!hasDb) return dbUnavailable(set);
+      const user = await getUserFromRequest(request);
+      if (!user) return unauthorized(set);
+      const project = await getProjectForOwner(params.id, user.id);
+      if (!project) {
+        set.status = 404;
+        return { error: "not found" };
+      }
+      const files = await getProjectCheckpointFiles(project.id, params.checkpointId);
+      if (!files) {
+        set.status = 404;
+        return { error: "checkpoint not found" };
+      }
+      return { data: files };
     })
     .post("/projects/:id/checkpoints/:checkpointId/restore", async ({ params, request, set }) => {
       if (!hasDb) return dbUnavailable(set);

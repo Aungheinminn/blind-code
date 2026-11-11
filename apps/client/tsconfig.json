@@ -2,5 +2,8 @@
   "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
     "types": ["svelte"]
-  }
+  },
+  // Overrides the generated exclude list, so it repeats node_modules. Tests run
+  // under bun, whose `bun:test` types aren't part of the browser build.
+  "exclude": ["node_modules/**", "src/**/*.test.ts"]
 }
