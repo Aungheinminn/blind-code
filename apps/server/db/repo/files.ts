@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../client";
+import { isUuid } from "../../services/uuid";
 
 export const listProjectFiles = async (projectId: string) => {
   if (!db) return [];
@@ -76,7 +77,7 @@ export const restoreProjectCheckpoint = async (
   projectId: string,
   sessionId: string,
 ): Promise<Record<string, string> | null> => {
-  if (!db) return null;
+  if (!db || !isUuid(sessionId)) return null;
   const [checkpoint] = await db
     .select()
     .from(schema.projectCheckpoints)
@@ -157,7 +158,7 @@ export const getProjectCheckpointFiles = async (
   projectId: string,
   sessionId: string,
 ): Promise<Record<string, string> | null> => {
-  if (!db) return null;
+  if (!db || !isUuid(sessionId)) return null;
   const [row] = await db
     .select({ files: schema.projectCheckpoints.files })
     .from(schema.projectCheckpoints)
