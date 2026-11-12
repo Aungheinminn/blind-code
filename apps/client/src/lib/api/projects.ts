@@ -55,6 +55,7 @@ export type Project = {
   updatedAt: string;
   integrations?: PublicProjectIntegrations | null;
   agentToolPermissions?: AgentToolPermissions | null;
+  shareToken?: string | null;
 };
 
 export type ProjectListFilter = "active" | "archived" | "deleted";
@@ -199,6 +200,36 @@ export const getProjectHistory = (id: string) =>
 
 export const getProjectFiles = (id: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/files`);
+
+export const enableProjectShare = (id: string) =>
+  fetchJson<{ shareToken: string | null }>(`/projects/${id}/share`, { method: "POST" });
+
+export const disableProjectShare = (id: string) =>
+  fetchJson<{ shareToken: null }>(`/projects/${id}/share`, { method: "DELETE" });
+
+export type SharedProject = {
+  name: string;
+  description: string | null;
+  files: Record<string, string>;
+  designCss: string | null;
+  supabase: { url: string; anonKey: string } | null;
+};
+
+export const getSharedProject = (token: string) =>
+  fetchJson<SharedProject>(`/share/${encodeURIComponent(token)}`);
+
+export type CheckpointSummary = {
+  id: string;
+  createdAt: string;
+  prompt: string | null;
+  fileCount: number;
+};
+
+export const listProjectCheckpoints = (id: string) =>
+  fetchJson<CheckpointSummary[]>(`/projects/${id}/checkpoints`);
+
+export const getProjectCheckpointFiles = (id: string, checkpointId: string) =>
+  fetchJson<Record<string, string>>(`/projects/${id}/checkpoints/${checkpointId}`);
 
 export const restoreProjectCheckpoint = (id: string, checkpointId: string) =>
   fetchJson<Record<string, string>>(`/projects/${id}/checkpoints/${checkpointId}/restore`, {

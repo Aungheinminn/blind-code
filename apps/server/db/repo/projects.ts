@@ -497,3 +497,33 @@ export const updateProjectContextSummary = async (
     .set({ contextSummary: summary, contextSummaryCovers: covers })
     .where(eq(schema.projects.id, projectId));
 };
+
+export const setProjectShareToken = async (
+  projectId: string,
+  ownerId: string,
+  token: string | null,
+) => {
+  if (!db) return null;
+  const [row] = await db
+    .update(schema.projects)
+    .set({ shareToken: token })
+    .where(
+      and(
+        eq(schema.projects.id, projectId),
+        eq(schema.projects.ownerId, ownerId),
+        isNull(schema.projects.deletedAt),
+      ),
+    )
+    .returning({ shareToken: schema.projects.shareToken });
+  return row ?? null;
+};
+
+export const getProjectByShareToken = async (token: string) => {
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(schema.projects)
+    .where(and(eq(schema.projects.shareToken, token), isNull(schema.projects.deletedAt)))
+    .limit(1);
+  return decryptProjectRow(rows[0] ?? null);
+};

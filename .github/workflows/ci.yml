@@ -33,3 +33,6 @@ jobs:
       - name: Client svelte-check
         working-directory: apps/client
         run: bunx svelte-check --tsconfig ./tsconfig.json --threshold error
+      - name: Client tests
+        working-directory: apps/client
+        run: bun test src

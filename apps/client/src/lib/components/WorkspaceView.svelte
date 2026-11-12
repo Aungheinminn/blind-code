@@ -35,6 +35,8 @@
   import SupabaseConnectModal from "$lib/components/workspace/SupabaseConnectModal.svelte";
   import DeployModal from "$lib/components/workspace/DeployModal.svelte";
   import GitHubModal from "$lib/components/workspace/GitHubModal.svelte";
+  import HistoryModal from "$lib/components/workspace/HistoryModal.svelte";
+  import ShareModal from "$lib/components/workspace/ShareModal.svelte";
   import {
     checkVercelDeploymentStatus,
     getGitHubStatus,
@@ -61,6 +63,8 @@
   let supabaseModalOpen = false;
   let deployModalOpen = false;
   let githubModalOpen = false;
+  let historyModalOpen = false;
+  let shareModalOpen = false;
   // One-way latch per project: once we've committed to the preview layout
   // we don't fall back to the planning pane on follow-up prompts.
   let showPreview = false;
@@ -204,6 +208,8 @@
         on:open-supabase={() => (supabaseModalOpen = true)}
         on:open-deploy={() => (deployModalOpen = true)}
         on:open-github={() => (githubModalOpen = true)}
+        on:open-history={() => (historyModalOpen = true)}
+        on:open-share={() => (shareModalOpen = true)}
       />
       <div class="flex-1 min-h-0 relative">
         <SandpackPreview
@@ -274,6 +280,20 @@
       vercel={$projectVercel}
       on:close={() => (deployModalOpen = false)}
       on:deployed={(e) => projectVercel.set(e.detail)}
+    />
+  {/if}
+
+  {#if shareModalOpen}
+    <ShareModal {projectId} on:close={() => (shareModalOpen = false)} />
+  {/if}
+
+  {#if historyModalOpen}
+    <HistoryModal
+      {projectId}
+      currentFiles={$projectFiles}
+      isRunning={$isRunning}
+      on:close={() => (historyModalOpen = false)}
+      on:restore={handleRestore}
     />
   {/if}
 

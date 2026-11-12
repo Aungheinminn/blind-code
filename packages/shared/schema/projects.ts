@@ -115,6 +115,8 @@ export const projects = pgTable("projects", {
   // contextSummaryCovers counts how many leading history messages it covers.
   contextSummary: text("context_summary"),
   contextSummaryCovers: integer("context_summary_covers").default(0).notNull(),
+  // Set while the project has a public read-only link; clearing it revokes the link.
+  shareToken: varchar("share_token", { length: 64 }).unique("projects_share_token_uq"),
   isArchived: boolean("is_archived").default(false).notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
