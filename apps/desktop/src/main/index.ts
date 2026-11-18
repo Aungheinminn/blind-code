@@ -1,29 +1,44 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  getServerUrl,
-  startBundledServer,
-  stopBundledServer,
-} from "./server-manager";
-import {
-  RENDERER_ENTRY_URL,
-  registerRendererProtocol,
-  registerRendererSchemeAsPrivileged,
-} from "./renderer-protocol";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const isDev = !app.isPackaged;
 const CLIENT_DEV_URL = process.env.CLIENT_DEV_URL ?? "http://localhost:5173";
-const DEV_SERVER_URL =
-  process.env.SERVER_URL ?? `http://127.0.0.1:${process.env.SERVER_PORT ?? 3001}`;
+const APP_URL = isDev ? CLIENT_DEV_URL : import.meta.env.MAIN_VITE_APP_URL;
+const APP_ORIGIN = new URL(APP_URL).origin;
 
 let mainWindow: BrowserWindow | null = null;
 
-if (!isDev) {
-  registerRendererSchemeAsPrivileged();
-}
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+const offlinePage = (reason: string): string => {
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Blind Code</title>
+<style>
+  body { margin: 0; height: 100vh; display: grid; place-items: center; background: #0b0b0f; color: #e6e6eb; font: 14px -apple-system, system-ui, sans-serif; }
+  main { text-align: center; max-width: 360px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  p { color: #9a9aa5; margin: 0 0 20px; }
+  a { display: inline-block; padding: 8px 16px; border-radius: 8px; background: #2a2a33; color: #e6e6eb; text-decoration: none; }
+</style></head>
+<body><main>
+  <h1>Can't reach Blind Code</h1>
+  <p>Check your internet connection and try again.<br><small>${escapeHtml(reason)}</small></p>
+  <a href="${escapeHtml(APP_URL)}">Retry</a>
+</main></body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+};
+
+const isAppUrl = (url: string): boolean => {
+  try {
+    return new URL(url).origin === APP_ORIGIN;
+  } catch {
+    return false;
+  }
+};
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -50,22 +65,29 @@ function createWindow(): void {
     mainWindow = null;
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  const { webContents } = mainWindow;
+
+  webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
   });
 
-  if (isDev) {
-    mainWindow.loadURL(CLIENT_DEV_URL);
-    mainWindow.webContents.openDevTools({ mode: "detach" });
-  } else {
-    mainWindow.loadURL(RENDERER_ENTRY_URL);
-  }
-}
+  // The offline page's Retry link navigates from data: back to the app, so it must be allowed.
+  webContents.on("will-navigate", (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    if (url.startsWith("http:") || url.startsWith("https:")) shell.openExternal(url);
+  });
 
-ipcMain.handle("desktop:server-url", () => {
-  return isDev ? DEV_SERVER_URL : getServerUrl();
-});
+  webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    // -3 is ERR_ABORTED: a navigation replaced by another one, not a real failure.
+    if (!isMainFrame || errorCode === -3 || !isAppUrl(validatedURL)) return;
+    webContents.loadURL(offlinePage(errorDescription));
+  });
+
+  mainWindow.loadURL(APP_URL);
+  if (isDev) webContents.openDevTools({ mode: "detach" });
+}
 
 async function waitForUrl(url: string, timeoutMs = 30_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -85,16 +107,7 @@ async function waitForUrl(url: string, timeoutMs = 30_000): Promise<void> {
 }
 
 app.whenReady().then(async () => {
-  if (!isDev) {
-    registerRendererProtocol(join(process.resourcesPath, "client"));
-    try {
-      await startBundledServer();
-    } catch (err) {
-      console.error("[main] failed to start bundled server:", err);
-      app.quit();
-      return;
-    }
-  } else {
+  if (isDev) {
     console.log(`[main] waiting for client dev server at ${CLIENT_DEV_URL}...`);
     try {
       await waitForUrl(CLIENT_DEV_URL);
@@ -114,8 +127,4 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
-});
-
-app.on("before-quit", () => {
-  stopBundledServer();
 });

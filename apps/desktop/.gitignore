@@ -2,12 +2,9 @@ node_modules/
 out/
 dist/
 release/
+.env
 *.log
 .DS_Store
-
-# Compiled server binaries (regenerated per platform via scripts/build-server.ts)
-resources/bin/*
-!resources/bin/.gitkeep
 
 # Local python shim created by scripts/build-mac.sh when the system's
 # `python` command is missing (see the script for context).
