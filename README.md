@@ -61,3 +61,13 @@ bun run --filter ./apps/server migrate:keys <userId> [--dry-run]
 ```
 
 Idempotent — skips providers the user already has.
+
+## Desktop app
+
+`apps/desktop` is an Electron shell around the hosted web app: the packaged app loads `MAIN_VITE_APP_URL` directly and talks to the same API, database and accounts as the website. It doesn't bundle or run a server.
+
+```bash
+bun run dev:desktop:all                                   # local server + client + Electron pointed at localhost:5173
+MAIN_VITE_APP_URL=https://<hosted-app> bun run package:mac  # or package:win; the build fails without the URL
+MAIN_VITE_APP_URL=http://localhost:5173 bun run package:mac # local testing: run `bun run dev` first
+```

@@ -10,17 +10,6 @@ files:
   - package.json
   - "!**/*.map"
 
-extraResources:
-  - from: ../client/build
-    to: client
-    filter:
-      - "**/*"
-  - from: resources/bin
-    to: bin
-    filter:
-      - "**/*"
-      - "!.gitkeep"
-
 mac:
   target:
     - target: dmg
